@@ -390,9 +390,21 @@ public class ScopeBuilder
         Transition ts = createTransition(new Alphabet.EnterAttribute(nc), middle);
         addAction(ts,true);
 //??        if(ctx.getInterleaveBranchRoot()!=null) ts.setDisableState(ctx.getInterleaveBranchRoot());
+
+        // always treat attributes as optional,
+        // otherwise we cannot properly handle things like:
+        // <optional>
+        //   <attribute> ..A1.. </attribute>
+        // </optional>
+        // <optional>
+        //   <attribute> ..A2.. </attribute>
+        // </optional>
+        destination.addTransition(ts);
+        return destination;
+/*
         head.addTransition(ts);
-        
 		return head;
+*/
 	}
 	private State processData(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
