@@ -52,7 +52,11 @@ public final class ScopeInfo
 	private Map _NSURItoStringConstant;
 	
 	private State _InitialState;
-	private String _InitialCode;
+    /**
+     * Code that gets executed at the beginning of this scope.
+     */
+    // TODO: initial action is not used!
+	private Action _InitialAction;
     private boolean _IsLambda; //lambda scope or not
 	private boolean _Nullable;
 	private boolean _IsInline;
@@ -64,7 +68,10 @@ public final class ScopeInfo
 	public boolean isInline() { return _IsInline; }
     
     public void setNullable(boolean v) { _Nullable = v; }
-	public void setInitialState(State s, String initialcode) { _InitialState = s; _InitialCode = initialcode; }
+	public void setInitialState(State s, Action initAction) {
+        _InitialState = s;
+        _InitialAction = initAction;
+    }
 	public void setThreadCount(int n) { _ThreadCount = n; } 
 	
     //simple attributes
@@ -195,7 +202,52 @@ public final class ScopeInfo
 	//type usage information. these flags affect the output of import statements
 	private boolean _UsingBigInteger;
 	private boolean _UsingCalendar;
+    
+    /** All actions in this scope. */
+    private final Vector actions = new Vector();
+    
+    /** Creates a new Action object inside this scope. */
+    public Action createAction( String code ) {
+        Action a = new Action(code);
+        actions.add(a);
+        return a;
+    }
+    public Action createAction( StringBuffer code ) {
+        return createAction(code.toString());
+    }
+    
+    /**
+     * User-defined code fragment.
+     */
+    public final class Action {
+        Action( String _codeFragment ) {
+            this.codeFragment = _codeFragment;
+            this.uniqueId = actionIdGen++;
+        }
+        
+        /** A code fragment that the user wrote. */
+        private final String codeFragment;
+        public String getCodeFragment() { return codeFragment; }
+        
+        /** Gets the code to invoke this action. */
+        public String invoke() { return "action"+uniqueId+"();"; }
+        
+        /** ID number that uniquely identifies this fragment. */
+        private final int uniqueId;
+        public int getUniqueId() { return uniqueId; }
+        
+        /** Generates the action function. */
+        void generate( PrintStream out ) {
+            out.println("void action"+uniqueId+"() throws SAXException {");
+            out.println(codeFragment);
+            out.println("}");
+        }
+    }
+    
+    /** used to generate unique IDs for Actions. */
+    private int actionIdGen = 0;
 	
+    
 	private class Alias
 	{
 		public final String name;
@@ -567,6 +619,10 @@ public final class ScopeInfo
             new Object[]{ _Grammar.getRuntimeTypeShortName() }
         ));
 		
+        // action functions
+        for( int i=0; i<actions.size(); i++ )
+            ((Action)actions.get(i)).generate(output);
+        
 		//simple entry point
 		if(_Root)
 		{
@@ -648,6 +704,8 @@ public final class ScopeInfo
         }
         if(s.getListMode()==State.LISTMODE_ON)
             buf.append('*');
+            
+        buf.append(buildActionList(s.getActionsOnExit()));
         buf.append('"');
         return buf.toString();
     }
@@ -690,7 +748,7 @@ public final class ScopeInfo
                         new Object[]{
                             getStateName(s),
                             getStateName(t.nextState()),
-                            t.getAlphabet(),
+                            t.getAlphabet().toString()+buildActionList(t.getActions()),
                             getColor(t.getAlphabet()) });
                 out.println(str);
             }
@@ -710,7 +768,15 @@ public final class ScopeInfo
         in.close();
         
         proc.waitFor();
-        
-        
+    }
+    
+    /** concatanates all action names (so that it can be printed out.) */
+    private static String buildActionList( Action[] actions ) {
+        StringBuffer label = new StringBuffer();
+        for( int i=0; i<actions.length; i++ ) {
+            label.append(',');
+            label.append(actions[i].getUniqueId());
+        }
+        return label.toString();
     }
 }

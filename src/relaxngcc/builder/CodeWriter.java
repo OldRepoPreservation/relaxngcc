@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.Vector;
+
 import relaxngcc.automaton.Alphabet;
 import relaxngcc.automaton.State;
 import relaxngcc.automaton.Transition;
@@ -119,6 +120,9 @@ public class CodeWriter
 	{
 		_output = out;
 		_Info.printHeaderSection(out, _Options, _Grammar.getGlobalImport());
+        
+        out.println("private String uri,localName,qname;");
+        
         writeAcceptableStates();
         
         writeEventHandler(Alphabet.ENTER_ELEMENT,   "enterElement" );
@@ -171,6 +175,13 @@ public class CodeWriter
 		_output.println(MessageFormat.format(
             "public void {0}(String uri,String localName,String qname) throws SAXException '{'",
             new Object[]{eventName}));
+        // copy them to the instance variables so that they can be 
+        // accessed from action functions.
+        // we should better not keep them at Runtime, because
+        // this makes it impossible to emulate events.
+        _output.println("this.uri=uri;");
+        _output.println("this.localName=localName;");
+        _output.println("this.qname=qname;");
             
 		if(_Options.debug)
 			_output.println("System.err.println(\""+eventName+" " + _Info.getNameForTargetLang() + ":\" + qname + \",state=\" + _ngcc_current_state);");
@@ -231,8 +242,8 @@ public class CodeWriter
                         _Info.getReturnVariable(),
                     });
                     
-				if(st.getActionOnExit()!=null)
-                    action = st.getActionOnExit() + action;
+                action = st.invokeActionsOnExit()+action;
+                
 				bi.addConditionalCode(
                     st,
                     f.getKey().createJudgementClause(_Info, "uri", "localName"),
@@ -267,7 +278,7 @@ public class CodeWriter
         StringBuffer code = new StringBuffer();
         ScopeInfo ref_block = alpha.getTargetScope();
         
-        if(ref_tr.getAction()!=null) code.append(ref_tr.getAction());
+        code.append(ref_tr.invokeActions());
         
         code.append(MessageFormat.format(
             "NGCCHandler h = new {0}(this,runtime,{1}{2});{3}", new Object[]{
@@ -461,8 +472,7 @@ public class CodeWriter
 	{
 		StringBuffer buf = new StringBuffer();
 		
-		if(tr.getAction()!=null)
-			buf.append(tr.getAction());
+        buf.append(tr.invokeActions());
 		State nextstate = tr.nextState();
 		if(tr.getDisableState()!=null)
 		{

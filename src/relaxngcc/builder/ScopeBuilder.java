@@ -7,6 +7,7 @@
 package relaxngcc.builder;
 import java.util.Stack;
 import java.util.Iterator;
+
 import relaxngcc.automaton.Alphabet;
 import relaxngcc.automaton.State;
 import relaxngcc.automaton.Transition;
@@ -37,11 +38,13 @@ public class ScopeBuilder
 	private NGCCElement _Root;
 	private ScopeInfo _ScopeInfo;
 	private NGCCGrammar _Grammar;
-	private String _PreservedAction;
 	private Stack _Namespaces;
 	private boolean _ExpandInline;
 	private int _Nullable;
 	private int _ThreadCount;
+
+    /** actions are added to this buffer until it is processed */
+    private StringBuffer preservedAction = new StringBuffer();
 	
 	//constructor must be called from following static methods
 	private ScopeBuilder(int type, NGCCGrammar grm, String location, NGCCElement root)
@@ -49,14 +52,12 @@ public class ScopeBuilder
 		_Type = type;
 		_Root = root;
 		_ThreadCount = 0;
-		_PreservedAction = null;
 		_Grammar = grm;
 		_Nullable = NULLABLE_UNKNOWN;
         
 		_Namespaces = new Stack();
 		
-		String ns = root.getAttribute("ns");
-		if(ns.length()==0) ns = grm.getDefaultNSURI(); //‚È‚¯‚ê‚Îgrammar‚Ì‚à‚Ì‚ðŽg—p
+        String ns = root.getAttribute("ns",grm.getDefaultNSURI());
 		_Namespaces.push(ns);
 		
         _ExpandInline = "true".equals(root.attributeNGCC("inline",null));
@@ -220,7 +221,10 @@ public class ScopeBuilder
 		else
 			initial = processRelaxNGNode(_Root, ctx, finalstate);
 		_ScopeInfo.setThreadCount(_ThreadCount);
-		_ScopeInfo.setInitialState(initial, _PreservedAction);
+        // TODO: don't we need to reset the preservedAction variable? - Kohsuke
+        // TODO: avoid adding action if preservedAction is empty
+		_ScopeInfo.setInitialState(initial,
+            _ScopeInfo.createAction(preservedAction));
         
         _ScopeInfo.minimizeStates();
 	}
@@ -275,12 +279,7 @@ public class ScopeBuilder
 		{
 			String code = child.getFullText();
 			if(code!=null)
-			{
-				if(_PreservedAction==null)
-					_PreservedAction = code;
-				else
-					_PreservedAction = code + _PreservedAction;
-			}
+                preservedAction.append(code);
 		}
 		else if(name.equals("java-import"))
 			_ScopeInfo.appendHeaderSection(child.getFullText());
@@ -509,7 +508,10 @@ public class ScopeBuilder
 	}
 	private State processZeroOrMore(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
-		String action_last = _PreservedAction;
+        ScopeInfo.Action action_last = _ScopeInfo.createAction(preservedAction);
+        // TODO: avoid adding action if preservedAction is empty
+        // TODO: isn't this a bug? I mean, we end up adding the same action
+        // to two different places - Kohsuke
 		addAction(destination);
 		State head = traverseNodeList(exp.getChildNodes(), ctx, destination);
 		addAction(head);
@@ -522,7 +524,10 @@ public class ScopeBuilder
 	}
 	private State processOptional(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
-		String action_last = _PreservedAction;
+        // TODO: isn't this a bug? I mean, we end up adding the same action
+        // to two different places - Kohsuke
+        // TODO: avoid adding action if preservedAction is empty
+        ScopeInfo.Action action_last = _ScopeInfo.createAction(preservedAction);
 		addAction(destination);
 		State head = traverseNodeList(exp.getChildNodes(), ctx, destination);
 		addAction(head);
@@ -547,7 +552,9 @@ public class ScopeBuilder
 		}
 		else
 		{
-			String action = _PreservedAction;
+			ScopeInfo.Action action = _ScopeInfo.createAction(preservedAction);
+            // TODO: seems like this is also a bug?
+        // TODO: avoid adding action if preservedAction is empty
 			addAction(destination);
 			
 			State head = createState(exp, ctx);
@@ -581,22 +588,24 @@ public class ScopeBuilder
 	}
 	private void addAction(Transition t)
 	{
-		if(_PreservedAction!=null)
+		if(preservedAction.length()!=0)
 		{
-			t.appendActionAtHead(_PreservedAction);
-			_PreservedAction=null;
+			t.appendActionAtHead(
+                _ScopeInfo.createAction(preservedAction));
+			preservedAction = new StringBuffer();
 		}
 	}
 	private void addAction(State s)
 	{
-		if(_PreservedAction!=null)
-		{
+        if(preservedAction.length()!=0) {
+            ScopeInfo.Action act = _ScopeInfo.createAction(preservedAction);
+            preservedAction = new StringBuffer();
+            
 			Iterator it = s.iterateTransitions();
 			while(it.hasNext())
-				((Transition)it.next()).appendActionAtHead(_PreservedAction);
+				((Transition)it.next()).appendActionAtHead(act);
 				
-			s.addActionOnExit(_PreservedAction);
+			s.addActionOnExit(act);
 		}
-		_PreservedAction=null;
 	}
 }

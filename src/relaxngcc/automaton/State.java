@@ -16,7 +16,7 @@ import relaxngcc.builder.ScopeInfo;
 /**
  * A State object has zero or more Transition objects
  */
-public class State implements Comparable
+public final class State implements Comparable
 {
 	public static final int LISTMODE_PRESERVE = 0;
 	public static final int LISTMODE_ON = 1;
@@ -30,9 +30,25 @@ public class State implements Comparable
 	public void setAcceptable(boolean newvalue) { _Acceptable=newvalue; }
 	public boolean isAcceptable() { return _Acceptable; }
 	
-	private String _ActionOnExit;
-	public String getActionOnExit() { return _ActionOnExit; }
-	public void addActionOnExit(String code) { _ActionOnExit = (_ActionOnExit==null)? code : code + _ActionOnExit; }
+    /** Actions that get executed when the execution leaves this state. */
+	private final Vector actionsOnExit = new Vector();
+    
+    public ScopeInfo.Action[] getActionsOnExit() {
+        return (ScopeInfo.Action[])actionsOnExit.toArray(new ScopeInfo.Action[0]);
+    }
+    /** Gets the code to invoke exit-actions. */
+	public String invokeActionsOnExit() {
+        StringBuffer buf = new StringBuffer();
+        for( int i=0; i<actionsOnExit.size(); i++ )
+            buf.append(((ScopeInfo.Action)actionsOnExit.get(i)).invoke());
+        return buf.toString();
+    }
+    
+	public void addActionOnExit(ScopeInfo.Action act) {
+        // in the original code, code was added in front of the existing code.
+        // is this order significant?
+        actionsOnExit.add(0,act);
+    }
 	 
 	//for interleave support
 	private State _MeetingDestination;
@@ -131,31 +147,30 @@ public class State implements Comparable
 	{
 		mergeTransitions(s, null);
 	}
-	public void mergeTransitions(State s, String action)
-	{
-        // TODO: implement this check
-/*
-		addTransitionsWithCheck(_StartElementTransitions, s._StartElementTransitions, action);
-		addTransitionsWithCheck(_EndElementTransitions, s._EndElementTransitions, action);
-		addTransitionsWithCheck(_AttributeTransitions, s._AttributeTransitions, action);
-		addTransitionsWithCheck(_TextTransitions, s._TextTransitions, action);
-		addTransitionsWithCheck(_RefTransitions, s._RefTransitions, action);
-*/
-		_AllTransitions.addAll(s._AllTransitions);
-	}
-	
-	public int compareTo(Object obj)
-	{
-		if(!(obj instanceof State)) throw new ClassCastException("not State object");
-		
-		return _Index-((State)obj)._Index;
+    public int compareTo(Object obj)
+    {
+        if(!(obj instanceof State)) throw new ClassCastException("not State object");
+        
+        return _Index-((State)obj)._Index;
+    }
+    
+	public void mergeTransitions(State s, ScopeInfo.Action action) {
+        Iterator itr = s.iterateTransitions();
+        while(itr.hasNext())
+            // TODO: why there needs to be two methods "addTransitionWithCheck" and "addTransition"?
+            addTransitionWithCheck( (Transition)itr.next(), action );
 	}
 	
 	//reports if this state has ambiguous transitions. [target] is a set of Transitions.
-	private void addTransitionWithCheck(Set currentTransitions, Transition newtransition, String action)
+    /**
+     * Adds the specified transition to this state,
+     * and reports any ambiguity error if detected.
+     */
+	private void addTransitionWithCheck(
+        Transition newtransition, ScopeInfo.Action action)
 	{
 		Alphabet a = newtransition.getAlphabet();
-		Iterator it = currentTransitions.iterator();
+		Iterator it = iterateTransitions();
 		while(it.hasNext())
 		{
 			Transition tr = (Transition)it.next();
@@ -166,8 +181,8 @@ public class State implements Comparable
             	printAmbiguousTransitionsWarning(tr, newtransition);
 			else if(existing_alphabet.equals(a) && tr.nextState()!=newtransition.nextState())
             {
-                if(newtransition.getAction()==null && tr.getAction()==null) //if both of them have no action, merge is possible
-                {
+                if(newtransition.getActions().length==0 && tr.getActions().length==0) {
+                    // only if both of them have no action, we can merge them.
                     tr.nextState().mergeTransitions(newtransition.nextState());
                     Iterator r = newtransition.nextState().iterateReversalTransitions();
                     while(r.hasNext())
@@ -185,13 +200,8 @@ public class State implements Comparable
 			newtransition.appendActionAtHead(action);
 		}
 		
-        currentTransitions.add(newtransition);
+        _AllTransitions.add(newtransition);
         newtransition.nextState().addReversalTransition(newtransition);
-	}
-	private void addTransitionsWithCheck(Set target, Set newtransitions, String action)
-	{
-		Iterator it = newtransitions.iterator();
-		while(it.hasNext()) addTransitionWithCheck(target, (Transition)it.next(), action);
 	}
 
 /*	
