@@ -1,10 +1,7 @@
 package relaxngcc.runtime;
 
-import java.text.MessageFormat;
-
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
-import org.xml.sax.SAXParseException;
 
 /**
  * 
@@ -74,25 +71,16 @@ public abstract class NGCCHandler {
 // error handler
 //
 //
-    private void unexpectedXXX(String token) throws SAXException {
-        throw new SAXParseException(MessageFormat.format(
-            "Unexpected {0} appears at line {1} column {2}",
-            new Object[]{
-                token,
-                new Integer(getRuntime().getLocator().getLineNumber()),
-                new Integer(getRuntime().getLocator().getColumnNumber()) }),
-            getRuntime().getLocator());
-    }
     public void unexpectedEnterElement(String qname) throws SAXException {
-        unexpectedXXX('<'+qname+'>');
+        getRuntime().unexpectedXXX('<'+qname+'>');
     }
     public void unexpectedLeaveElement(String qname) throws SAXException {
-        unexpectedXXX("</"+qname+'>');
+        getRuntime().unexpectedXXX("</"+qname+'>');
     }
     public void unexpectedEnterAttribute(String qname) throws SAXException {
-        unexpectedXXX('@'+qname);
+        getRuntime().unexpectedXXX('@'+qname);
     }
     public void unexpectedLeaveAttribute(String qname) throws SAXException {
-        unexpectedXXX("/@"+qname);
+        getRuntime().unexpectedXXX("/@"+qname);
     }
 }

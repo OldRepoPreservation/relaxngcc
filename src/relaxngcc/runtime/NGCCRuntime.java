@@ -1,5 +1,6 @@
 package relaxngcc.runtime;
 
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Stack;
 import java.util.StringTokenizer;
@@ -8,6 +9,7 @@ import org.xml.sax.Attributes;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.Locator;
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXParseException;
 
 /**
  * Runtime Engine for RELAXNGCC execution.
@@ -411,6 +413,18 @@ public class NGCCRuntime implements ContentHandler {
         // no binding was found.
         if(prefix.equals(""))   return "";  // return the default no-namespace
         else    return null;    // prefix undefined
+    }
+
+
+// error reporting
+    protected void unexpectedXXX(String token) throws SAXException {
+        throw new SAXParseException(MessageFormat.format(
+            "Unexpected {0} appears at line {1} column {2}",
+            new Object[]{
+                token,
+                new Integer(getLocator().getLineNumber()),
+                new Integer(getLocator().getColumnNumber()) }),
+            getLocator());
     }
 
 
