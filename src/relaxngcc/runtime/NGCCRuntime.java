@@ -31,7 +31,8 @@ public class NGCCRuntime implements ContentHandler {
     public NGCCRuntime() {
         reset();
     }
-
+    
+    
     /**
      * Cleans up all the data structure so that the object can be reused later.
      * Normally, applications do not need to call this method directly,
@@ -410,20 +411,6 @@ public class NGCCRuntime implements ContentHandler {
         // no binding was found.
         if(prefix.equals(""))   return "";  // return the default no-namespace
         else    return null;    // prefix undefined
-    }
-    
-    public String getBaseUri() {
-        return null;    // TODO
-    }
-    
-    public boolean isNotation(String s) throws SAXException {
-        // there is no point in seriously implementing this method
-        return true;
-    }
-    
-    public boolean isUnparsedEntity(String s) throws SAXException {
-        // there is no point in seriously implementing this method
-        return true;
     }
 
 
