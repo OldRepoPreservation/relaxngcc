@@ -41,6 +41,7 @@
 <echo file="bin/METAINF.MF"
 >Version: ${DSTAMP}
 Main-Class: relaxngcc.RelaxNGCC
+Class-Path: crimson.jar relaxngDatatype.jar xsdlib.jar msv.jar jaxp-api.jar
 </echo>
 		<jar jarfile="relaxngcc.jar" compress="false" manifest="bin/METAINF.MF">
 			<fileset dir="src" includes="**/*.properties"/>
