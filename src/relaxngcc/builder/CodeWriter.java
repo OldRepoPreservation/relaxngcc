@@ -296,7 +296,7 @@ public class CodeWriter
         }
         
         
-        writeEventHandler(table,Alphabet.ENTER_ELEMENT,   "enterElement" );
+        writeEventHandler(table,Alphabet.ENTER_ELEMENT,   "enterElement",",Attributes atts",",atts");
         writeEventHandler(table,Alphabet.LEAVE_ELEMENT,   "leaveElement");
         writeEventHandler(table,Alphabet.ENTER_ATTRIBUTE, "enterAttribute");
         writeEventHandler(table,Alphabet.LEAVE_ATTRIBUTE, "leaveAttribute");
@@ -338,16 +338,21 @@ public class CodeWriter
         _output.println(";");
         _output.println("}"); //end of method
     }
+
+    private void writeEventHandler( TransitionTable table, int type, String eventName ) {
+        writeEventHandler(table,type,eventName,"","");
+    }
 	
     /**
      * Writes event handlers for (enter|leave)(Attribute|Element) methods.
      */
-    private void writeEventHandler( TransitionTable table, int type, String eventName ) {
+    private void writeEventHandler( TransitionTable table, int type, String eventName,
+        String argumentsWithTypes, String arguments ) {
         
 		printSection(eventName);
 		_output.println(MessageFormat.format(
-            "public void {0}(String uri,String localName,String qname) throws SAXException '{'",
-            new Object[]{eventName}));
+            "public void {0}(String uri,String localName,String qname{1}) throws SAXException '{'",
+            new Object[]{eventName,argumentsWithTypes}));
             
         // QUICK HACK
         // copy them to the instance variables so that they can be 
@@ -386,14 +391,14 @@ public class CodeWriter
 				bi.addConditionalCode(st,
 //                    a.asMarkup().getKey().createJudgementClause(_Info, "uri", "localName"),
                     (String)a.asMarkup().getKey().apply(new NameTestBuilder("uri","localName")),
-					buildTransitionCode(st,tr,eventName,"uri,localName,qname"));
+					buildTransitionCode(st,tr,eventName,"uri,localName,qname"+arguments));
 			}
 
             // if there is EVERYTHING_ELSE transition, add an else clause.
             Transition tr = table.getEverythingElse(st);
             if(tr!=null)
                 bi.addElseCode(st,
-                    buildTransitionCode(st,tr,eventName,"uri,localName,qname"));
+                    buildTransitionCode(st,tr,eventName,"uri,localName,qname"+arguments));
 		}
         
         
@@ -423,6 +428,13 @@ public class CodeWriter
 		                _Info.scope.getParam().returnValue,
 	                    params,
 		            });
+        }
+        if(tr.getAlphabet().isEnterElement()) {
+            StringBuffer buf = new StringBuffer();
+            buf.append("runtime.pushAttributes(atts);");
+            buf.append(buildMoveToStateCode(tr));
+            
+            return buf.toString();
         }
         if(tr.getAlphabet().isText()) {
             Alphabet.Text ta = tr.getAlphabet().asText();

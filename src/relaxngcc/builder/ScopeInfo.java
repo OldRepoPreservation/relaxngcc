@@ -404,6 +404,7 @@ public final class ScopeInfo
 
         output.println("import org.xml.sax.SAXException;");
         output.println("import org.xml.sax.XMLReader;");
+        output.println("import org.xml.sax.Attributes;");
         
         if(!options.usePrivateRuntime)
             output.println("import relaxngcc.runtime.NGCCHandler;");

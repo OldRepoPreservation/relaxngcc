@@ -170,10 +170,24 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
             redirectionDepth++;
         } else {
 	        processPendingText(true);
-	        attStack.push(currentAtts=new AttributesImpl(atts));
 	//        System.out.println("startElement:"+localname+"->"+_attrStack.size());
-	        currentHandler.enterElement(uri, localname, qname);
+	        currentHandler.enterElement(uri, localname, qname, atts);
         }
+    }
+    
+    /**
+     * Pushes a new attribute set.
+     * 
+     * <p>
+     * Note that attributes are NOT pushed at the startElement method,
+     * because the processing of the enterElement event can trigger
+     * other attribute events and etc.
+     * <p>
+     * This method will be called from one of handlers when it truely
+     * consumes the enterElement event.
+     */
+    public void pushAttributes( Attributes atts ) {
+        attStack.push(currentAtts=new AttributesImpl(atts));
     }
     
     public void endElement(String uri, String localname, String qname)
@@ -374,10 +388,10 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
 //
 //
     public void spawnChildFromEnterElement(
-        NGCCHandler h, String uri, String localname, String qname) throws SAXException {
+        NGCCHandler h, String uri, String localname, String qname, Attributes atts) throws SAXException {
             
         pushHandler(h);
-        currentHandler.enterElement(uri,localname,qname);
+        currentHandler.enterElement(uri,localname,qname,atts);
     }
     public void spawnChildFromEnterAttribute(
         NGCCHandler h, String uri, String localname, String qname) throws SAXException {
@@ -410,11 +424,11 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
 //
 //
     public void revertToParentFromEnterElement( Object result, int cookie,
-        String uri,String local,String qname ) throws SAXException {
+        String uri,String local,String qname, Attributes atts ) throws SAXException {
             
         popHandler();
         currentHandler.onChildCompleted(result,cookie,true);
-        currentHandler.enterElement(uri,local,qname);
+        currentHandler.enterElement(uri,local,qname,atts);
     }
     public void revertToParentFromLeaveElement( Object result, int cookie,
         String uri,String local,String qname ) throws SAXException {

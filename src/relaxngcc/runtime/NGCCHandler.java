@@ -2,6 +2,7 @@ package relaxngcc.runtime;
 
 import java.text.MessageFormat;
 
+import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 
@@ -29,7 +30,7 @@ public abstract class NGCCHandler {
      */
     protected final int cookie;
     
-    protected abstract void enterElement(String uri, String localName, String qname) throws SAXException;
+    protected abstract void enterElement(String uri, String localName, String qname,Attributes atts) throws SAXException;
     protected abstract void leaveElement(String uri, String localName, String qname) throws SAXException;
     protected abstract void text(String value) throws SAXException;
     protected abstract void enterAttribute(String uri, String localName, String qname) throws SAXException;
