@@ -64,7 +64,7 @@ public class RelaxNGCC {
         
         // TODO: this code should be moved to somewhere else.
         try {
-            RootParserRuntime parser = new RootParserRuntime();
+            RootParserRuntime parser = new RootParserRuntime(o);
             parser.parse(o.sourcefile.toURL().toExternalForm());
             NGCCGrammar grammar = parser.getResult();
             
@@ -86,11 +86,19 @@ public class RelaxNGCC {
                 if(o.printAutomata!=null) grammar.dumpAutomata(o.printAutomata);
             }
         } catch( SAXException e ) {
-            if( e instanceof SAXParseException )
-                System.err.println(((SAXParseException)e).getSystemId());
+            if( e instanceof SAXParseException ) {
+                SAXParseException spe = (SAXParseException) e;
+                
+                System.err.println( "[ERROR] "+ spe.getMessage() );
+                if( spe.getSystemId()!=null ) {
+                    System.err.print("   "+spe.getSystemId());
+                    if( spe.getLineNumber()!=-1 )
+                        System.err.print(" line:"+spe.getLineNumber());
+                    System.err.println();
+                }
+            }
             if(e.getException()!=null)
                 throw e.getException();
-            throw e;
         }
     }
 
