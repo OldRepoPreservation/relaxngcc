@@ -32,6 +32,8 @@
     </element>
   </define>
   
+  
+  
   <!-- name for an attribute/element -->
   <define name="name" cc:params="boolean attributeMode"
     cc:return-type="NameClass" cc:return-value="nc">
@@ -45,6 +47,8 @@
     </choice>
   </define>
   
+  
+  
   <define name="pattern" cc:class="PatternState"
     cc:return-type="Pattern" cc:return-value="p">
     
@@ -57,11 +61,14 @@
       loc = runtime.createLocator();
     </cc:java>
     <choice>
+      
       <element name="element">
         <ref name="name" cc:alias="name" cc:with-params="false" />
         <ref name="patterns" cc:alias="p" />
         p = new ElementPattern(loc,runtime.createLocator(),name,p);
+        <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
+      
       <element name="attribute">
         <optional>
           <attribute name="cc:workaround-significant" />
@@ -81,10 +88,14 @@
             loc,runtime.createLocator(),
             name,p,workaroundSignificant);
         </cc:java>
+        <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
+      
       <element name="group">
         <ref name="patterns" cc:alias="p" />
+        <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
+      
       <element name="interleave">
         <oneOrMore>
           <ref name="pattern" cc:alias="child"/>
@@ -93,7 +104,9 @@
             else         p = new InterleavePattern(p,child);
           </cc:java>
         </oneOrMore>
+        <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
+      
       <element name="choice">
         <oneOrMore>
           <ref name="pattern" cc:alias="child"/>
@@ -102,39 +115,51 @@
             else         p = new ChoicePattern(p,child);
           </cc:java>
         </oneOrMore>
+        <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
+      
       <element name="optional">
         <ref name="patterns" cc:alias="p" />
         <cc:java>
           p = new ChoicePattern( p, new EmptyPattern() );
         </cc:java>
+        <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
+      
       <element name="zeroOrMore">
         <ref name="patterns" cc:alias="p" />
         <cc:java>
           p = new ChoicePattern( new OneOrMorePattern(p),
               new EmptyPattern() );
         </cc:java>
+        <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
+      
       <element name="oneOrMore">
         <ref name="patterns" cc:alias="p" />
         <cc:java>
           p = new OneOrMorePattern( p );
         </cc:java>
+        <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
+      
       <element name="list">
         <ref name="NGCC-alias" cc:alias="alias"/>
         <ref name="patterns" cc:alias="p" />
         <cc:java>
           p = new ListPattern( loc, p, alias );
         </cc:java>
+        <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
+      
       <element name="mixed">
         <ref name="patterns" cc:alias="p" />
         <cc:java>
           p = new InterleavePattern( new DataPattern( loc, new MetaDataType("string"),null), p );
         </cc:java>
+        <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
+      
       <group>
         <element name="ref">
           <ref name="NGCC-call" cc:alias="params" />
@@ -146,6 +171,7 @@
         </element>
         <ref name="NGCC-withParams" cc:with-params="params"/>
       </group>
+      
       <element name="parentRef">
         <ref name="NGCC-call" cc:alias="params" />
         <attribute name="name" cc:alias="target" />
@@ -156,19 +182,24 @@
               runtime.grammar.parent.getOrCreate(target),params);
         </cc:java>
       </element>
+      
       <element name="empty">
         <empty/>
         <cc:java>
           p = new EmptyPattern();
         </cc:java>
+        <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
+      
       <element name="text">
         <empty/>
         <ref name="NGCC-alias" cc:alias="alias" />
         <cc:java>
           p = new DataPattern(loc,new MetaDataType("string"),alias);
         </cc:java>
+        <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
+      
       <element name="value">
         <optional><!-- we can't handle types other than 'token' -->
           <attribute name="type">
@@ -180,7 +211,9 @@
         <cc:java>
           p = new ValuePattern(loc,value,alias);
         </cc:java>
+        <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
+      
       <element name="data">
         <attribute name="type" cc:alias="typeName" />
         <zeroOrMore>
@@ -198,7 +231,9 @@
         <cc:java>
           p = new DataPattern(loc,new MetaDataType(typeName),alias);
         </cc:java>
+        <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
+      
       <element name="notAllowed">
         <empty/>
         <cc:java>
@@ -212,6 +247,7 @@
         <ref name="common-atts"/>
         <ref name="other"/>
       </element-->
+      
       <element name="grammar">
         <cc:java>
           runtime.grammar = new Grammar( runtime.grammar );
@@ -225,6 +261,7 @@
           runtime.grammar = runtime.grammar.parent;
         </cc:java>
       </element>
+      
       <element name="cc:java">
         <text cc:alias="value"/>
         <cc:java> p = new JavaBlock(value); </cc:java>
@@ -410,6 +447,34 @@
   
   
   
+  <!-- potential @cc:class for patterns
+    
+    If @cc:class is present, the pattern p is wrapped and returned.
+    Otherwise p will be returned intact.
+  -->
+  <define name="NGCC-local-class" cc:class="NGCCLocalClass"
+    cc:return-type="Pattern" cc:return-value="p"
+    cc:params=" Pattern p, Locator loc ">
+    
+    <optional>
+      name = <attribute name="cc:class" cc:workaround-significant="true" />
+      cparam=<ref name="NGCC-call"/>
+      dparam=<ref name="NGCC-define-param" />(name);
+      
+      
+      // wrap it by Scope. Scope will then be turned into a class
+      Scope sc = new Scope(name);
+      sc.append(p,null);
+      sc.setParam(dparam);
+      
+      // further wrap it by RefPattern
+      p = new RefPattern( loc, sc, cparam );
+    </optional>
+  </define>
+  
+  
+  
+  
   <!-- attributes for <ref> -->
   <define name="NGCC-call" cc:class="NGCCcall"
     cc:return-type="NGCCCallParam" cc:return-value="param">
@@ -453,13 +518,20 @@
   <define name="NGCC-define" cc:class="NGCCdefine"
     cc:params="String className"
     cc:return-type="NGCCDefineParam" cc:return-value="param">
+    <optional>
+      <attribute name="cc:class" cc:alias="className" />
+    </optional>
+    param = <ref name="NGCC-define-param" />(className);
+  </define>
+  
+  <define name="NGCC-define-param" cc:class="NGCCDefineParamState"
+    cc:params="String className"
+    cc:return-type="NGCCDefineParam" cc:return-value="param">
+    
     
     <cc:java-body>
       NGCCDefineParam param;
     </cc:java-body>
-    <optional>
-      <attribute name="cc:class" cc:alias="className" />
-    </optional>
     <optional>
       <attribute name="cc:params" cc:alias="params" />
     </optional>
