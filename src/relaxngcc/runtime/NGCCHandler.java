@@ -19,7 +19,15 @@ public abstract class NGCCHandler {
         this.cookie = _parentCookie;
     }
     
+    /**
+     * Parent NGCCHandler, if any.
+     * If this is the root handler, this field will be null.
+     */
     protected final NGCCHandler parent;
+    /**
+     * This method will be implemented by the generated code
+     * and returns a reference to the current runtime.
+     */
     protected abstract NGCCRuntime getRuntime();
     
     /**
@@ -35,6 +43,7 @@ public abstract class NGCCHandler {
     protected abstract void text(String value) throws SAXException;
     protected abstract void enterAttribute(String uri, String localName, String qname) throws SAXException;
     protected abstract void leaveAttribute(String uri, String localName, String qname) throws SAXException;
+    
     /**
      * Notifies the completion of a child object.
      * 
@@ -86,16 +95,4 @@ public abstract class NGCCHandler {
     public void unexpectedLeaveAttribute(String qname) throws SAXException {
         unexpectedXXX("/@"+qname);
     }
-    
-    /** NGCCHandler that will be pushed to the runtime initially. */
-/*    protected static final NGCCHandler terminator = new NGCCHandler() {
-        protected void enterElement(String uri, String localName, String qname) {}
-        protected void leaveElement(String uri, String localName, String qname) {}
-        protected void text(String value) {}
-        protected void enterAttribute(String uri, String localName, String qname) {}
-        protected void leaveAttribute(String uri, String localName, String qname) {}
-        protected void onChildCompleted( Object result, int cookie, boolean needAttCheck ) {}
-        protected void processAttribute() {}
-    };
-*/
 }
