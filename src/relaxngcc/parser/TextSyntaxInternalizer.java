@@ -53,22 +53,33 @@ public class TextSyntaxInternalizer extends XMLFilterImpl {
         // reset
         nextAlias=null;
         
-        if(buf.length()==0) return;
-        
-        String rawText = buf.toString();
-        String text = rawText.trim();
+        // if there's nothing interesting, just skip.
+        String text = buf.toString().trim();
         if(text.length()==0) {
-            char[] buf = rawText.toCharArray();
-            super.characters(buf,0,buf.length);
             resetBuffer();
             return;
         }
         
         // we have some meaningful text. process it.
         
+        // looks for import statements.
+        while( text.startsWith("import") ) {
+            int idx = text.indexOf(';');
+            if(idx==-1)     break;      // something is wrong
+            
+            String statement = text.substring(0,idx+1);
+            text = text.substring(idx+1);
+            
+            super.startElement( Const.NGCC_URI, "java-import", "java-import", emptyAttributes );
+            fireCharacters(statement);
+            super.endElement( Const.NGCC_URI, "java-import", "java-import" );
+        }
+        
+        
         // first, check the trailing '='
-        if(text.charAt(text.length()-1)=='=') {
-            // if there is one, then we expect "token="
+        if(text.endsWith("=")) {
+            // if there is one, then we expect "token=".
+            // extract <token> as an alias and remove them from text.
             
             text = text.substring(0,text.length()-1); // cut '='
             text = text.trim();
@@ -103,7 +114,7 @@ public class TextSyntaxInternalizer extends XMLFilterImpl {
                 
                 // TODO error check. This can be added only after certain elements.
                 super.startElement(Const.NGCC_URI,"withParams","withParams",emptyAttributes);
-                super.characters(args.toCharArray(),0,args.length());
+                fireCharacters(args);
                 super.endElement(Const.NGCC_URI,"withParams","withParams");
 	        } catch( ParseException e ) {
                 System.out.println("\nfailed to parse");
@@ -122,11 +133,18 @@ public class TextSyntaxInternalizer extends XMLFilterImpl {
         if(text.length()!=0) {
 	        // report other characters as <cc:java>.
             super.startElement(Const.NGCC_URI,"java","java",emptyAttributes);
-            super.characters(text.toCharArray(),0,text.length());
+            fireCharacters(text);
             super.endElement(Const.NGCC_URI,"java","java");
         }
         
         resetBuffer();
+    }
+
+    /**
+     * Fires a "characters" SAX event.
+     */
+    private void fireCharacters(String str) throws SAXException {
+        super.characters(str.toCharArray(),0,str.length());
     }
     
     private void resetBuffer() {
@@ -158,7 +176,7 @@ public class TextSyntaxInternalizer extends XMLFilterImpl {
             (local.equals("param")||local.equals("name")||local.equals("value")))) {
             // don't process text inside NGCC elements.
             // and certain RELAX NG elements can have values
-            super.characters(buf.toString().toCharArray(),0,buf.length());
+            fireCharacters(buf.toString());
             resetBuffer();
         } else
             processText();
