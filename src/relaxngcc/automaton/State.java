@@ -117,7 +117,7 @@ public final class State implements Comparable
         }
     }
 
-    public Iterator iterateTransitions()             { return _AllTransitions.iterator(); }
+    public Iterator iterateTransitions() { return _AllTransitions.iterator(); }
 
     /**
      * Checks if this state has transitions with
@@ -207,9 +207,11 @@ public final class State implements Comparable
             }
 		}
 		
-		if(action!=null)
-		{
-			newtransition = (Transition)newtransition.clone();
+        // always make a copy, because we might modify actions later.
+        // in general, it is dangerous to share transitions.
+        newtransition = (Transition)newtransition.clone();
+        
+		if(action!=null) {
 			newtransition.insertPrologueAction(action);
 		}
 		

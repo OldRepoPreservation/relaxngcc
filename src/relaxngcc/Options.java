@@ -36,6 +36,9 @@ public class Options
     /** Print FIRST and FOLLOW. A debug option. */
     public boolean printFirstFollow;
     
+    /** Do not generate source code. */
+    public boolean noCodeGeneration;
+    
     /** Uses a private copy of runtime code. */
     public boolean usePrivateRuntime=true;
     
@@ -66,6 +69,8 @@ public class Options
                     printAutomata = true;
                 else if(args[i].equals("--print-first-follow"))
                     printFirstFollow = true;
+                else if(args[i].equals("--no-code"))
+                    noCodeGeneration = true;
     			else
                     throw new CommandLineException(
                         "[Warning] Unknown option "+args[i]);

@@ -670,6 +670,10 @@ public class ScopeBuilder
             else            t.insertEpilogueAction(action);
 		}
 	}
+    /**
+     * Adds the specified action as a prologue/epilogue action
+     * to all the transitions that leave the given state.
+     */
 	private void addAction(State s,boolean prologue)
 	{
         if(preservedAction.length()!=0) {

@@ -65,7 +65,7 @@ public class RelaxNGCC
 		if(o.printFirstFollow)  grm.dump(System.err);
         if(o.printAutomata)     grm.dumpAutomata(new File("."));
         
-		grm.output();
+        if(!o.noCodeGeneration) grm.output();
 	}
 
 	
