@@ -7,10 +7,10 @@
 <body>
 <a name="top">
 <h1>RelaxNGCC <?ja?>マニュアル<?/ja?><?en?>Manual<?/en?></h1>
-<div align="right">Last update <?ja?>2002/05/03<?/ja?><?en?>May 3, 2002<?/en?></div>
-<div><?ja?>もくじ<?/ja?><?en?>Contents<?/en?></div>
+<div align="right">$Id: manual.htm,v 1.3 2002/06/21 03:13:06 kkawa Exp $</div>
+<div><?ja?>目次<?/ja?><?en?>Contents<?/en?></div>
 <ul>
-<li><a href="#scope"><?ja?>スコープ<?/ja?><?en?>Scopes<?/en?></a></li>
+<!--li><a href="#scope"><?ja?>スコープ<?/ja?><?en?>Scopes<?/en?></a></li-->
 <li><a href="#markup"><?ja?>マークアップ<?/ja?><?en?>Mark-ups<?/en?></a></li>
 <li><a href="#modes"><?ja?>動作モード<?/ja?><?en?>Operation Modes<?/en?></a></li>
 <li><a href="#usage"><?ja?>生成したコードの使い方<?/ja?><?en?>Usage of the Generated Code<?/en?></a></li>
@@ -19,9 +19,12 @@
 <li><a href="#tbd"><?ja?>未サポート機能<?/ja?><?en?>Unsupported Features<?/en?></a></li>
 </ul>
 
+<!--
 <a name="scope">
-<h2>1 <?ja?>スコープ<?/ja?><?en?>Scopes<?/en?></h2>
-<p><?ja?>　RelaxNGCCにとって、スコープという概念が重要です。RelaxNGCCは次のルールでスコープを生成し、スコープ１つに対して１つのJavaのクラスを生成します。<?/ja?><?en?>Scopes are important concept for RelaxNGCC. It generates scopes along following rules and outputs a Java class for each scope.<?/en?></p>
+<h2>1 <?ja?>スコープ<?/ja?><?en?>Scope<?/en?></h2>
+<p>
+	<?ja?>　RelaxNGCCにとって、スコープという概念が重要です。RelaxNGCCは次のルールでスコープを生成し、スコープ１つに対して１つのJavaのクラスを生成します。<?/ja?>
+	<?en?>Scope is an important concept for RelaxNGCC. It generates scopes along following rules and outputs a Java class for each scope.<?/en?></p>
 <ul>
 <li><?ja?>それぞれのdefineブロック(startエレメントによるものも含む)が１スコープに対応します。<?/ja?><?en?>Each <tt>define</tt> block or <tt>start</tt> block corresponds to a scope.<?/en?></li>
 <li><?ja?>ただし、<tt>class</tt>アトリビュート(後述)がついている要素を単独のスコープとして分離します。<?/ja?><?en?>However, elements with <tt>class</tt> attributes (described later) are separated into independent scopes.<?/en?></li>
@@ -41,20 +44,32 @@
   &lt;/define&gt;
 &lt;/grammar&gt;
 </pre>
+-->
 
 <a name="markup">
-<h2>2 <?ja?>マークアップ<?/ja?><?en?>Mark-ups<?/en?></h2>
-<p><?ja?>　RelaxNGCC独自のマークアップはすべて<br><br><tt style="font-weight:bold;">http://www.xml.gr.jp/xmlns/relaxngcc</tt><br><br>のnamespace-URIを持ちますが、このマニュアルではプレフィックス "<tt>c</tt>" を使用しています。マークアップは次に説明するように３種のエレメントと５種のアトリビュートから構成されます。<?/ja?>
-<?en?> The extended mark-ups peculiar to RelaxNGCC have the namespace-URI <br><br><tt style="font-weight:bold;">http://www.xml.gr.jp/xmlns/relaxngcc</tt>, while the namespace is represented by prefix "<tt>c</tt>" in this manual.<br><br>They consist of following 3 kinds elements and 5 kinds attributes.<?/en?></p>
+<h2>1 <?ja?>マークアップ<?/ja?><?en?>Mark-up<?/en?></h2>
+<p>
+	<?ja?>
+		　RelaxNGCC独自のマークアップはすべて<br><br><tt style="font-weight:bold;">http://www.xml.gr.jp/xmlns/relaxngcc</tt><br><br>のnamespace-URIを持ちますが、このマニュアルではプレフィックス "<tt>c</tt>" を使用しています。マークアップは次に説明するように３種のエレメントと５種のアトリビュートから構成されます。
+	<?/ja?>
+	<?en?>
+		all the attributes and elements defined in RelaxNGCC uses <tt style="font-weight:bold;">http://www.xml.gr.jp/xmlns/relaxngcc</tt> as the namespace URI. In this manual, we assume the prefix "<tt>c</tt>" is bound to this namespace URI.
+	<?/en?>
+</p>
 
-<h3>2.1 <?ja?><tt>alias</tt>アトリビュート<?/ja?><?en?><tt>alias</tt> attribute<?/en?></h3>
-<p><?ja?>　ユーザ定義のコードからアクセスするために、データに名前をつけます。このアトリビュートをつけることのできるRELAX NGのエレメントは、<tt>data</tt>, <tt>text</tt>, <tt>ref</tt>, <tt>value</tt>, <tt>list</tt>の５つです。<?/ja?>
-<?en?> We can use this attribute to refer to data from the user-defined code in <tt>java</tt> elements. The <tt>alias</tt> attribute is applicable to the <tt>data</tt>, <tt>text</tt>, <tt>ref</tt>, <tt>value</tt>, <tt>list</tt> elements of RELAX NG.<?/en?>
+<h3>1.1 <tt>c:alias</tt><?ja?>アトリビュート<?/ja?><?en?> attribute<?/en?></h3>
+<p>
+	<?ja?>
+		　ユーザ定義のコードからアクセスするために、データに名前をつけます。この変数名で、生成されたクラス内にフィールドが追加されます。このアトリビュートをつけることのできるRELAX NGのエレメントは、<tt>data</tt>, <tt>text</tt>, <tt>ref</tt>, <tt>value</tt>, <tt>list</tt>の５つです。
+	<?/ja?>
+	<?en?>
+		Adding this attribute to a RELAX NG pattern will cause the compiler to declare a field declaration inside the generated class. At run-time, if a string in an XML document matches the pattern, then the generated code stores that value to this field. This makes it possible for your code to acess those values. This attribute is applicable to the <tt>data</tt>, <tt>text</tt>, <tt>ref</tt>, <tt>value</tt>, and <tt>list</tt> pattern.
+	<?/en?>
 </p>
 <pre>
-&lt;data type="nonNegativeInteger" <span class="emph-code">c:alias="count"</span>/&gt;
+&lt;data type="nonNegativeInteger" <em>c:alias="count"</em>/&gt;
 </pre>
-<p><?ja?>　aliasをつけたデータがJavaのオブジェクトとして何になるかは次の表のようにして決まります。<?/ja?>
+<p><!--?ja?>　aliasをつけたデータがJavaのオブジェクトとして何になるかは次の表のようにして決まります。<?/ja?>
 <?en?> The type of the Java object named by the <tt>alias</tt> attribute is fixed by the following table.<?/en?>
 </p>
 <table border="1">
@@ -67,69 +82,97 @@
 </table>
 <p><?ja?>(*1) <tt>data</tt>の<tt>type</tt>アトリビュートに依存します。後述の<a href="#typemap">表</a>を参照してください。なお、RELAX NGはXML Schema Part2以外のデータ型を使うことも可能な設計になっていますが、RelaxNGCCは現在XML Schema Part2のみをサポートします。<br>(*2)<tt>list</tt>エレメントに<tt>alias</tt>をつけたときには全体が１個の文字列として扱われます。空白文字による分割は行われません。<?/ja?>
 <?en?> (*1) The type depends on <tt>type</tt> attribute of the <tt>data</tt> element. The <a href="#typemap">table</a> in this document describes the correspondence. Although RELAX NG has the design that can use datatypes other than XML Schema Part2, RelaxNGCC supports only XML Schema Part 2.<br> (*2) If you place the <tt>alias</tt> attribute with a <tt>list</tt> element, the entire of the data that matches the <tt>list</tt> element is dealed as a string. RelaxNGCC does not split the data into whitespace-separated sequence of tokens.<?/en?>
-</p>
-<p><?ja?>　RelaxNGCCの出力するソースコードはSAXベースであるため、aliasアトリビュートでつけた名前は生成されるクラスのデータメンバとして割り当てられます。従って、１つのスコープ内で同じ名前をaliasに付けることはできません。出力されたソースがコンパイルできなくなってしまいます。<?/ja?><?en?> Since the code generated by RelaxNGCC conforms to the SAX interface, the names declared by <code>alias</code> attributes become data members of the generated class. Therefore identical names must not exist in a scope. If the programmer break this rule, the generated code will fail to compile.<?/en?>
-
-<h3>2.2 <?ja?><tt>java</tt>エレメント<?/ja?><?en?><tt>java</tt> element<?/en?></h3>
+</p-->
 <p>
-<?ja?>　ユーザ定義のJavaコードを記述します。コードの断片には<tt>alias</tt>アトリビュートで定義した名前を使うことができます。記述したコードは、入力XMLの該当個所を読んだところで実行されます。<?/ja?>
-<?en?> You can write a code fragment of Java in the <tt>java</tt> element. In this fragment, you can refer to the data of the XML instance by variables defined with the <tt>alias</tt> attribite. The content of <tt>java</tt> element is executed during the parse of the input. <?/en?><br>
+	<?ja?>
+		<tt>ref</tt>/<tt>parentRef</tt>パターンに<tt>c:alias</tt>をつけた場合、それらが参照する先のスコープで戻り値として指定された値が得られます（一般には、これはスコープに対応するRelaxNGCCが生成したクラスそのものです）。
+	<?/ja?>
+	<?en?>
+		Adding <tt>c:alias</tt> attribute to a <tt>ref</tt> or <tt>parentRef</tt> pattern will cause the specified variable to receive the value specified as the return value in the refrenced scope. By default, this is an instance of the generated class that was used to parse the referenced scope.
+	<?/en?>
+</p>
+<p>
+	<?ja?>
+		<tt>list</tt>パターンに<tt>c:alias</tt>をつけたときにはリスト全体が１個の文字列として取り出されます。
+	<?/ja?>
+	<?en?>
+		A <tt>c:alias</tt> attribute on a <tt>list</tt> pattern will cause the entire string (that matches to the whole <tt>list</tt> pattern) to be anchored.
+	<?/en?>
+</p>
+
+<h3>2.2 <tt>c:java</tt><?ja?>エレメント<?/ja?><?en?> element<?/en?></h3>
+<p>
+<?ja?>　ユーザ定義のJavaコードを記述します。コードから<tt>c:alias</tt>アトリビュートで定義した名前を使うことができます。記述したコードは、入力XMLの該当個所を読んだところで実行されます。<?/ja?>
+<?en?> You can write a code fragment of Java in a <tt>c:java</tt> element. Within this fragment, you can refer to the data of an XML document by fields declared through <tt>alias</tt> attribites. The content of <tt>java</tt> element is executed when the input hits the position where the <tt>c:java</tt> element is written.<?/en?>
+</p>
 <pre>
 &lt;element name="name"&gt;
-  &lt;text <span class="emph-code">c:alias="name"</span>/&gt;
-  <span class="emph-code">&lt;c:java&gt;System.out.println(name);&lt;/c:java&gt;</span>
+  &lt;text <em>c:alias="name"</em>/&gt;
+  <em>&lt;c:java&gt;System.out.println(name);&lt;/c:java&gt;</em>
 &lt;/element&gt;
 </pre>
 <p>
 <?ja?>　生成されたコードは最終的にはSAX2ベースの処理になるので、外に投げることのできる例外はSAXExceptionとその派生クラスに限られます。<?/ja?>
-<?en?> Since the code generated by RelaxNGCC conforms to the SAX2 interface, only <tt>SAXException</tt> or its derivative exceptions can be thrown in the <tt>java</tt> element.<?/en?>
+<?en?>The code fragment can throw <tt>SAXException</tt>s (or unchecked exceptions, as usual.)<?/en?>
 </p>
 <p>
-<?ja?>　<tt>java</tt>エレメントはスコープ内のどこにでも書くことができます。書いた場所とそれが実行されるタイミングとの関係についての詳細なドキュメントは今後準備する予定です。<?/ja?>
-<?en?> The <tt>java</tt> element can appear any location of the scope. A detailed document about the location of <tt>java</tt> element and the execution condition will be available later.<?/en?>
+<?ja?>
+	　<tt>java</tt>エレメントは<tt>choice, interleave</tt>以外の子パターンをとる全てのパターンの中に書けます（<tt>start, define, group, optional, zeroOrMore, oneOrMore, mixed, list</tt>パターンの中）。
+<?/ja?>
+<?en?>
+	A <tt>java</tt> element can be written inside any pattern that can take child patterns except <tt>choice</tt> and <tt>interleave</tt> (that is, as a child of <tt>start, define, group, optional, zeroOrMore, oneOrMore, mixed</tt>, and <tt>list</tt>.)
+<?/en?>
 </p>
 <p>
 <?ja?>　なおエレメント名に<tt>java</tt>を使っている理由は、将来他のプログラム言語（例えばC#）にも対応するかもしれないからです。<?/ja?>
-<?en?> Note that the reason for using "<tt>java</tt>" for the element name is that RelaxNGCC may support other program languages (for example, C#) besides the future.<?/en?>
+<?en?> Note that the reason why we use the keyword "<tt>java</tt>" as an element name is that we are planning to support other languages (such as C#) in the future.<?/en?>
 </p>
 
 <h3>2.3 <?ja?><tt>java-body</tt>エレメント<?/ja?><?en?><tt>java-body</tt> element<?/en?></h3>
 <p>
-<?ja?>　生成されるクラスについて、補助的に使用するメソッドやデータメンバを記述します。ここで定義したものはjavaエレメント内のコードからアクセスできます。<?/ja?>
-<?en?> You can write methods and data members of generated classes using <tt>java-body</tt> element. Since RelaxNGCC copies the content of the <tt>java-body</tt> into the Java code, you can refer to the methods and the data members from your code in all <tt>java</tt> elements.<br><?/en?>
+	<?ja?>
+		　生成されるクラスについて、補助的に使用するメソッドやデータメンバを記述します。ここで定義したものはjavaエレメント内のコードからアクセスできます。
+	<?/ja?>
+	<?en?>
+		The body of this element is copied inside the body of the generate classes. Thus this is usually used to declare additional fields or helper methods.
+	<?/en?>
 <pre>
 &lt;define name="x"&gt;
   <span class="emph-code">&lt;c:java-body&gt;
-  private void echo(String msg)
-  { System.out.println(msg); }
+  private void echo(String msg) {
+      System.out.println(msg);
+  }
   &lt;/c:java-body&gt;</span>
   ...
 &lt;/define&gt;
 </pre>
 <p>
 <?ja?>　たとえばこのようにすると、この<tt>define</tt>ブロックの<tt>java</tt>エレメント内から<tt>echo</tt>メソッドが使えるようになります。<?/ja?>
-<?en?> For example, the <tt>echo</tt> method is available from all the <tt>java</tt> elements in the <tt>define</tt> block. <?/en?>
+<?en?> For example, With the above declaration, the <tt>echo</tt> method becomes available from all the <tt>java</tt> elements in this <tt>define</tt> block. <?/en?>
 </p>
 <p>
 <?ja?>　<tt>java-body</tt>エレメントは、次の場所に書くことができます。<?/ja?>
-<?en?> A <tt>java-body</tt> element is allowed only following locations:<?/en?>
+<?en?> A <tt>java-body</tt> element can be written only as children of the following patterns:<?/en?>
 <dl>
-<dt>a. <?ja?><tt>grammar</tt>エレメントの直下<?/ja?><?en?>under <tt>grammar</tt> element<?/en?></dt>
-<dd><?ja?>RelaxNGCCが生成するすべてのクラスのコードに、java-body内のコードが挿入されます。<?/ja?><?en?>The content of <tt>java-body</tt> is inserted into all classes generated by RelaxNGCC.<?/en?></dd>
-<dt>b. <?ja?><tt>start</tt>, <tt>define</tt>エレメントの直下<?/ja?><?en?>under <tt>start</tt> or <tt>define</tt> element<?/en?></dt>
-<dd><?ja?>その<tt>start/define</tt>エレメントに対応して生成されるクラスのコードにのみ挿入されます。<?/ja?><?en?>The content of <tt>java-body</tt> is inserted into only the class corresponding to the <tt>start</tt> or <tt>define</tt> element.<?/en?></dd>
+<dt>a. <?ja?><tt>grammar</tt>エレメントの直下<?/ja?><?en?><tt>grammar</tt> pattern<?/en?></dt>
+<dd><?ja?>RelaxNGCCが生成するすべてのクラスのコードに、java-body内のコードが挿入されます。<?/ja?><?en?>The contents of <tt>java-body</tt> is copied to all the classes generated by RelaxNGCC.<?/en?></dd>
+<dt>b. <?ja?><tt>start</tt>, <tt>define</tt>エレメントの直下<?/ja?><?en?><tt>start</tt> or <tt>define</tt> pattern<?/en?></dt>
+<dd><?ja?>その<tt>start/define</tt>エレメントに対応して生成されるクラスのコードにのみ挿入されます。<?/ja?><?en?>The contents of <tt>java-body</tt> is copied only to the class that corresponds to that <tt>start</tt> or <tt>define</tt> element.<?/en?></dd>
 </dl>
 <h3>2.4 <?ja?><tt>java-import</tt>エレメント<?/ja?><?en?><tt>java-import</tt> element<?/en?></h3>
 <p>
 <?ja?>　<tt>java-body</tt>と違い、ソースコード中のクラス定義本体の外に記述するコードを記述します。ふつうJavaのimport宣言を記述します。これを置くことのできる位置と効果はjava-bodyと同じです。<?/ja?>
-<?en?> Unlike <tt>java-body</tt>, the content of <tt>java-import</tt> element is copied outside of the definition of the class. In common case, you would write import declarations in the <tt>java-import</tt> element. The allowed location of <tt>java-import</tt> is same as <tt>java-body</tt>. <?/en?>
+	<?en?>
+		Works similar to <tt>c:java-import</tt> attributes. The only difference is that the contents of a <tt>java-import</tt> element is copied before the definition of a class. Hence one would usually write import declarations by using the <tt>java-import</tt> element.
+	<?/en?>
 </p>
 <pre>
-<span class="emph-code">&lt;c:java-import&gt;
-import java.util.Set;
-import java.util.Iterator;
-&lt;/c:java-import&gt;</span>
+<em>&lt;c:java-import&gt;
+    import java.util.Set;
+    import java.util.Iterator;
+&lt;/c:java-import&gt;</em>
 </pre>
+<!--
 <h3>2.5 <?ja?><tt>class</tt>アトリビュート<?/ja?><?en?><tt>class</tt> attribute<?/en?></h3>
 <p>
 <?ja?>　<tt>start</tt>エレメント、<tt>define</tt>エレメントに記述して、それに対応するクラスの名前を指定します。Javaのクラス名として正しい文字列を指定する必要があります。省略時には、RelaxNGCCが適当な名前をつけてソースコードを生成します。<?/ja?>
@@ -168,20 +211,32 @@ import java.util.Iterator;
 &lt;define name="block" <span class="emph-code">c:inline="true"</span>&gt;
 ...
 </pre>
+-->
 
-<h3>2.7 <?ja?><tt>package</tt>アトリビュート<?/ja?><?en?><tt>package</tt> attribute<?/en?></h3>
+
+<h3>2.7 <tt>c:package</tt><?ja?>アトリビュート<?/ja?><?en?> attribute<?/en?></h3>
 <p>
-<?ja?>　生成するソースコードがどのパッケージに属すかを指定します。<tt>grammar</tt>エレメントに記入します。この宣言は生成されるすべてのクラスにおいて共通です。<?/ja?>
-<?en?> The <tt>package</tt> attribute can appear on the top <tt>grammar</tt> element of RELAX NG and defines the Java package name of generated classes.<?/en?>
+	<?ja?>
+		　生成するソースコードがどのパッケージに属すかを指定します。ルートエレメントに記入します。この宣言は生成されるすべてのクラスに対して有効です。
+	<?/ja?>
+	<?en?>
+		The <tt>package</tt> attribute can appear only on the root element of RELAX NG. Adding this attribute will cause a compiler to add the package declaration to all the files it generates.
+	<?/en?>
 </p>
 <pre>
-&lt;grammar ... <span class="emph-code">c:package="com.example.project1"</span>&gt;
+&lt;grammar ... <em>c:package="com.example.project1"</em>&gt;
 ...
 </pre>
-<h3>2.8 <?ja?><tt>access</tt>アトリビュート<?/ja?><?en?><tt>access</tt> attribute<?/en?></h3>
+
+
+<h3>2.8 <tt>c:access</tt><?ja?>アトリビュート<?/ja?><?en?> attribute<?/en?></h3>
 <p>
-<?ja?>　生成するソースコードのアクセス修飾子("public final"など)を指定します。このアトリビュートは<tt>define</tt>エレメント、<tt>start</tt>エレメント、<tt>class</tt>アトリビュートを書いたエレメントに書くことができます。<?/ja?>
-<?en?> The <tt>access</tt> attribute declares the access modifiers (i.e. "public final") for generated Java class. This attribute can appear in <tt>define</tt> elements, <tt>start</tt> elements, and any elements with <tt>class</tt> attribute.<?/en?>
+	<?ja?>
+		　生成するソースコードのアクセス修飾子("public final"など)を指定します。このアトリビュートは<tt>define</tt>エレメント、<tt>start</tt>エレメント、<tt>class</tt>アトリビュートを書いたエレメントに書くことができます。
+	<?/ja?>
+	<?en?>
+		The <tt>c:access</tt> attribute causes the compiler to add the specified access modifiers (such as "public final") to the generated Java class. Only <tt>define</tt> and <tt>start</tt> pattern can carry this attribute.
+	<?/en?>
 </p>
 <pre>
 &lt;start <span class="emph-code">c:class="sample1"</span> <span class="emph-code">c:access="public final"</span>&gt;
@@ -189,6 +244,7 @@ import java.util.Iterator;
 &lt;/start&gt;
 </pre>
 
+<!--
 <a name="modes">
 <h2>3 <?ja?>RelaxNGCCの動作モード<?/ja?><?en?>Operation Modes of RelaxNGCC<?/en?></h2>
 <p>
@@ -222,47 +278,47 @@ import java.util.Iterator;
 <?ja?>従って、入力文書がvalidであることがすでに分かっている場合や厳密なバリデーションが不要な場合は、SAXTypeやプレーンSAXを使うことで効率化が図れます。<?/ja?>
 <?en?> Therefore, when the validity of the input is guaranteed or strict validation is not mandatory, the TypedSAX mode and the plain-SAX mode are more convenient than MSV mode.<?/en?>
 </p>
+-->
+
+
 
 <a name="usage">
 <h2>4 <?ja?>生成したコードの使い方<?/ja?><?en?>Usage of the Generated Code<?/en?></h2>
-<h3><?ja?>(このセクションはJAXPの知識を仮定しています。)<?/ja?><?en?>(This section assumes you are familiar to JAXP.)<?/en?></h3>
+<h3><?ja?>(このセクションはJAXPの知識を仮定しています。)<?/ja?><?en?>(This section assumes you are familiar with JAXP.)<?/en?></h3>
 <p>
-<?ja?>　RelaxNGCCが生成したコードをコンパイルしたり実行するには、上記の各動作モードに応じたライブラリが必要です。<?/ja?>
-<?en?> To compile or execute the code generated by RelaxNGCC, some libraries are needed according to each operation mode. Please confirm the table in the previous section.<?/en?>
+<?ja?>
+	　RelaxNGCCが生成したコードをコンパイルしたり実行するには、JAXP対応のXMLパーサが必要です<?/ja?>
+<?en?>
+	To compile and run the code generated by RelaxNGCC, a JAXP-compliant XML parser is necessary.
+<?/en?>
 </p>
 <p>
-<?ja?>　生成したコードを呼び出すには、もとの文法の<tt>start</tt>エレメントに対応したクラスに付加される<tt>main()</tt>関数およびそこから呼ばれる<tt>getPreparedReader</tt>メソッドを参照してください。それぞれは以下のようになっています。<?/ja?>
-<?en?> If you want to call the generated code, refer to the <tt>main()</tt> function and <tt>getPreparedReader</tt> method located at the class corresponding to the <tt>start</tt> element. Examples are following.<?/en?>
+<?ja?>
+	　生成したコードは、SAX2イベントを生成するあらゆるコンポーネントと組み合わせて利用可能です。SAX2イベントから生成されたコードを駆動する方法については、もとの文法の<tt>start</tt>エレメントに対応したクラスに付加される<tt>main()</tt>関数を参照してください。
+<?/ja?>
+<?en?>
+	The generated code will work with any component that produces SAX2 events. For details, please refer to the <tt>main()</tt> function located at the class corresponding to the <tt>start</tt> pattern.
+<?/en?>
 </p>
-<p><?ja?>MSVモードでの例<?/ja?><?en?>Case of MSV mode<?/en?></p>
-<pre>
-public static XMLReader getPreparedReader(SAXParserFactory f, Grammar g)
- throws ParserConfigurationException, SAXException {
-  XMLReader r = f.newSAXParser().getXMLReader();
-  TypeDetecter v = new TypeDetecter(g);
-  r.setContentHandler(v);
-  v.setContentHandler(new sample1(v, null)); //sample1 is the class for the start element
-  return r;
-}
-</pre>
-<p><?ja?>TypedSAX, プレーンSAXでの例<?/ja?><?en?>Case of TypedSAX and plain-SAX mode<?/en?></p>
-<pre>
-public static XMLReader getPreparedReader(SAXParserFactory f)
- throws ParserConfigurationException, SAXException {
-  XMLReader r = f.newSAXParser().getXMLReader();
-  r.setContentHandler(new sample1(r, null)); //sample1 is the class for the start element
-  return r;
-}
-</pre>
-<p><?ja?>このgetPreparedReaderにSAXParserFactoryを渡すことで、XMLReaderが得られます。あとはこのXMLReaderに、読ませたいXMLドキュメントが入ったInputSourceをparseメソッドに渡すことでRelaxNGCCで生成されたコードの実行が開始されます。<?/ja?>
-<?en?> You can get an XMLReader object by passing an XMLParserFactory to the getPreparedReader method. To run the code generated by RelaxNGCC, feed an InputSource of the input XML instance to the XMLReader.<?/en?>
 
-<h3><?ja?>コンストラクタのカスタマイズ<?/ja?><?en?>How to customize constructor<?/en?></h2>
+<h3><?ja?>コンストラクタのカスタマイズ<?/ja?><?en?>Customizing constructors<?/en?></h2>
 <p>
-<?ja?>　RelaxNGCCで生成されたクラスのコンストラクタに独自の処理を入れるときは、RelaxNGCCの<tt>java-body</tt>エレメントに書いてください。このとき、次の基底クラスのコンストラクタを呼ぶようにしてください。<?/ja?>
-<?en?>If you want to add your own code to the constructor of the class generated by RelaxNGCC, you should write it in the <tt>java-body</tt> element of RelaxNGCC. In this case, call following constructors of base class from your customized constructor.<?/en?>
+	<?ja?>
+		　RelaxNGCCはコンストラクタを自分で生成するため、そのままではコンストラクタを書き換えることはできません。オブジェクトの生成時の処理を追加するには、イニシャライザを利用してください。
+	<?/ja?>
+	<?en?>
+		RelaxNGCC uses the consturctor of the generated classes for its own purpose. This makes it impossible to customize the constructors through <tt>c:java-body</tt> elements. To add code executed at the instanciation of an object, use the instance initializer:
+	<?/en?>
 </p>
-<br>
+<pre>
+&lt;define name="foo">
+  <em>&lt;c:java-body>
+    {// add your code here
+        System.out.println("initializer");
+    }
+  &lt;/c:java-body></em>
+</pre>
+<!--br>
 MSV mode:<br>
 <tt>protected NGCCTypedContentHandler(TypeDetecter reader)</tt><br>
 <br>
@@ -271,8 +327,9 @@ PlainSAX <?ja?>または<?/ja?><?en?>or<?/en?> TypedSAX mode:<br>
 
 <p>
 <?ja?>引数のreaderは入力データが準備されていなければなりません。<?/ja?><?en?>Note that the argument <tt>reader</tt> must be prepared for the input XML.<?/en?>
-</p>
+</p-->
 
+<!--
 <a name="typemap">
 <h2>5 <?ja?>型の対応表<?/ja?><?en?>Type Correspondence Table<?/en?></h2>
 <p>
@@ -310,12 +367,18 @@ PlainSAX <?ja?>または<?/ja?><?en?>or<?/en?> TypedSAX mode:<br>
 <?ja?>　この変換はMSV内のデータタイプライブラリに依存しています。MSVのドキュメントの、<tt>com.sun.msv.datatype.xsd</tt>パッケージの説明もあわせて参照してください。<?/ja?>
 <?en?> These correspondences depend on the datatype library of MSV. See also the documentation of <tt>com.sun.msv.datatype.xsd</tt> package in MSV.<?/en?>
 </p>
+-->
+
 
 <a name="restrictions">
 <h2>6 <?ja?>制約事項<?/ja?><?en?>Restrictions<?/en?></h2>
 <p>
-<?ja?>　RelaxNGCCでは、どんな文法も読み込めるわけではなく、先読み１個で分岐を判断できる文法だけを受け付けます。<?/ja?>
-<?en?> RelaxNGCC can't process all kind of RELAX NG grammars. The given grammar must be deterministic at every branch by reading one token.<?/en?>
+<?ja?>
+	　RelaxNGCCでは、どんな文法も読み込めるわけではなく、先読み１個で分岐を判断できる文法だけを受け付けます。
+<?/ja?>
+<?en?>
+	There are grammars that cannot be handled by RelaxNGCC. Specifically, a grammar cannot be handled by RelaxNGCC if it needs a look-ahead.
+<?/en?>
 </p>
 <pre>
  &lt;choice&gt;
@@ -333,7 +396,7 @@ PlainSAX <?ja?>または<?/ja?><?en?>or<?/en?> TypedSAX mode:<br>
 </pre>
 <p>
 <?ja?> このようなとき、最初に<tt>a</tt>エレメントをみただけではどちらのchoiceが正しいのかは判定できません。先読みをすれば<tt>x</tt>または<tt>y</tt>がきて判定可能になりますが、RelaxNGCCはこのような判定はできません。次のように書き換える必要があります。<?/ja?>
-<?en?> In this sample, the correct branch of the <tt>choice</tt> element is not decidable by reading only the first <tt>a</tt> element. RelaxNGCC can't deal such case though the correct branch is decidable by reading more tokens. To avoid this, following modification is required.<?/en?>
+<?en?> In the above sample, correct branching on the <tt>choice</tt> pattern cannot be done until you read the next element, because both children of the choice starts with the <tt>a</tt> element. To avoid this, the grammar needs to be rewritten as follows:<?/en?>
 </p>
 <pre>
 &lt;group&gt;
@@ -352,22 +415,21 @@ PlainSAX <?ja?>または<?/ja?><?en?>or<?/en?> TypedSAX mode:<br>
 </pre>
 <p>
 <?ja?>　文法がこの制約を満たさないとき、RelaxNGCCは警告メッセージを発します。特に文法があいまいな場合にはどう変形してもこの制約を逃れることができなくなるので注意が必要です。<?/ja?>
-<?en?> If the given grammar does not conform to this restriction, RelaxNGCC outputs warning messages. Especially it is impossible to meet the condition if the grammar is ambiguous.<?/en?>
+<?en?> If a grammar violates this restriction, RelaxNGCC raises a warning message. Note that some grammars are unable to rewrite in an unambigous way.<?/en?>
 </p>
 <p>
 <?ja?>　情報科学の言葉で言えば、<tt>define</tt>や<tt>start</tt>ブロックを、SAXイベントを終端記号とした文脈自由文法として解釈したとき、それがLL(1)であるときに限りRelaxNGCCは取り扱えます。このあたりの議論はコンパイラの教科書に詳しく載っています。<?/ja?>
-<?en?> In terms of information science, when we interpret the given RELAX NG grammar as a context free grammar by regarding every SAX events as terminal symbols, RelaxNGCC can treat only if the context free grammar is LL(1).<?/en?>
+<?en?> In terms of information science, when we interpret the given RELAX NG grammar as a context free grammar by treating every SAX event as a terminal symbol, RelaxNGCC can treat only if that grammar is LL(1).<?/en?>
 </p>
 
 <a name="tbd">
 <h2>7 <?ja?>未サポート機能<?/ja?><?en?>Unsupported Features<?/en?></h2>
 <p>
 <?ja?>　RELAX NGの仕様のうち、次の機能はまだサポートされていません。将来のバージョンで徐々に実装するつもりです。<?/ja?>
-<?en?> Additionally, RelaxNGCC does not support yet following features of RELAX NG. They will be implemented in future version.<?/en?>
+<?en?>RelaxNGCC does not support the following features of RELAX NG. Hopefully they will be implemented in a future version.<?/en?>
 </p>
 <ul>
 <li><tt>externalRef</tt> <?ja?>エレメント<?/ja?><?en?>element<?/en?></li>
-<li><tt>parentRef</tt> <?ja?>エレメント<?/ja?><?en?>element<?/en?></li>
 <li><?ja?>name-classを使ったアトリビュート<?/ja?><?en?>attributes using name-classes<?/en?></li>
 </ul>
 <hr>
