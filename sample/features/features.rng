@@ -13,15 +13,13 @@ private void echo(String s) { System.out.println(s); }
   /* body Start only */
   </c:java-body>
   <element name="root">
-    <group>
-      <ref name="expand"/>
-      <c:java>echo("expand ok");</c:java>
-      <ref name="block"/>
-      <c:java>echo("block1 ok");</c:java>
-      <ref name="block" c:alias="b"/>
-      <c:java>echo("block2 ok");</c:java>
-      <ref name="datatypetest"/>
-    </group>
+    <ref name="expand"/>
+    echo("expand ok");
+    <ref name="block"/>
+    echo("block1 ok");
+    <ref name="block" c:alias="b"/>
+    echo("block2 ok");
+    <ref name="datatypetest"/>
   </element>
 </start>
 
@@ -34,26 +32,24 @@ private void echo(String s) { System.out.println(s); }
 </define>
 
 <define name="datatypetest">
-  <group>
-    <element name="int"><data type="integer" c:alias="dt_int"/></element>
-    <element name="bool"><data type="boolean" c:alias="dt_bool"/></element>
-    <element name="double"><data type="double" c:alias="dt_double"/></element>
-    <element name="dateTime"><data type="dateTime" c:alias="dt_datetime"/></element>
-    <element name="base64"><data type="base64Binary" c:alias="dt_base64"/></element>
-    <element name="id"><data type="ID" c:alias="dt_id"/></element>
-    <element name="mix">
-      <choice>
-        <data type="base64Binary" c:alias="dt_choice_base64"/>
-        <data type="short" c:alias="dt_choice_short"/>
-        <data type="date" c:alias="dt_choice_date"/>
-      </choice>
-    </element>
-    <c:java><![CDATA[
+  <element name="int"><data type="integer" c:alias="dt_int"/></element>
+  <element name="bool"><data type="boolean" c:alias="dt_bool"/></element>
+  <element name="double"><data type="double" c:alias="dt_double"/></element>
+  <element name="dateTime"><data type="dateTime" c:alias="dt_datetime"/></element>
+  <element name="base64"><data type="base64Binary" c:alias="dt_base64"/></element>
+  <element name="id"><data type="ID" c:alias="dt_id"/></element>
+  <element name="mix">
+    <choice>
+      <data type="base64Binary" c:alias="dt_choice_base64"/>
+      <data type="short" c:alias="dt_choice_short"/>
+      <data type="date" c:alias="dt_choice_date"/>
+    </choice>
+  </element>
+  <c:java><![CDATA[
     echo("length="+dt_base64.length);
     for(int i=0; i<dt_base64.length; i++)
       echo(Byte.toString(dt_base64[i]));
-    ]]></c:java>
-  </group>
+  ]]></c:java>
 </define>
 
 </grammar>
