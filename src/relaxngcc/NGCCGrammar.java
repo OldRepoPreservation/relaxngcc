@@ -225,6 +225,7 @@ public class NGCCGrammar
 			if(!si.isLambda() && !si.isInline()) {
 				CodeWriter w = new CodeWriter(this, si, _Options);
                 File f = new File(_Options.targetdir, si.getNameForTargetLang() + ".java");
+                f.delete();
                 PrintStream out = new PrintStream(new FileOutputStream(f));
 				w.output(out);
                 out.close();
@@ -245,8 +246,8 @@ public class NGCCGrammar
     private void copyResourceAsFile( String file ) throws IOException {
         File out = new File(_Options.targetdir,file);
         
-        if(!out.exists()) {
-            System.out.println(file+" doesn't exist. Generating.");
+//        if(!out.exists()) {
+//            System.out.println(file+" doesn't exist. Generating.");
             BufferedReader in = new BufferedReader(
                 new InputStreamReader(NGCCRuntime.class.getResourceAsStream(file)));
                 
@@ -266,7 +267,7 @@ public class NGCCGrammar
             
             in.close();
             os.close();
-        }
+//        }
     }
 	
 	public void buildAutomaton() throws NGCCException
