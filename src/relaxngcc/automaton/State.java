@@ -151,15 +151,22 @@ public final class State implements Comparable
     }	
 	public void addReversalTransition(Transition t) { _ReversalTransitions.add(t); }
     
-	public void mergeTransitions(State s)
-	{
-		mergeTransitions(s, null);
-	}
     public int compareTo(Object obj)
     {
         if(!(obj instanceof State)) throw new ClassCastException("not State object");
         
         return _Index-((State)obj)._Index;
+    }
+    
+    public void mergeTransitions(State s) {
+        if(this==s)
+            // this causes ConcurrentModificationException.
+            // so we need to treat this as a special case.
+            // 
+            // merging a state to itself without any action
+            // is a no-operation. so we can just return.
+            return;
+        mergeTransitions(s, null);
     }
     
     /**
@@ -183,27 +190,34 @@ public final class State implements Comparable
         Transition newtransition, ScopeInfo.Action action)
 	{
 		Alphabet a = newtransition.getAlphabet();
+        
 		Iterator it = iterateTransitions();
-		while(it.hasNext())
-		{
+		while(it.hasNext()) {
 			Transition tr = (Transition)it.next();
-			if(tr==newtransition) continue;
 			Alphabet existing_alphabet = tr.getAlphabet();
             
             if(a.isText())
             	printAmbiguousTransitionsWarning(tr, newtransition);
-			else if(existing_alphabet.equals(a) && tr.nextState()!=newtransition.nextState())
-            {
-                if(!newtransition.hasAction() && !tr.hasAction()) {
-                    // only if both of them have no action, we can merge them.
-                    tr.nextState().mergeTransitions(newtransition.nextState());
-                    Iterator r = newtransition.nextState().iterateReversalTransitions();
-                    while(r.hasNext())
-                        ((Transition)r.next()).changeDestination(tr.nextState());
-					return; //ignores newtransition
+			else
+            if(existing_alphabet.equals(a)) {
+                if(tr.nextState()==newtransition.nextState()) {
+                    if(action==null)
+                        return; // trying to add the same transition. no-op.
+                    else
+                        // the same transition is being added but with an action.
+                        // I guess this is ambiguous, but not sure. - Kohsuke
+                        printAmbiguousTransitionsWarning(tr, newtransition);
+                } else {
+	                if(!newtransition.hasAction() && !tr.hasAction()) {
+	                    // only if both of them have no action, we can merge them.
+	                    tr.nextState().mergeTransitions(newtransition.nextState());
+	                    Iterator r = newtransition.nextState().iterateReversalTransitions();
+	                    while(r.hasNext())
+	                        ((Transition)r.next()).changeDestination(tr.nextState());
+						return; //ignores newtransition
+	                } else
+	            		printAmbiguousTransitionsWarning(tr, newtransition);
                 }
-                else
-            		printAmbiguousTransitionsWarning(tr, newtransition);
             }
 		}
 		
@@ -211,9 +225,8 @@ public final class State implements Comparable
         // in general, it is dangerous to share transitions.
         newtransition = (Transition)newtransition.clone();
         
-		if(action!=null) {
+		if(action!=null)
 			newtransition.insertPrologueAction(action);
-		}
 		
         _AllTransitions.add(newtransition);
         newtransition.nextState().addReversalTransition(newtransition);

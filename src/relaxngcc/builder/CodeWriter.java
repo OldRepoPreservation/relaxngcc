@@ -396,7 +396,7 @@ public class CodeWriter
         code.append(MessageFormat.format(
             "NGCCHandler h = new {0}(this,runtime,{1}{2});{3}", new Object[]{
                 ref_block.getNameForTargetLang(),
-                new Integer(ref_tr.getUniqueId()),
+                new Integer(ref_tr.getUniqueId()).toString()/*to avoid ,*/,
                 alpha.getParams(),
                 _Options.newline}));
             

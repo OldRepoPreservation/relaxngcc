@@ -759,6 +759,7 @@ public final class ScopeInfo
             new String[]{"dot","-Tgif","-o",target.getPath()});
         PrintWriter out = new PrintWriter(
             new BufferedOutputStream(proc.getOutputStream()));
+//        PrintWriter out = new PrintWriter(System.out); // if you want to debug the input to GraphViz.
     
         out.println("digraph G {");
         out.println("node [shape=\"circle\"];");
