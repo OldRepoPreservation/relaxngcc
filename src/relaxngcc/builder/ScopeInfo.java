@@ -48,7 +48,6 @@ public final class ScopeInfo
 	private Set _AllStates;
 //    private Set _ChildScopes; //child lambda scopes
     
-	private boolean _Root; //true if this ScopeInfo represents the content of <start> tag
 	private Map _NSURItoStringConstant;
 	
 	private State _InitialState;
@@ -384,6 +383,8 @@ public final class ScopeInfo
         return a;
 	}
 	
+    /** Returns true if this is the start pattern. */
+    private boolean isRoot() { return scope.name==null; }
 
 	
     /**
@@ -408,12 +409,12 @@ public final class ScopeInfo
         
         if(!options.usePrivateRuntime)
             output.println("import relaxngcc.runtime.NGCCHandler;");
-        output.println("import "+grammar.getRuntimeTypeFullName()+";");
+        if(!grammar.getRuntimeTypeFullName().equals(grammar.getRuntimeTypeShortName()))
+            output.println("import "+grammar.getRuntimeTypeFullName()+";");
         
-        if(_Root)
-        {
+        if(isRoot()) {
             output.println("import javax.xml.parsers.SAXParserFactory;");
-            output.println("import javax.xml.parsers.ParserConfigurationException;");
+            output.println("import org.xml.sax.XMLReader;");
         }
 
         output.println(globalimport);
@@ -525,9 +526,30 @@ public final class ScopeInfo
         for( int i=0; i<actions.size(); i++ )
             ((Action)actions.get(i)).generate(output);
         
-		//simple entry point
-		if(_Root)
-		{
+		//simple entry point.
+		if(isRoot() && scope.getParam().params==null) {
+            String rt = grammar.packageName;
+            if(rt.length()!=0)  rt+='.';
+            rt+="NGCCRuntime";
+            
+            if(grammar.getRuntimeTypeFullName().equals(rt)) {
+                output.println(
+                    "    public static void main( String[] args ) throws Exception {\n"+
+                    "        SAXParserFactory factory = SAXParserFactory.newInstance();\n"+
+                    "        factory.setNamespaceAware(true);\n"+
+                    "        XMLReader reader = factory.newSAXParser().getXMLReader();\n"+
+                    "        NGCCRuntime runtime = new NGCCRuntime();\n"+
+                    "        reader.setContentHandler(runtime);\n"+
+                    "        for( int i=0; i<args.length; i++ ) {\n"+
+                    "            runtime.pushHandler(new "+getClassName()+"(runtime));\n"+
+                    "            reader.parse(args[i]);\n"+
+                    "            runtime.reset();\n"+
+                    "        }\n"+
+                    "    }");
+            }
+        }
+
+
 //            if(options.style==Options.STYLE_MSV)
 //            {
 //                output.println("public static XMLReader getPreparedReader(SAXParserFactory f, DocumentDeclaration g) throws ParserConfigurationException, SAXException {");
@@ -549,9 +571,9 @@ public final class ScopeInfo
 //                output.println("\tr.parse(args[1]);");
 //                output.println("}");
 //            }
-            // removed because this won't work well with
-            // custom NGCCRuntime, which we don't know how to instanciate
-		}
+//            // removed because this won't work well with
+//            // custom NGCCRuntime, which we don't know how to instanciate
+//		}
         
 	}
 
