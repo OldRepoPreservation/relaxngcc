@@ -107,7 +107,7 @@ public abstract class Alphabet implements Comparable
             super( ENTER_ELEMENT, key );
         }
         public EnterElement asEnterElement() { return this; }
-        public String toString() { return "enterElement '"+getKey()+"'"; }
+        public String toString() { return "<"+getKey()+">"; }
     }
     
     /** Alphabet of the type "leave element." */
@@ -116,7 +116,7 @@ public abstract class Alphabet implements Comparable
             super( LEAVE_ELEMENT, key );
         }
         public LeaveElement asLeaveElement() { return this; }
-        public String toString() { return "leaveElement '"+getKey()+"'"; }
+        public String toString() { return "</"+getKey()+">"; }
     }
     
     /** Alphabet of the type "enter attribute." */
@@ -125,7 +125,7 @@ public abstract class Alphabet implements Comparable
             super( ENTER_ATTRIBUTE, key );
         }
         public EnterAttribute asEnterAttribute() { return this; }
-        public String toString() { return "enterAttribute '"+getKey()+"'"; }
+        public String toString() { return "@"+getKey(); }
     }
     
     /** Alphabet of the type "leave attribute." */
@@ -134,7 +134,7 @@ public abstract class Alphabet implements Comparable
             super( LEAVE_ATTRIBUTE, key );
         }
         public LeaveAttribute asLeaveAttribute() { return this; }
-        public String toString() { return "leaveAttribute '"+getKey()+"'"; }
+        public String toString() { return "/@"+getKey(); }
     }
     
     /** Alphabet of the type "ref." */
