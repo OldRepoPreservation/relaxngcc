@@ -5,16 +5,13 @@
  */
 
 package relaxngcc.builder;
-import java.util.Stack;
 import java.util.Iterator;
 
+import relaxngcc.MetaDataType;
+import relaxngcc.NGCCGrammar;
 import relaxngcc.automaton.Alphabet;
 import relaxngcc.automaton.State;
 import relaxngcc.automaton.Transition;
-import relaxngcc.NGCCGrammar;
-import relaxngcc.MetaDataType;
-import relaxngcc.NGCCUtil;
-import relaxngcc.NGCCException;
 import relaxngcc.grammar.*;
 
 /**

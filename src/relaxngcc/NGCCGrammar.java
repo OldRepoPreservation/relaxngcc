@@ -98,7 +98,7 @@ public class NGCCGrammar {
 // Operations
 //
 //
-    public void buildAutomaton() throws NGCCException {
+    public void buildAutomaton() {
         // collect all scopes inside the grammar
         Set scopes = (Set)grammar.apply(new ScopeCollector());
         Iterator it;
