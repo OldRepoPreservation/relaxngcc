@@ -260,6 +260,7 @@ public class AutomatonBuilder implements PatternFunction
     private void processChoiceBranch( State head, Pattern pattern ) {
         
         State member = (State)pattern.apply(this);
+        member = addAction(member,true);
         
         head.mergeTransitions(member);
         
