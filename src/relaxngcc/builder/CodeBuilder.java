@@ -337,7 +337,7 @@ public class CodeBuilder
         
         // aliases
         for (Iterator itr = _info.iterateAliases(); itr.hasNext();) {
-            Alias a = (Alias)itr.next();
+            Alias a = (Alias)((Map.Entry)itr.next()).getValue();
             
             // if the alias is already declared explicitly by the <java-body>,
             // don't write it again.
