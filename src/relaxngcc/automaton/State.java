@@ -330,10 +330,14 @@ public final class State implements Comparable
     }
     public void calcAFOLLOW() {
         HashSet t = new HashSet();
-        AFollow(t);
+        HashSet c = new HashSet();
+        AFollow(t, c);
         _cachedAFollow = t;
     }
-    private void AFollow(Set result) {
+    private void AFollow(Set result, Set checked_state) {
+    	if(checked_state.contains(this)) return;
+    	checked_state.add(this);
+    	
         Iterator itr = iterateTransitions();
         while(itr.hasNext()) {
             Transition t = (Transition)itr.next();
@@ -342,25 +346,25 @@ public final class State implements Comparable
             if(a.isEnterElement() || a.isLeaveElement() || a.isText())
                 result.add(a);
             else if(a.isEnterAttribute())
-                collectAFOLLOWAfterLeaveAttribute(result);
+                collectAFOLLOWAfterLeaveAttribute(result, checked_state);
             else if(a.isRef()) {
                 ScopeInfo si = a.asRef().getTargetScope();
-                si.getInitialState().AFollow(result);
+                si.getInitialState().AFollow(result, checked_state);
                 if(si.isNullable())
-                    t.nextState().AFollow(result);
+                    t.nextState().AFollow(result, checked_state);
             }
             else if(a.isFork()) {
                 Alphabet.Fork fork = a.asFork();
                 for( int i=0; i<fork._subAutomata.length; i++ )
-                    fork._subAutomata[i].AFollow(result);
+                    fork._subAutomata[i].AFollow(result, checked_state);
                 if(a.asFork().isNullable())
-                    t.nextState().AFollow(result);
+                    t.nextState().AFollow(result, checked_state);
             }
         }
         
         if(isAcceptable()) result.add(Head.EVERYTHING_ELSE);
     }
-    private void collectAFOLLOWAfterLeaveAttribute(Set result) {
+    private void collectAFOLLOWAfterLeaveAttribute(Set result, Set checked_state) {
         HashSet states = new HashSet();
         Iterator itr = iterateTransitions();
         while(itr.hasNext()) {
@@ -390,7 +394,7 @@ public final class State implements Comparable
         
         itr = states.iterator();
         while(itr.hasNext()) {
-            ((State)itr.next()).AFollow(result);
+            ((State)itr.next()).AFollow(result, checked_state);
         }
     }
     private static void addStateAfterLeaveAttribute(State s, Set result) {
