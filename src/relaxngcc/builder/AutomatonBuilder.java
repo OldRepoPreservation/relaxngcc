@@ -91,7 +91,9 @@ public class AutomatonBuilder implements PatternFunction
 	    destination = createState(null);
 		destination.setAcceptable(true);
 
-        State initial = (State)_ScopeInfo.scope.getPattern().apply(this);		
+        State initial = (State)_ScopeInfo.scope.getPattern().apply(this);
+        initial = addAction(initial,true);
+        		
 //		State initial = null;
 //        if(_Type==TYPE_NORMAL || _Type==TYPE_ROOT)
 //    		initial = traverseNodeList(_Root.getChildNodes(), ctx, finalstate);
@@ -118,7 +120,8 @@ public class AutomatonBuilder implements PatternFunction
         NameClass nc = pattern.name;
         
         State tail = createState(pattern);
-        Transition te = createTransition(new Alphabet.LeaveElement(nc), destination);
+        Transition te = createTransition(
+            new Alphabet.LeaveElement(nc,pattern.startLocator), destination);
         addAction(te,false);
         if(ctx.getInterleaveBranchRoot()!=null) te.setEnableState(ctx.getInterleaveBranchRoot());
         tail.addTransition(te);
@@ -136,7 +139,8 @@ public class AutomatonBuilder implements PatternFunction
         oldContext = ctx;
         
         State head = createState(pattern);
-        Transition ts = createTransition(new Alphabet.EnterElement(nc), middle);
+        Transition ts = createTransition(
+            new Alphabet.EnterElement(nc,pattern.endLocator), middle);
         addAction(ts,true);
         if(ctx.getInterleaveBranchRoot()!=null) ts.setDisableState(ctx.getInterleaveBranchRoot());
         head.addTransition(ts);
@@ -153,7 +157,8 @@ public class AutomatonBuilder implements PatternFunction
         // I just don't know how to fix them.  - Kohsuke
         
         State tail = createState(pattern);
-        Transition te = createTransition(new Alphabet.LeaveAttribute(nc),
+        Transition te = createTransition(
+            new Alphabet.LeaveAttribute(nc,pattern.startLocator),
             destination /*createState(exp,ctx)*/);
         addAction(te,false);
         tail.addTransition(te);
@@ -162,7 +167,8 @@ public class AutomatonBuilder implements PatternFunction
         State middle = (State)pattern.body.apply(this);      
 //        State middle = traverseNodeList(exp.getChildNodes(), ctx/*newctx*/, tail);
         
-        Alphabet.EnterAttribute ea = new Alphabet.EnterAttribute(nc,_OrderCounter++);
+        Alphabet.EnterAttribute ea = new Alphabet.EnterAttribute(
+            nc,_OrderCounter++,pattern.endLocator);
         ea.workaroundSignificant = pattern.workaroundSignificant;
         
         Transition ts = createTransition(
@@ -188,7 +194,8 @@ public class AutomatonBuilder implements PatternFunction
         State result = createState(pattern);
         if(pattern.alias!=null) _ScopeInfo.addUserDefinedAlias(pattern.alias,"String");
         Transition t = createTransition(
-            new Alphabet.DataText(pattern.type,pattern.alias), destination);
+            new Alphabet.DataText(pattern.type,pattern.alias,pattern.locator),
+            destination);
         addAction(t,false);
         result.addTransition(t);
         return result;
@@ -207,7 +214,8 @@ public class AutomatonBuilder implements PatternFunction
         
         State result = createState(pattern);
         Transition t = createTransition(
-            new Alphabet.ValueText(pattern.value, pattern.alias), destination);
+            new Alphabet.ValueText(pattern.value, pattern.alias, pattern.locator),
+            destination);
         addAction(t,false);
         result.addTransition(t);
         return result;
@@ -223,7 +231,8 @@ public class AutomatonBuilder implements PatternFunction
 	        Transition t = createTransition(
                 new Alphabet.DataText(
                     new MetaDataType("string"),
-                    pattern.alias), destination);
+                    pattern.alias,pattern.locator),
+                destination);
 	        addAction(t,false);
 	        result.addTransition(t);
 	        return result;
@@ -350,7 +359,9 @@ public class AutomatonBuilder implements PatternFunction
                 targetScope.scope.getParam().returnType);
         
         Transition t = createTransition(new Alphabet.Ref(
-            targetScope, alias, pattern.param.getWithParams(), _OrderCounter++),
+            targetScope, alias,
+            pattern.param.getWithParams(), _OrderCounter++,
+            pattern.locator),
             destination);
         head.addTransition(t);
 

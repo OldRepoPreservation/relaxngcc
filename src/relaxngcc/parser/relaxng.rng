@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <!--
-	Note:
-		attributes that are only applicable to the root element (cc:package
-		and cc:runtime-type) are handled by the ParserRuntime class.
+  Note:
+    attributes that are only applicable to the root element (cc:package
+    and cc:runtime-type) are handled by the ParserRuntime class.
 -->
 <grammar datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes"
          ns="http://relaxng.org/ns/structure/1.0"
@@ -15,6 +15,7 @@
   <cc:java-import>
     import relaxngcc.MetaDataType;
     import relaxngcc.grammar.*;
+    import org.xml.sax.Locator;
   </cc:java-import>
   
   <start cc:class="Start" cc:access="public">
@@ -48,16 +49,18 @@
     cc:return-type="Pattern" cc:return-value="p">
     
     <cc:java-body>
-		private boolean workaroundSignificant=false;
+      private boolean workaroundSignificant=false;
+      private Locator loc;
     </cc:java-body>
     
+    <cc:java>
+      loc = runtime.createLocator();
+    </cc:java>
     <choice>
       <element name="element">
         <ref name="name" cc:alias="name" cc:with-params="false" />
-        <ref name="patterns" cc:alias="p"/>
-        <cc:java>
-          p = new ElementPattern(name,p);
-        </cc:java>
+        <ref name="patterns" cc:alias="p" />
+        p = new ElementPattern(loc,runtime.createLocator(),name,p);
       </element>
       <element name="attribute">
         <optional>
@@ -66,14 +69,17 @@
         </optional>
         <ref name="name" cc:alias="name" cc:with-params="true" />
         <choice>
-          <ref name="patterns" cc:alias="p"/>
+          <ref name="patterns" cc:alias="p" />
           <!-- if it doesn't have a child pattern, it can have cc:alias -->
           <ref name="NGCC-alias" cc:alias="alias"/>
         </choice>
         <cc:java>
           // if there is no child pattern, assume &lt;text>.
-          if(p==null)  p = new DataPattern(new MetaDataType("string"),alias);
-          p = new AttributePattern(name,p,workaroundSignificant);
+          if(p==null)
+            p = new DataPattern(loc,new MetaDataType("string"),alias);
+          p = new AttributePattern(
+            loc,runtime.createLocator(),
+            name,p,workaroundSignificant);
         </cc:java>
       </element>
       <element name="group">
@@ -120,13 +126,13 @@
         <ref name="NGCC-alias" cc:alias="alias"/>
         <ref name="patterns" cc:alias="p" />
         <cc:java>
-          p = new ListPattern( p, alias );
+          p = new ListPattern( loc, p, alias );
         </cc:java>
       </element>
       <element name="mixed">
         <ref name="patterns" cc:alias="p" />
         <cc:java>
-          p = new InterleavePattern( new DataPattern(new MetaDataType("string"),null), p );
+          p = new InterleavePattern( new DataPattern( loc, new MetaDataType("string"),null), p );
         </cc:java>
       </element>
       <group>
@@ -134,7 +140,7 @@
           <ref name="NGCC-call" cc:alias="params" />
           <attribute name="name" cc:alias="target" />
           <cc:java>
-            p = new RefPattern(
+            p = new RefPattern( loc,
                 runtime.grammar.getOrCreate(target),params);
           </cc:java>
         </element>
@@ -146,7 +152,7 @@
         <cc:java>
           // refers to the parent grammar,
           // instead of the current grammar
-          p = new RefPattern(
+          p = new RefPattern( loc,
               runtime.grammar.parent.getOrCreate(target),params);
         </cc:java>
       </element>
@@ -160,7 +166,7 @@
         <empty/>
         <ref name="NGCC-alias" cc:alias="alias" />
         <cc:java>
-          p = new DataPattern(new MetaDataType("string"),alias);
+          p = new DataPattern(loc,new MetaDataType("string"),alias);
         </cc:java>
       </element>
       <element name="value">
@@ -172,7 +178,7 @@
         <ref name="NGCC-alias" cc:alias="alias" />
         <text cc:alias="value"/>
         <cc:java>
-          p = new ValuePattern(value,alias);
+          p = new ValuePattern(loc,value,alias);
         </cc:java>
       </element>
       <element name="data">
@@ -190,7 +196,7 @@
         </optional-->
         <ref name="NGCC-alias" cc:alias="alias" />
         <cc:java>
-          p = new DataPattern(new MetaDataType(typeName),alias);
+          p = new DataPattern(loc,new MetaDataType(typeName),alias);
         </cc:java>
       </element>
       <element name="notAllowed">
@@ -214,7 +220,7 @@
         <cc:java>
           // behave as if there is an implicit ref
           // between &lt;grammar> and its  parent.
-          p = new RefPattern( runtime.grammar, null );
+          p = new RefPattern( loc, runtime.grammar, null );
           // get back to the parent context
           runtime.grammar = runtime.grammar.parent;
         </cc:java>
@@ -287,6 +293,7 @@
   
   <define name="pattern-definition" cc:class="PatternDefinition"
     cc:params="Scope scope">
+    
     <optional>
       <attribute name="combine" cc:alias="combine" />
     </optional>
@@ -312,7 +319,7 @@
         </cc:java>
       </element>
     </zeroOrMore>
-    <ref name="patterns" cc:alias="p"/>
+    <ref name="patterns" cc:alias="p" />
     <cc:java>
       scope.append(p,combine);
     </cc:java>
@@ -328,7 +335,8 @@
   
   
   <!-- sequence of patterns combined by Group -->
-  <define name="patterns" cc:return-type="Pattern" cc:return-value="p">
+  <define name="patterns" 
+    cc:return-type="Pattern" cc:return-value="p">
     <cc:java-body>
       private Pattern p=null;
     </cc:java-body>

@@ -7,6 +7,8 @@
 package relaxngcc.automaton;
 import java.util.Comparator;
 
+import org.xml.sax.Locator;
+
 import relaxngcc.MetaDataType;
 import relaxngcc.NGCCGrammar;
 import relaxngcc.builder.ScopeInfo;
@@ -34,14 +36,16 @@ public abstract class Alphabet
 	public static final int DATA_TEXT          = 16;
 	public static final int VALUE_TEXT         = 32;
     
-    /**
-     * type of this alphabet. One of the above constants.
-     */
+    /** Type of this alphabet. One of the above constants. */
 	private final int _Type;
     public final int getType() { return _Type; }
-
-    protected Alphabet( int type ) {
+    
+    /** Source location where this alphabet came from. */
+    public final Locator locator;
+    
+    protected Alphabet( int type, Locator loc ) {
         this._Type = type;
+        this.locator = loc;
     }
 
 
@@ -76,8 +80,8 @@ public abstract class Alphabet
      * Base class for (enter|leave)(Attribute|Element).
      */
     public static abstract class Markup extends Alphabet {
-        protected Markup( int type, NameClass _key ) {
-            super(type);
+        protected Markup( int type, NameClass _key, Locator loc ) {
+            super(type,loc);
             this.key = _key;
         }
         
@@ -103,8 +107,8 @@ public abstract class Alphabet
     
     /** Alphabet of the type "enter element." */
     public static class EnterElement extends Markup {
-        public EnterElement( NameClass key ) {
-            super( ENTER_ELEMENT, key );
+        public EnterElement( NameClass key, Locator loc ) {
+            super( ENTER_ELEMENT, key, loc );
         }
         public EnterElement asEnterElement() { return this; }
         public String toString() { return "<"+getKey()+">"; }
@@ -112,8 +116,8 @@ public abstract class Alphabet
     
     /** Alphabet of the type "leave element." */
     public static class LeaveElement extends Markup {
-        public LeaveElement( NameClass key ) {
-            super( LEAVE_ELEMENT, key );
+        public LeaveElement( NameClass key, Locator loc ) {
+            super( LEAVE_ELEMENT, key, loc );
         }
         public LeaveElement asLeaveElement() { return this; }
         public String toString() { return "</"+getKey()+">"; }
@@ -121,8 +125,8 @@ public abstract class Alphabet
     
     /** Alphabet of the type "enter attribute." */
     public static class EnterAttribute extends Markup implements WithOrder {
-        public EnterAttribute( NameClass key, int order ) {
-            super( ENTER_ATTRIBUTE, key );
+        public EnterAttribute( NameClass key, int order, Locator loc ) {
+            super( ENTER_ATTRIBUTE, key, loc );
             _Order = order;
         }
         public EnterAttribute asEnterAttribute() { return this; }
@@ -147,8 +151,8 @@ public abstract class Alphabet
     
     /** Alphabet of the type "leave attribute." */
     public static class LeaveAttribute extends Markup {
-        public LeaveAttribute( NameClass key ) {
-            super( LEAVE_ATTRIBUTE, key );
+        public LeaveAttribute( NameClass key, Locator loc ) {
+            super( LEAVE_ATTRIBUTE, key, loc );
         }
         public LeaveAttribute asLeaveAttribute() { return this; }
         public String toString() { return "/@"+getKey(); }
@@ -156,15 +160,15 @@ public abstract class Alphabet
     
     /** Alphabet of the type "ref." */
     public static class Ref extends Alphabet implements WithOrder {
-        public Ref( ScopeInfo target, String alias, String params, int order ) {
-            super( REF_BLOCK );
+        public Ref( ScopeInfo target, String alias, String params, int order, Locator loc ) {
+            super( REF_BLOCK, loc );
             this._Target = target;
             this._Alias  = alias;
             this._Params = params;
             this._Order = order;
         }
-        public Ref( ScopeInfo _target, int order ) {
-            this(_target,null,null,order);
+        public Ref( ScopeInfo _target, int order, Locator loc ) {
+            this(_target,null,null,order,loc);
         }
         public Ref asRef() { return this; }
         
@@ -219,8 +223,8 @@ public abstract class Alphabet
     
     
     public static abstract class Text extends Alphabet {
-        protected Text( int _type, String _alias ) {
-            super(_type);
+        protected Text( int _type, String _alias, Locator loc ) {
+            super(_type,loc);
             this.alias = _alias;
         }
         public Text asText() { return this; }
@@ -240,8 +244,8 @@ public abstract class Alphabet
     }
     
     public static class ValueText extends Text {
-        public ValueText( String _value, String _alias ) {
-            super(VALUE_TEXT,_alias);
+        public ValueText( String _value, String _alias, Locator loc ) {
+            super(VALUE_TEXT,_alias,loc);
             this.value = _value;
         }
         public ValueText asValueText() { return this; }
@@ -261,8 +265,8 @@ public abstract class Alphabet
     }
     
     public static class DataText extends Text {
-        public DataText( MetaDataType dt, String _alias ) {
-            super(DATA_TEXT,_alias);
+        public DataText( MetaDataType dt, String _alias, Locator loc ) {
+            super(DATA_TEXT,_alias,loc);
             this._DataType = dt;
         }
         public DataText asDataText() { return this; }

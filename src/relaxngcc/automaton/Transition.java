@@ -26,9 +26,7 @@ public final class Transition
     /** value that uniquely identifies a transition. */
     private final int uniqueId;
     
-	/**
-	 * creates Transition with no action
-	 */
+	/** Creates Transition with no action. */
     public Transition(Alphabet a, State n) {
         this(a,n,new Vector(),new Vector());
     }

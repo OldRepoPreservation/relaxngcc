@@ -13,6 +13,8 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.Vector;
 
+import org.xml.sax.Locator;
+
 import relaxngcc.builder.ScopeInfo;
 import relaxngcc.grammar.Pattern;
 import relaxngcc.util.SelectiveIterator;
@@ -217,45 +219,35 @@ public final class State implements Comparable
 	{
 		PrintStream s = System.err;
 		printStateWarningHeader(s);
-		s.print(" has ambiguous transitions about following alphabets, ");
+		s.print(" has ambiguous transitions: ");
 		s.print(a.getAlphabet().toString());
-		s.print("(to state<");
+		s.print("(to #");
 		s.print(a.nextState().getIndex());
-		s.print(">) and ");
+		s.print(") and ");
 		s.print(b.getAlphabet().toString());
-		s.print("(to state<");
+		s.print("(to #");
 		s.print(b.nextState().getIndex());
-		s.println(">).");
-		
+		s.println(".)");
+        if(a.getAlphabet().locator!=null)
+            printLocator(s,a.getAlphabet().locator);
+        if(b.getAlphabet().locator!=null)
+            printLocator(s,b.getAlphabet().locator);
 	}
-	private void printAmbiguousTransitionAndFirstWarning(Transition t)
-	{
-		PrintStream s = System.err;
-		printStateWarningHeader(s);
-		s.print(" has ambiguous transitions about FIRST alphabets, ");
-		s.print(t.getAlphabet().toString());
-		s.print("(to state<");
-		s.print(t.nextState().getIndex());
-		s.println(">).");
-	}
-	private void printAmbiguousTransitionAndFollowWarning(Transition t)
-	{
-		PrintStream s = System.err;
-		printStateWarningHeader(s);
-		s.print(" has ambiguous transitions about FOLLOW alphabets, ");
-		s.print(t.getAlphabet().toString());
-		s.print("(to state<");
-		s.print(t.nextState().getIndex());
-		s.println(">).");
-	}
+    
+    private void printLocator( PrintStream s, Locator loc ) {
+        s.print("  line ");
+        s.print(loc.getLineNumber());
+        s.print(" of ");
+        s.println(loc.getSystemId());
+    }
+    
 	private void printStateWarningHeader(PrintStream s) {
 		s.print("[Warning] ");
 
-		s.print("The state <");
+		s.print("State #");
 		s.print(_Index);
-		s.print("> whose path information is not available");
-
-		s.print(" in ");
+		s.print(" of ");
+        s.print(_Container.scope.name);
         // TODO: location
 //		s.print(_Container.getLocation());
 	}

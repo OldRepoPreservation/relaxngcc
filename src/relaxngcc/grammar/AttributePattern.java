@@ -1,5 +1,7 @@
 package relaxngcc.grammar;
 
+import org.xml.sax.Locator;
+
 /**
  *
  *
@@ -7,8 +9,10 @@ package relaxngcc.grammar;
  *      Kohsuke Kawaguchi (kk@kohsuke.org)
  */
 public class AttributePattern extends MarkupPattern {
-    public AttributePattern(NameClass _name, Pattern _body, boolean _workaroundSignificant) {
-        super(_name, _body);
+    public AttributePattern(Locator sloc, Locator eloc, NameClass _name, Pattern _body,
+        boolean _workaroundSignificant) {
+        
+        super(sloc,eloc,_name, _body);
         this.workaroundSignificant = _workaroundSignificant;
     }
     

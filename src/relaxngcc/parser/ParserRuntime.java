@@ -10,8 +10,11 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParserFactory;
 
 import org.xml.sax.Attributes;
+import org.xml.sax.Locator;
 import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
+import org.xml.sax.helpers.LocatorImpl;
+
 import relaxngcc.grammar.Grammar;
 import relaxngcc.grammar.NameClass;
 import relaxngcc.grammar.SimpleNameClass;
@@ -123,6 +126,10 @@ public abstract class ParserRuntime extends NGCCRuntime {
     
     /** set to true if the ns attribute is present. */
     private boolean nsPresent;
+    
+    public Locator createLocator() {
+        return new LocatorImpl(super.getLocator());
+    }
     
     // override start/endElement to handle the ns attribute
     // TODO: handle datatypeLibrary attribute
