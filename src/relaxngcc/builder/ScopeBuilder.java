@@ -533,19 +533,27 @@ public class ScopeBuilder
 	}
 	private State processOptional(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
-        ScopeInfo.Action action_last = null;
-        if(preservedAction.length()!=0) {
-            // REVISIT: in the original code, preservedAction was not
-            // reset. But I believe that was wrong - Kohsuke 
-            action_last = _ScopeInfo.createAction(preservedAction);
-            preservedAction = new StringBuffer();
-        }
+        addAction(destination,true);
+        
+//        ScopeInfo.Action action_last = null;
+//        if(preservedAction.length()!=0)
+//            action_last = _ScopeInfo.createAction(preservedAction);
+        
+        State tmp = createState(exp,ctx);
+        tmp.mergeTransitions(destination);
             
-		addAction(destination,true);
+        // any transition that leaves the destination state could be modified
+        // while we process our descendant patterns.
+        // therefore, we cannot simply do
+        //      head.mergeTransitions(destination,action_last)
+        // at the end of the function. Instead, we need to clone them
+        // temporaily, so that changes made inside the traverseNodeList won't
+        // affect us.
 		State head = traverseNodeList(exp.getChildNodes(), ctx, destination);
 		addAction(head,true);
         
-        head.mergeTransitions(destination,action_last);
+        head.mergeTransitions(tmp);
+        if(destination.isAcceptable())  head.setAcceptable(true);
         return head;
 	}
 	
