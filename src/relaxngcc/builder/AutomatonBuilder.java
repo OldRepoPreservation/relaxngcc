@@ -277,7 +277,7 @@ public class AutomatonBuilder implements PatternFunction
     private void processChoiceBranch( State head, Pattern pattern ) {
         
         State member = (State)pattern.apply(this);
-        //member = addAction(member,true);
+        member = addAction(member,true);
         
         head.mergeTransitions(member);
         
@@ -466,6 +466,9 @@ public class AutomatonBuilder implements PatternFunction
         return ss;
     }
     
+    /**
+     * Builds an action object from accumulated unprocessed &lt;cc:java>.
+     */
     private ScopeInfo.Action collectAction() {
         ScopeInfo.Action act = (_preservedAction.length()==0)? null : _scopeInfo.createAction(_preservedAction);
         _preservedAction = "";
