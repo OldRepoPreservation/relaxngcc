@@ -180,7 +180,7 @@ public abstract class Alphabet implements Comparable
         private final String alias;
         public String getAlias() { return alias; }
 
-        public String toString() { return "ref '"+target+"'"; }
+        public String toString() { return "ref '"+target.getNameForTargetLang()+"'"; }
         
         public int hashCode() {
             return h(target)^h(alias)^h(params);

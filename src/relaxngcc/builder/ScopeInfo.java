@@ -5,16 +5,6 @@
  */
 
 package relaxngcc.builder;
-import java.text.MessageFormat;
-import java.util.Set;
-import java.util.Stack;
-import java.util.TreeSet;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.Iterator;
-import java.util.Vector;
-import java.util.StringTokenizer;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
@@ -23,15 +13,25 @@ import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringReader;
+import java.text.MessageFormat;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+import java.util.Stack;
+import java.util.StringTokenizer;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.Vector;
 
-import relaxngcc.automaton.State;
-import relaxngcc.automaton.Transition;
-import relaxngcc.automaton.Alphabet;
-import relaxngcc.javabody.JavaBodyParser;
-import relaxngcc.util.SelectiveIterator;
 import relaxngcc.NGCCGrammar;
 import relaxngcc.NGCCUtil;
 import relaxngcc.Options;
+import relaxngcc.automaton.Alphabet;
+import relaxngcc.automaton.State;
+import relaxngcc.automaton.Transition;
+import relaxngcc.javabody.JavaBodyParser;
+import relaxngcc.util.SelectiveIterator;
 
 /**
  * information about a scope
@@ -44,9 +44,11 @@ public final class ScopeInfo
 	private Set _AllStates;
 
 	private Set _FollowAlphabet;
-	private Set _ContainingScopeForFollowAlphabet;
 	private Set _FirstAlphabet;
-	private Set _ContainingScopeForFirstAlphabet;
+    public void setFirstAndFollow( Set first, Set follow ) {
+        _FirstAlphabet = first;
+        _FollowAlphabet = follow;
+    }
 	
     private Set _ChildScopes; //child lambda scopes
     
@@ -65,7 +67,7 @@ public final class ScopeInfo
 	private int _ThreadCount;
 
 	public State getInitialState() { return _InitialState; }
-	public boolean nullable() { return _Nullable; }	
+	public boolean isNullable() { return _Nullable; }	
 	public boolean isLambda() { return _IsLambda; }
 	public boolean isInline() { return _IsInline; }
     
@@ -411,45 +413,6 @@ public final class ScopeInfo
     
     
 	
-	public void calcFirst_Step1()
-	{
-		_FirstAlphabet = new TreeSet();
-		_ContainingScopeForFirstAlphabet = new HashSet();
-		
-		Iterator it = _InitialState.iterateTransitions();
-		while(it.hasNext())
-		{
-			Transition tr = (Transition)it.next();
-			Alphabet a = tr.getAlphabet();
-            if(a.isRef())
-				_ContainingScopeForFirstAlphabet.add(a.asRef().getTargetScope());
-			else
-				_FirstAlphabet.add(a);
-		}
-	}
-	public void calcFirst_Step2()
-	{
-		ScopeList list = new ScopeList(this);
-		Iterator it = _ContainingScopeForFirstAlphabet.iterator();
-		while(it.hasNext())
-		{
-			ScopeInfo neighbor = (ScopeInfo)it.next();
-			_FirstAlphabet.addAll(neighbor.calcFirst_Step2(list));
-		}
-	}
-	private Set calcFirst_Step2(ScopeList list)
-	{
-		ScopeList nextlist = new ScopeList(this, list);
-		Iterator it = _ContainingScopeForFirstAlphabet.iterator();
-		while(it.hasNext())
-		{
-			ScopeInfo neighbor = (ScopeInfo)it.next();
-			if(!list.contains(neighbor))
-				_FirstAlphabet.addAll(neighbor.calcFirst_Step2(nextlist));
-		}
-		return _FirstAlphabet;
-	}
-	
 	public void checkFirstAlphabetAmbiguousity()
 	{
 		Iterator it = iterateStatesHaving(Alphabet.REF_BLOCK);
@@ -458,66 +421,6 @@ public final class ScopeInfo
 			State s = (State)it.next();
 			s.checkFirstAlphabetAmbiguousity();
 		}
-	}
-	
-	public void calcFollow_Step0()
-	{
-		_ContainingScopeForFollowAlphabet = new HashSet();
-	}
-	
-	public void calcFollow_Step1()
-	{
-		Iterator refs = iterateStatesHaving(Alphabet.REF_BLOCK);
-		while(refs.hasNext())
-		{
-			State s = (State)refs.next();
-			Iterator trs = s.iterateTransitions(Alphabet.REF_BLOCK);
-			while(trs.hasNext())
-			{
-				Transition tr = (Transition)trs.next();
-				ScopeInfo target = tr.getAlphabet().asRef().getTargetScope();
-				State next = tr.nextState();
-				if(next.isAcceptable())
-				{
-					_ContainingScopeForFollowAlphabet.add(target);
-					target._ContainingScopeForFollowAlphabet.add(this);
-				}
-				
-				Iterator next_trs = next.iterateTransitions();
-				while(next_trs.hasNext())
-				{
-					Alphabet next_alphabet = ((Transition)next_trs.next()).getAlphabet();
-					if(next_alphabet.isRef())
-						target._FollowAlphabet.addAll(
-                            next_alphabet.asRef().getTargetScope()._FirstAlphabet);
-					else
-						target._FollowAlphabet.add(next_alphabet);
-				}
-			}
-		}
-	}
-	
-	public void calcFollow_Step2()
-	{
-		ScopeList list = new ScopeList(this);
-		Iterator it = _ContainingScopeForFollowAlphabet.iterator();
-		while(it.hasNext())
-		{
-			ScopeInfo neighbor = (ScopeInfo)it.next();
-			_FollowAlphabet.addAll(neighbor.calcFollow_Step2(list));
-		}
-	}
-	private Set calcFollow_Step2(ScopeList list)
-	{
-		ScopeList nextlist = new ScopeList(this, list);
-		Iterator it = _ContainingScopeForFollowAlphabet.iterator();
-		while(it.hasNext())
-		{
-			ScopeInfo neighbor = (ScopeInfo)it.next();
-			if(!list.contains(neighbor))
-				_FollowAlphabet.addAll(neighbor.calcFollow_Step2(nextlist));
-		}
-		return _FollowAlphabet;
 	}
 	
 	public void checkFollowAlphabetAmbiguousity()

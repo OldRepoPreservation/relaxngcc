@@ -201,6 +201,18 @@ public class NGCCRuntime extends XMLFilterImpl implements ValidationContext {
         pushHandler(h);
         currentHandler.enterAttribute(uri,localname,qname);
     }
+    public void spawnChildFromLeaveElement(
+        NGCCHandler h, String uri, String localname, String qname) throws SAXException {
+            
+        pushHandler(h);
+        currentHandler.enterElement(uri,localname,qname);
+    }
+    public void spawnChildFromLeaveAttribute(
+        NGCCHandler h, String uri, String localname, String qname) throws SAXException {
+            
+        pushHandler(h);
+        currentHandler.leaveAttribute(uri,localname,qname);
+    }
     public void spawnChildFromText(
         NGCCHandler h, String value) throws SAXException {
             

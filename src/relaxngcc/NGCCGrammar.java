@@ -17,10 +17,14 @@ import java.io.IOException;
 import java.io.FileOutputStream;
 import relaxngcc.dom.NGCCElement;
 import relaxngcc.dom.NGCCNodeList;
+import relaxngcc.util.ConcatIterator;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.Node;
+
+import relaxngcc.builder.FirstFollow;
 import relaxngcc.builder.ScopeBuilder;
 import relaxngcc.builder.ScopeInfo;
 import relaxngcc.builder.CodeWriter;
@@ -171,6 +175,12 @@ public class NGCCGrammar
 		_DataTypes.add(mdt);
 		return mdt;
 	}
+    /** Iterates all ScopeInfos, including lambda scopes. */
+    public Iterator iterateAllScopeBuilder() {
+        return new ConcatIterator(
+            _Scopes.values().iterator(), _LambdaScopes.values().iterator() );
+    }
+    
 	public ScopeBuilder getScopeBuilderByName(String name) { return (ScopeBuilder)_Scopes.get(name); }
 	public ScopeInfo getScopeInfoByName(String name) { return getScopeBuilderByName(name).getScopeInfo(); }
 	
@@ -215,50 +225,16 @@ public class NGCCGrammar
 		}
 		_Scopes.putAll(_LambdaScopes);
 	}
-	
-	public void calcFirst() throws NGCCException
-	{
-		Iterator it = _Scopes.values().iterator();
-		while(it.hasNext())
-		{
-			ScopeInfo sci = ((ScopeBuilder)it.next()).getScopeInfo();
-			sci.calcFirst_Step1();
-		}
-		it = _Scopes.values().iterator();
-		while(it.hasNext())
-		{
-			ScopeInfo sci = ((ScopeBuilder)it.next()).getScopeInfo();
-			sci.calcFirst_Step2();
-		}
-		it = _Scopes.values().iterator();
-		while(it.hasNext())
-		{
-			ScopeInfo sci = ((ScopeBuilder)it.next()).getScopeInfo();
-			sci.checkFirstAlphabetAmbiguousity();
-		}
-	}
-	public void calcFollow() throws NGCCException
-	{
-		Iterator it = _Scopes.values().iterator();
-		while(it.hasNext())
-		{
-			ScopeInfo sci = ((ScopeBuilder)it.next()).getScopeInfo();
-			sci.calcFollow_Step0();
-		}
-		it = _Scopes.values().iterator();
-		while(it.hasNext())
-		{
-			ScopeInfo sci = ((ScopeBuilder)it.next()).getScopeInfo();
-			sci.calcFollow_Step1();
-		}
-		it = _Scopes.values().iterator();
-		while(it.hasNext())
-		{
-			ScopeInfo sci = ((ScopeBuilder)it.next()).getScopeInfo();
-			sci.calcFollow_Step2();
-			sci.checkFollowAlphabetAmbiguousity();
-		}
-	}
+    
+    /** Computes FIRST and FOLLOW and updates ScopeInfo appropriately. */
+    public void calcFirstAndFollow() {
+        FirstFollow ff = new FirstFollow(this);
+        Iterator itr = iterateAllScopeBuilder();
+        while(itr.hasNext()) {
+            ScopeInfo si = ((ScopeBuilder)itr.next()).getScopeInfo();
+            si.setFirstAndFollow( ff.getFirst(si), ff.getFollow(si) );
+        }
+    }
 	
 	//for debug
 	public void dump(PrintStream strm)

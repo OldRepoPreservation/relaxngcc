@@ -54,8 +54,8 @@ public class RelaxNGCC
 		NGCCGrammar grm = new NGCCGrammar(o);
         
 		grm.buildAutomaton();
-		grm.calcFirst();
-		grm.calcFollow();
+		grm.calcFirstAndFollow();
+        
 		//for debug
 		if(o.printFirstFollow)  grm.dump(System.err);
         if(o.printAutomata)     grm.dumpAutomata(new File("."));
