@@ -56,7 +56,9 @@ public final class State implements Comparable
 	private State _MeetingDestination;
 	private Set _StateForWait;
 
-	private ScopeInfo _Container;
+    /** ScopeInfo that owns this state. */
+	private final ScopeInfo _Container;
+    public ScopeInfo getContainer() { return _Container; }
 	
 	//index identifies this state in a scope as an integer
 	public int getIndex() { return _Index; }
@@ -253,7 +255,8 @@ public final class State implements Comparable
         }
         return result;
     }
-    	
+
+/*    	
 	public void checkFirstAlphabetAmbiguousity()
 	{
 		TreeSet alphabets = new TreeSet();
@@ -298,7 +301,7 @@ public final class State implements Comparable
 		}
 			
 	}
-	
+*/	
 	private void printAmbiguousTransitionsWarning(Transition a, Transition b)
 	{
 		PrintStream s = System.err;
@@ -359,6 +362,8 @@ public final class State implements Comparable
 		s.print(" in ");
 		s.print(_Container.getLocation());
 	}
+
+
 	//for interleave support
 	public void setMeetingDestination(State s) { _MeetingDestination=s; }
 	public State getMeetingDestination() { return _MeetingDestination; }
@@ -368,4 +373,62 @@ public final class State implements Comparable
 		_StateForWait.add(s);
 	}
 	public Iterator iterateStatesForWait() { return _StateForWait.iterator(); }
+    
+    
+    /**
+     * Computes HEAD set of this state.
+     * 
+     * See {@link Head} for the definition.
+     */
+    public Set head( boolean includeEE ) {
+        Set s = new HashSet();
+        head(s,includeEE);
+        return s;
+    }
+    
+    /**
+     * Internal function to compute HEAD.
+     */
+    void head( Set result, boolean includeEE ) {
+        
+        if(isAcceptable() && includeEE )
+            result.add(Head.EVERYTHING_ELSE);
+        
+        Iterator itr = iterateTransitions();
+        while(itr.hasNext()) {
+            Transition t = (Transition)itr.next();
+            t.head( result, includeEE );
+        }
+    }
+    
+    /**
+     * Computes ATTHEAD set of this state and returns them
+     * in a sorted order.
+     * 
+     * See {@link HEAD} for the definition.
+     */
+    public Set attHead() {
+        Set r = new TreeSet(Alphabet.orderComparator);
+        attHead(r);
+        return r;
+    }
+    
+    // internal-version
+    private void attHead( Set result ) {
+        Iterator itr = iterateTransitions();
+        while(itr.hasNext()) {
+            Transition t = (Transition)itr.next();
+            Alphabet a = t.getAlphabet();
+            
+            if(a.isEnterAttribute())
+                result.add(a);
+            else
+            if(a.isRef()) {
+                // ref[X] itself will be included in ATTHEAD
+                result.add(a);
+                if(a.asRef().getTargetScope().isNullable())
+                    t.nextState().attHead(result);
+            }
+        }
+    }
 }

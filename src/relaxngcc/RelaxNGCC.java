@@ -59,7 +59,6 @@ public class RelaxNGCC
 		NGCCGrammar grm = new NGCCGrammar(o);
         
 		grm.buildAutomaton();
-		grm.calcFirstAndFollow();
         
 		// process debug options
 		if(o.printFirstFollow)    grm.dump(System.err);

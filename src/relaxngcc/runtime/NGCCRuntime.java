@@ -359,6 +359,14 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
         indent++;
         currentHandler.leaveAttribute(uri,local,qname);
     }
+    public void revertToParentFromText( Object result, int cookie,
+        String text ) throws SAXException {
+            
+        popHandler();
+        currentHandler.onChildCompleted(result,cookie);
+        indent++;
+        currentHandler.text(text);
+    }
 
 
 //

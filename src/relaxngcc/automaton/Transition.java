@@ -6,6 +6,8 @@
 
 package relaxngcc.automaton;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.Vector;
 
 import relaxngcc.builder.ScopeInfo;
@@ -132,6 +134,39 @@ public final class Transition
 	{ _DisableState = s; }
 	public State getEnableState() { return _EnableState; }
 	public State getDisableState() { return _DisableState; }
+
+
+    /**
+     * Computes HEAD set of this transition.
+     * 
+     * See {@link Head} for the definition.
+     */
+    public Set head( boolean includeEE ) {
+        Set s = new HashSet();
+        head(s,includeEE);
+        return s;
+    }
+    
+    /**
+     * Internal function to compute HEAD(t)
+     * 
+     * @param includeEE
+     *      If true, the return set will include EVERYTHING_ELSE
+     *      when appropriate.
+     */
+    void head( Set result, boolean includeEE ) {
+        Alphabet a = getAlphabet();
+        if(!a.isRef()) {
+            result.add(a);
+        } else {
+            ScopeInfo target = a.asRef().getTargetScope();
+            target.head( result );
+            
+            if( target.isNullable() )
+                nextState().head( result, includeEE );
+        }
+    }
+
     
     
     /** used to produce unique IDs. */

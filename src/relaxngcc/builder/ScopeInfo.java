@@ -43,14 +43,6 @@ public final class ScopeInfo
 	public NGCCGrammar getGrammar() { return _Grammar; }
 	
 	private Set _AllStates;
-
-	private Set _FollowAlphabet;
-	private Set _FirstAlphabet;
-    public void setFirstAndFollow( Set first, Set follow ) {
-        _FirstAlphabet = first;
-        _FollowAlphabet = follow;
-    }
-	
     private Set _ChildScopes; //child lambda scopes
     
 	private boolean _Root; //true if this ScopeInfo represents the content of <start> tag
@@ -63,9 +55,13 @@ public final class ScopeInfo
     // TODO: initial action is not used!
 	private Action _InitialAction;
     private boolean _IsLambda; //lambda scope or not
-	private boolean _Nullable;
 	private boolean _IsInline;
 	private int _ThreadCount;
+
+    /**
+     * See {@link NullableChecker} for the definition of nullability.
+     */
+    private boolean _Nullable;
 
 	public State getInitialState() { return _InitialState; }
 	public boolean isNullable() { return _Nullable; }	
@@ -136,42 +132,12 @@ public final class ScopeInfo
         }
     }
     
-	public Iterator iterateFirstAlphabets()  { return _FirstAlphabet.iterator(); }
-    /** Iterates FIRST alphabets that match the given type mask. */
-	public Iterator iterateFirstAlphabets( int typeMask ) {
-        return new AlphabetIterator(iterateFirstAlphabets(),typeMask);
-    }
-    
-    public Iterator iterateFollowAlphabets() { return _FollowAlphabet.iterator(); }
-    /** Iterates FOLLOW alphabets that match the given type mask. */
-    public Iterator iterateFollowAlphabets( int typeMask ) {
-        return new AlphabetIterator(iterateFollowAlphabets(),typeMask);
-    }
-    
-    
-	public boolean isFollowAlphabet(Alphabet a) { return _FollowAlphabet.contains(a); }
-	public boolean isFirstAlphabet(Alphabet a) { return _FirstAlphabet.contains(a); }
-    
     
     public Iterator iterateChildScopes() { return _ChildScopes.iterator(); }
     
-    /**
-     * Returns true if the FIRST alphabets includes alphabets
-     * of given types.
-     */
-    public boolean hasFirstAlphabet(final int type) {
-        Iterator itr = new SelectiveIterator(_FirstAlphabet.iterator()) {
-            public boolean filter( Object o ) {
-                return ((Alphabet)o).getType()==type;
-            }
-        };
-        return itr.hasNext();
-    }
-    
-    public boolean containsFollowAttributeAlphabet() {
-        return iterateFollowAlphabets(Alphabet.ENTER_ATTRIBUTE).hasNext();
-    }
-    
+
+
+
     /**
      * Fixes the attribute handlers so that a transition by
      * an attribute will always return to the same state that
@@ -367,7 +333,6 @@ public final class ScopeInfo
 		_AllStates = new TreeSet();
 		
         _ChildScopes = new HashSet();
-		_FollowAlphabet = new TreeSet();
         
 		_NSURItoStringConstant = new TreeMap();
 	}
@@ -483,28 +448,7 @@ public final class ScopeInfo
         return a;
 	}
 	
-    
-    
-	
-	public void checkFirstAlphabetAmbiguousity()
-	{
-		Iterator it = iterateStatesHaving(Alphabet.REF_BLOCK);
-		while(it.hasNext())
-		{
-			State s = (State)it.next();
-			s.checkFirstAlphabetAmbiguousity();
-		}
-	}
-	
-	public void checkFollowAlphabetAmbiguousity()
-	{
-		Iterator it = _AllStates.iterator();
-		while(it.hasNext())
-		{
-			State s = (State)it.next();
-			s.checkFollowAlphabetAmbiguousity();
-		}
-	}
+
 	
     /**
      * Writes the beginning of the class to the specified output.
@@ -686,7 +630,7 @@ public final class ScopeInfo
 	public void dump(PrintStream strm)
 	{
 		strm.println("Scope " + _Name);
-		strm.print(" FIRST: ");
+/*		strm.print(" FIRST: ");
 		Iterator it = _FirstAlphabet.iterator();
 		while(it.hasNext())
 		{
@@ -702,7 +646,7 @@ public final class ScopeInfo
 			strm.print(((Alphabet)it.next()).toString());
 			strm.print(", ");
 		}
-		strm.println();
+*/		strm.println();
 	}
     
     
@@ -814,5 +758,20 @@ public final class ScopeInfo
             label.append(actions[i].getUniqueId());
         }
         return label.toString();
+    }
+    
+    private Set cachedHEAD = null;
+    
+    /**
+     * Computes the HEAD set of this scope (that doesn't include
+     * EVERYTHING_ELSE token.)
+     * 
+     * See {@link Head} for the definition.
+     */
+    public void head( Set result ) {
+        // to speed up computation, we will cache the computed value.
+        if(cachedHEAD==null)
+            cachedHEAD = getInitialState().head(false);
+        result.addAll(cachedHEAD);
     }
 }

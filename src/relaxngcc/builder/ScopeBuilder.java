@@ -30,17 +30,12 @@ public class ScopeBuilder
 	public static final int TYPE_COMBINED_CHOICE = 3;
 	public static final int TYPE_COMBINED_INTERLEAVE = 4;
 	
-	public static final int NULLABLE_UNKNOWN = -1;
-	public static final int NULLABLE_FALSE = 0;
-	public static final int NULLABLE_TRUE = 1;
-	
 	private int _Type;
 	private NGCCElement _Root;
 	private ScopeInfo _ScopeInfo;
 	private NGCCGrammar _Grammar;
 	private Stack _Namespaces;
 	private boolean _ExpandInline;
-	private int _Nullable;
 	private int _ThreadCount;
 
     /**
@@ -58,7 +53,6 @@ public class ScopeBuilder
 		_Root = root;
 		_ThreadCount = 0;
 		_Grammar = grm;
-		_Nullable = NULLABLE_UNKNOWN;
         
 		_Namespaces = new Stack();
 		
@@ -70,8 +64,6 @@ public class ScopeBuilder
 		_ScopeInfo = new ScopeInfo(grm, _Type, location, _ExpandInline);
 		_ScopeInfo.addNSURI(ns);
 	} 
-	
-	public boolean nullable() { return _Nullable==NULLABLE_TRUE; }
 	
 	/** Creates new ScopeBuilder */
     public static ScopeBuilder create(NGCCGrammar grm, String location, NGCCElement root)
@@ -148,70 +140,6 @@ public class ScopeBuilder
 	public String getName() { return _ScopeInfo.getName(); }
 	public ScopeInfo getScopeInfo() { return _ScopeInfo; }
 	
-	public void determineNullable() throws NGCCException
-	{
-		if(_Nullable != NULLABLE_UNKNOWN) return;
-		NGCCNodeList nl = _Root.getChildNodes();
-		for(int i=0; i<nl.getLength(); i++)
-		{
-			NGCCElement e = nl.item(i);
-			if(e==null || !e.getNamespaceURI().equals(NGCCGrammar.RELAXNG_NSURI)) continue;
-			_Nullable = determineNullable(e);
-			_ScopeInfo.setNullable(_Nullable==NULLABLE_TRUE);
-			return;
-		}
-		throw new NGCCException("failed to determine the scope[" + _ScopeInfo.getName() + "] is nullable or not");
-	}
-	private int determineNullable(NGCCElement elem) throws NGCCException
-	{
-		String name = elem.getLocalName();
-		
-		if(name.equals("element") || name.equals("attribute") || name.equals("data") || name.equals("text") || name.equals("value") || name.equals("notAllowed"))
-			return NULLABLE_FALSE;
-		else if(name.equals("zeroOrMore") || name.equals("optional") || name.equals("empty"))
-			return NULLABLE_TRUE;
-		else if(name.equals("oneOrMore") || name.equals("list") || name.equals("name") || name.equals("nsName") || name.equals("anyName"))
-		{
-			NGCCNodeList nl = elem.getChildNodes();
-			for(int i=0; i<nl.getLength(); i++)
-			{
-				NGCCElement e = nl.item(i);
-				if(e==null || !e.getNamespaceURI().equals(NGCCGrammar.RELAXNG_NSURI)) continue;
-				return determineNullable(e);
-			}
-			throw new NGCCException("wrong syntax at "+name+" in scope[" + _ScopeInfo.getName() + "]");
-		}
-		else if(name.equals("group"))
-		{
-			NGCCNodeList nl = elem.getChildNodes();
-			for(int i=0; i<nl.getLength(); i++)
-			{
-				NGCCElement e = nl.item(i);
-				if(e==null || !e.getNamespaceURI().equals(NGCCGrammar.RELAXNG_NSURI)) continue;
-				if(determineNullable(nl.item(i))==NULLABLE_FALSE) return NULLABLE_FALSE;
-			}
-			return NULLABLE_TRUE;
-		}
-		else if(name.equals("interleave") || name.equals("choice"))
-		{
-			NGCCNodeList nl = elem.getChildNodes();
-			for(int i=0; i<nl.getLength(); i++)
-			{
-				NGCCElement e = nl.item(i);
-				if(e==null || !e.getNamespaceURI().equals(NGCCGrammar.RELAXNG_NSURI)) continue;
-				if(determineNullable(nl.item(i))==NULLABLE_TRUE) return NULLABLE_TRUE;
-			}
-			return NULLABLE_FALSE;
-		}
-		else if(name.equals("ref"))
-		{
-			ScopeBuilder sb = _Grammar.getScopeBuilderByName(elem.getAttribute("name"));
-			sb.determineNullable();
-			return sb._Nullable;
-		}
-		else
-			throw new NGCCException("unknown element "+name+" is found in scope[" + _ScopeInfo.getName() + "]");
-	}
 	
 	public void buildAutomaton()
 	{

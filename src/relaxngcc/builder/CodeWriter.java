@@ -7,6 +7,7 @@
 package relaxngcc.builder;
 import java.io.PrintStream;
 import java.text.MessageFormat;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -16,6 +17,7 @@ import java.util.TreeSet;
 import java.util.Vector;
 
 import relaxngcc.automaton.Alphabet;
+import relaxngcc.automaton.Head;
 import relaxngcc.automaton.State;
 import relaxngcc.automaton.Transition;
 import relaxngcc.NGCCGrammar;
@@ -203,6 +205,65 @@ public class CodeWriter
 		_Grammar = grm;
 		_Options = o;
     }
+    
+    
+    /** Special transition that means "revert to the parent." */
+    private static final Transition REVERT_TO_PARENT = new Transition(null,null);
+    
+    private class TransitionTable {
+        private final Map table = new HashMap();
+        
+        public void add( State s, Alphabet alphabet, Transition action ) {
+            Map m = (Map)table.get(s);
+            if(m==null)
+                table.put(s,m=new HashMap());
+            
+            if(m.containsKey(alphabet)) {
+                // TODO: proper error report
+                System.out.println(MessageFormat.format(
+                    "State {0} has a conflict by {1}",
+                    new Object[]{
+                        Integer.toString(s.getIndex()),
+                        alphabet } ));
+            }
+            m.put(alphabet,action);
+        }
+        
+        /**
+         * If EVERYTHING_ELSE is added to a transition table,
+         * we will store that information here.
+         */
+        private final Map eeAction = new HashMap();
+        
+        public void addEverythingElse( State s, Transition action ) {
+            eeAction.put(s,action);
+        }
+        
+        /**
+         * Gets the transition associated to EVERYTHING_ELSE alphabet
+         * in the given state if any. Or null.
+         */
+        public Transition getEverythingElse( State s ) {
+            return (Transition)eeAction.get(s);
+        }
+        
+        /**
+         * Lists all entries of the transition table with
+         * the specified state in terms of  {@link Map.Entry}.
+         */
+        public Iterator list( State s ) {
+            Map m = (Map)table.get(s);
+            if(m==null)
+                return new Iterator() {
+                    public boolean hasNext() { return false; }
+                    public Object next() { return null; }
+                    public void remove() { throw new UnsupportedOperationException(); }
+                };
+            else
+                return m.entrySet().iterator();
+        }
+    }
+    
 	public void output(PrintStream out)
 	{
 		_output = out;
@@ -212,12 +273,38 @@ public class CodeWriter
         
         writeAcceptableStates();
         
-        writeEventHandler(Alphabet.ENTER_ELEMENT,   "enterElement" );
-        writeEventHandler(Alphabet.LEAVE_ELEMENT,     "leaveElement");
-        writeEventHandler(Alphabet.ENTER_ATTRIBUTE, "enterAttribute" );
-        writeEventHandler(Alphabet.LEAVE_ATTRIBUTE,   "leaveAttribute");
+        // build transition table map< state, map<non-ref alphabet,transition> >
+        TransitionTable table = new TransitionTable();
+        
+        Iterator itr = _Info.iterateAllStates();
+        while(itr.hasNext()) {
+            State s = (State)itr.next();
+            
+            if(s.isAcceptable())
+                table.addEverythingElse( s, REVERT_TO_PARENT );
+            
+            Iterator jtr = s.iterateTransitions();
+            while(jtr.hasNext()) {
+                Transition t = (Transition)jtr.next();
+                
+                Set head = t.head(true);
+                if(head.contains(Head.EVERYTHING_ELSE)) {
+                    // TODO: check ambiguity
+                    table.addEverythingElse( s, t );
+                    head.remove(Head.EVERYTHING_ELSE);
+                }
+                for (Iterator ktr = head.iterator(); ktr.hasNext();)
+                    table.add(s,(Alphabet)ktr.next(),t);
+            }
+        }
+        
+        
+        writeEventHandler(table,Alphabet.ENTER_ELEMENT,   "enterElement" );
+        writeEventHandler(table,Alphabet.LEAVE_ELEMENT,   "leaveElement");
+        writeEventHandler(table,Alphabet.ENTER_ATTRIBUTE, "enterAttribute");
+        writeEventHandler(table,Alphabet.LEAVE_ATTRIBUTE, "leaveAttribute");
     
-		writeTextHandler();
+		writeTextHandler(table);
 		writeAttributeHandler();
         writeChildCompletedHandler();
         
@@ -256,9 +343,7 @@ public class CodeWriter
     /**
      * Writes event handlers for (enter|leave)(Attribute|Element) methods.
      */
-    private void writeEventHandler( int type, String eventName ) {
-        
-		Iterator states = _Info.iterateStatesHaving(type|Alphabet.REF_BLOCK);// /*HavingStartElementOrRef*/(type);
+    private void writeEventHandler( TransitionTable table, int type, String eventName ) {
         
 		printSection(eventName);
 		_output.println(MessageFormat.format(
@@ -286,88 +371,74 @@ public class CodeWriter
         
 		SwitchBlockInfo bi = new SwitchBlockInfo(type);
 		
+        Iterator states = _Info.iterateAllStates();
 		while(states.hasNext()) {
-			//normal transitions by startElement type alphabets
-			State st = (State)states.next();
-			Iterator transitions = st.iterateTransitions(type); // iterateStartElementTransitions();
-			
-            while(transitions.hasNext()) {
-				Transition tr = (Transition)transitions.next();
-				Alphabet.Markup a = tr.getAlphabet().asMarkup();
-				bi.addConditionalCode(st, 
-					a.getKey().createJudgementClause(_Info, "uri", "localName"),
-					transitionCode(tr));
-			}
-			
-			//ref elements
-			transitions = st.iterateTransitions(Alphabet.REF_BLOCK);
-			while(transitions.hasNext())
-			{
-				Transition ref_tr = (Transition)transitions.next();
-				ScopeInfo ref_block = ref_tr.getAlphabet().asRef().getTargetScope();
-				boolean first_clause = true;
-				String clause = "";
-                Iterator first_alphabets = ref_block.iterateFirstAlphabets(type);
-				while(first_alphabets.hasNext())
-				{
-					Alphabet.Markup a = (Alphabet.Markup)first_alphabets.next();
-					if(!first_clause) clause += "|| ";
-					clause += "(" +  a.getKey().createJudgementClause(_Info, "uri", "localName") + ") ";
-					first_clause = false;
-				}
-				
-				if(!first_clause)
-					bi.addConditionalCode(st, clause, 
-                        buildCodeToSpawnChild(eventName,ref_tr,
-                            "uri,localName,qname"));
-			}
-			
-		}
-
-		//end of scope
-		states = _Info.iterateAcceptableStates();
-		while(states.hasNext())
-		{
 			State st = (State)states.next();
             
-            // We don't need to check the validity of this transition.
-            // because it will be checked by the parent anyway.
-            String action = MessageFormat.format(
-                "runtime.revertToParentFrom{0}({1},cookie, uri,localName,qname);",
-                new Object[]{
-                    capitalize(eventName),
-                    _Info.getReturnVariable(),
-                });
-            
-            bi.addElseCode( st,
-                st.invokeActionsOnExit()+action );
-
-/*
-			Iterator follows = _Info.iterateFollowAlphabets(type);
-			while(follows.hasNext())
-			{
-				Alphabet.Markup f = (Alphabet.Markup)follows.next();
-                String action = MessageFormat.format(
-                    "runtime.revertToParentFrom{0}({1},cookie, uri,localName,qname);",
-                    new Object[]{
-                        capitalize(eventName),
-                        _Info.getReturnVariable(),
-                    });
-                    
-                action = st.invokeActionsOnExit()+action;
+            // list all the transition table entry
+            Iterator itr = table.list(st);
+            while(itr.hasNext()) {
+                Map.Entry e = (Map.Entry)itr.next();
                 
-				bi.addConditionalCode(
-                    st,
-                    f.getKey().createJudgementClause(_Info, "uri", "localName"),
-                    action);
+                Alphabet a = (Alphabet)e.getKey();      // alphabet
+                Transition tr = (Transition)e.getValue();// action to perform
+                
+                if(a.getType()!=type)
+                    continue;   // we are not interested in this attribute now.
+                
+				bi.addConditionalCode(st,
+                    a.asMarkup().getKey().createJudgementClause(_Info, "uri", "localName"),
+					buildTransitionCode(tr,eventName,"uri,localName,qname"));
 			}
-*/
+
+            // if there is EVERYTHING_ELSE transition, add an else clause.
+            Transition tr = table.getEverythingElse(st);
+            if(tr!=null)
+                bi.addElseCode(st,
+                    buildTransitionCode(tr,eventName,"uri,localName,qname"));
 		}
+        
+        
 		
 		bi.output("unexpected"+capitalize(eventName));
 		
 		_output.println("}");   //end of method
 	}
+    
+    /**
+     * Gets a code fragment that corresponds to a strate transition.
+     * This includes house-keeping, any associated actions, changing
+     * the current state, etc.
+     * 
+     * @param params
+     *      Additional parameters that need to be passed to
+     *      the revertToParentFromXXX method or the
+     *      spawnChildFromXXX method.
+     */
+    private String buildTransitionCode( Transition tr, String eventName, String params ) {
+	    if(tr==REVERT_TO_PARENT)
+	        return MessageFormat.format(
+	            "runtime.revertToParentFrom{0}({1},cookie, {2});",
+	            new Object[]{
+	                capitalize(eventName),
+	                _Info.getReturnVariable(),
+                    params,
+	            });
+        if(tr.getAlphabet().isText()) {
+            Alphabet.Text ta = tr.getAlphabet().asText();
+            StringBuffer buf = new StringBuffer();
+            String alias = ta.getAlias();
+            if(alias!=null)
+                buf.append(alias + "=___$value;");
+            buf.append(buildMoveToStateCode(tr));
+            
+            return buf.toString();
+        }
+	    if(tr.getAlphabet().isRef())
+	        return buildCodeToSpawnChild(eventName,tr,params);
+            
+        return buildMoveToStateCode(tr);
+    }
     
     /**
      * Generates a code fragment that creates a new child object
@@ -419,6 +490,65 @@ public class CodeWriter
         
         return code.toString();
     }
+
+    
+    /**
+     * Creates code that changes the current state to the nextState
+     * of the transition.
+     */
+    private String buildMoveToStateCode(Transition tr/*, boolean output_process_attribute*/)
+    {
+        StringBuffer buf = new StringBuffer();
+        
+        buf.append(tr.invokePrologueActions());
+        State nextstate = tr.nextState();
+        if(tr.getDisableState()!=null)
+        {
+            if(tr.getDisableState().getThreadIndex()==-1)
+                buf.append("_ngcc_current_state=-1;");
+            else
+                buf.append("_ngcc_threaded_state[" + tr.getDisableState().getThreadIndex() + "]=-1;");
+            buf.append(_Options.newline);
+        }
+        if(tr.getEnableState()!=null)
+        {
+            if(tr.getEnableState().getThreadIndex()==-1)
+                buf.append("_ngcc_current_state=" + tr.getEnableState().getIndex());
+            else
+                buf.append("_ngcc_threaded_state[" + tr.getEnableState().getThreadIndex() + "]="+ tr.getEnableState().getIndex());
+            buf.append(";");
+            buf.append(_Options.newline);
+        }
+        buf.append(tr.invokeEpilogueActions());
+        State result = appendStateTransition(buf, nextstate);
+        buf.append(_Options.newline);
+        if(_Options.debug)
+        {
+            if(result.getThreadIndex()==-1)
+                buf.append("runtime.trace(\"state " + result.getIndex() + "\");");
+            else
+                buf.append("runtime.trace(\"state [" + result.getThreadIndex() + "]"+ result.getIndex() + "\");");
+            buf.append(_Options.newline);
+        }
+        if(_Options.style!=Options.STYLE_MSV)
+        {
+            if(result.getListMode()==State.LISTMODE_ON)
+                buf.append("runtime.setListMode();"); // _tokenizeText=true;");
+//  TODO: why do we need this?
+//          else if(result.getListMode()==State.LISTMODE_OFF)
+//              buf.append("_tokenizeText=false;");
+        }
+        
+        boolean in_if_block = false;
+
+        // if necessary, check attribute transitions.
+        if(!nextstate.attHead().isEmpty()) {
+            if(in_if_block) buf.append("else ");
+            buf.append("processAttribute();" + _Options.newline);
+        }
+                                
+        return buf.toString();
+    }
     
     /** Capitalizes the first character. */
     private String capitalize( String name ) {
@@ -427,52 +557,47 @@ public class CodeWriter
     
 	
 	//outputs text consumption handler. this handler branches by output method
-	private void writeTextHandler() {
-		Iterator states = _Info.iterateStatesHaving(
-            Alphabet.VALUE_TEXT|Alphabet.DATA_TEXT|Alphabet.REF_BLOCK ); //Text();
-            
+	private void writeTextHandler(TransitionTable table) {
 		printSection("text");
 		_output.println("public void text(String ___$value) throws SAXException");
 		_output.println("{");
 		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.VALUE_TEXT);
-		while(states.hasNext())
-		{
-			State st = (State)states.next();
-			Iterator transitions = st.iterateTransitions(Alphabet.VALUE_TEXT|Alphabet.DATA_TEXT);
-			while(transitions.hasNext())
-			{
-				Transition tr = (Transition)transitions.next();
-				Alphabet.Text a = tr.getAlphabet().asText();
-				StringBuffer buf = new StringBuffer();
-				String alias = a.getAlias();
-				if(alias!=null)
-					buf.append(alias + "=___$value;");
-				buf.append(transitionCode(tr));
-				
-				if(a.isValueText())
-					bi.addConditionalCode(st, "___$value.equals(\""
-                        + a.asValueText().getValue() + "\")", buf.toString());
-				else	
-					bi.addElseCode(st, buf.toString());
-            }
+        
+        Iterator states = _Info.iterateAllStates();
+        while(states.hasNext()) {
+            State st = (State)states.next();
+            // if a transition by <data> is present, then
+            // we cannot execute "everything_else" action.
+            boolean dataPresent = false;
             
-            
-            //ref elements
-            transitions = st.iterateTransitions(Alphabet.REF_BLOCK);
-            while(transitions.hasNext())
-            {
-                Transition ref_tr = (Transition)transitions.next();
-                ScopeInfo ref_block = ref_tr.getAlphabet().asRef().getTargetScope();
+            // list all the transition table entry
+            Iterator itr = table.list(st);
+            while(itr.hasNext()) {
+                Map.Entry e = (Map.Entry)itr.next();
                 
-                if(ref_block.hasFirstAlphabet(Alphabet.DATA_TEXT)
-                || ref_block.hasFirstAlphabet(Alphabet.VALUE_TEXT)) {
-                    bi.addPrologue(st,
-                        buildCodeToSpawnChild("text",ref_tr,
-                            "___$value"));
-                    break;
+                Alphabet a = (Alphabet)e.getKey();      // alphabet
+                Transition tr = (Transition)e.getValue();// action to perform
+                
+                if(!a.isText())
+                    continue;   // we are not interested in this attribute now.
+                
+                String code = buildTransitionCode(tr,"text","___$value");
+                if(a.isValueText())
+                    bi.addConditionalCode(st, "___$value.equals(\""
+                        + a.asValueText().getValue() + "\")", code );
+                else {
+                    dataPresent = true;
+                    bi.addElseCode(st, code );
                 }
             }
-		}
+
+            // if there is EVERYTHING_ELSE transition, add an else clause.
+            Transition tr = table.getEverythingElse(st);
+            if(tr!=null && !dataPresent)
+                bi.addElseCode(st,
+                    buildTransitionCode(tr,"text","___$value"));
+        }
+        
 		bi.output(null);
 		_output.println("}");   //end of function
 	}
@@ -547,9 +672,8 @@ public class CodeWriter
         _output.println("}");   //end of the function
     }
     
-	private void writeAttributeHandler()
-	{
-		Iterator states = _Info.iterateAllStates();
+    
+	private void writeAttributeHandler() {
 		printSection("attribute");
 		_output.println("public void processAttribute() throws SAXException");
 		_output.println("{");
@@ -559,55 +683,30 @@ public class CodeWriter
 		
 		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.ENTER_ATTRIBUTE);
 		
-		while(states.hasNext())
-		{
-			State st = (State)states.next();
-			if(!needToCheckAttribute(st)) continue;
-			
-			Iterator transitions = st.iterateTransitions(
-                Alphabet.ENTER_ATTRIBUTE|Alphabet.REF_BLOCK);
-                
-            // sort alphabets in the order of the "order" field.
-            TreeSet alphabets = new TreeSet(Alphabet.orderComparator);
-			while(transitions.hasNext()) {
-				Transition tr = (Transition)transitions.next();
-                alphabets.add( tr.getAlphabet() );
-            
-            }
-                
-            // then write handlers in that order
-            Iterator itr = alphabets.iterator();
-            while(itr.hasNext()) {
-                Alphabet a = (Alphabet)itr.next();
-                
-                if(a.isEnterAttribute()) {
-                    writeAttributeHandlerBlock( bi, st, a.asEnterAttribute() );
-                } else {
-                    Alphabet.Ref r = a.asRef();
-                    
-                    Iterator jtr = r.getTargetScope().iterateFirstAlphabets(
-                        Alphabet.ENTER_ATTRIBUTE);
-                    while(jtr.hasNext())
-                        writeAttributeHandlerBlock( bi, st,
-                            ((Alphabet)jtr.next()).asEnterAttribute() );
-                }
-			}
-/*  dangling attribute handler approach. it doesn't work.            
-            // by default, return
-            bi.addElseCode(st,"return;");
-            
-            StringBuffer buf = new StringBuffer();
-            appendStateTransition(buf,st);
-            bi.addEpilogue(st,buf.toString());
-*/
-		}
-		
-        // TODO: end of scope handling.
+        Iterator states = _Info.iterateAllStates();
+        while(states.hasNext()) {
+            State st = (State)states.next();
+            writeAttributeHandler(bi,st,st);
+        }
         
-		bi.output(null);
-		
-		_output.println("}");   //end of function
-	}
+        bi.output(null);
+        _output.println("}");   //end of function
+    }
+    
+    private void writeAttributeHandler( SwitchBlockInfo bi, State source, State current ) {
+        
+        Set attHead = current.attHead();
+        for(Iterator jtr=attHead.iterator(); jtr.hasNext(); ) {
+            Alphabet a = (Alphabet)jtr.next();
+            
+            if(a.isRef()) {
+                writeAttributeHandler( bi, source,
+                    a.asRef().getTargetScope().getInitialState() );
+            } else {
+                writeAttributeHandlerBlock( bi, source, a.asEnterAttribute() );
+            }
+        }
+    }
 
     private void writeAttributeHandlerBlock( SwitchBlockInfo bi, State st, 
         Alphabet.EnterAttribute a ) {
@@ -620,93 +719,8 @@ public class CodeWriter
                     a.getKey().getName()}),
             "runtime.consumeAttribute(ai);" + _Options.newline);
     }
-	
-	private String transitionCode(Transition tr/*, boolean output_process_attribute*/)
-	{
-		StringBuffer buf = new StringBuffer();
-		
-        buf.append(tr.invokePrologueActions());
-		State nextstate = tr.nextState();
-		if(tr.getDisableState()!=null)
-		{
-			if(tr.getDisableState().getThreadIndex()==-1)
-				buf.append("_ngcc_current_state=-1;");
-			else
-				buf.append("_ngcc_threaded_state[" + tr.getDisableState().getThreadIndex() + "]=-1;");
-			buf.append(_Options.newline);
-		}
-		if(tr.getEnableState()!=null)
-		{
-			if(tr.getEnableState().getThreadIndex()==-1)
-				buf.append("_ngcc_current_state=" + tr.getEnableState().getIndex());
-			else
-				buf.append("_ngcc_threaded_state[" + tr.getEnableState().getThreadIndex() + "]="+ tr.getEnableState().getIndex());
-			buf.append(";");
-			buf.append(_Options.newline);
-		}
-        buf.append(tr.invokeEpilogueActions());
-		State result = appendStateTransition(buf, nextstate);
-		buf.append(_Options.newline);
-		if(_Options.debug)
-		{
-			if(result.getThreadIndex()==-1)
-				buf.append("runtime.trace(\"state " + result.getIndex() + "\");");
-			else
-				buf.append("runtime.trace(\"state [" + result.getThreadIndex() + "]"+ result.getIndex() + "\");");
-			buf.append(_Options.newline);
-		}
-		if(_Options.style!=Options.STYLE_MSV)
-		{
-			if(result.getListMode()==State.LISTMODE_ON)
-				buf.append("runtime.setListMode();"); // _tokenizeText=true;");
-//  TODO: why do we need this?
-//			else if(result.getListMode()==State.LISTMODE_OFF)
-//				buf.append("_tokenizeText=false;");
-		}
-		
-		boolean in_if_block = false;
-/*		//in accept state, try unwinding
-		if(result.isAcceptable() && _Info.containsFollowAttributeAlphabet())
-		{
-			buf.append("if(");
-			writeHavingAttributeCheckCode(_Info, _Info.iterateFollowAlphabets(), buf);
-			buf.append(") resetHandlerByAttr();");
-			buf.append(_Options.newline);
-			in_if_block = true;
-		}
-*/		
-		if(needToCheckAttribute(nextstate))
-		{
-			if(in_if_block) buf.append("else ");
-			buf.append("processAttribute();" + _Options.newline);
-		}
-								
-		return buf.toString();
-	}
     
-    /**
-     * Returns true if we need to check the attribute transitions from
-     * the given state.
-     */
-    private boolean needToCheckAttribute(State s)
-    {
-        // if the state has any transition by enterAttribute,
-        // we sure need to check them.
-    	if(s.hasTransition(Alphabet.ENTER_ATTRIBUTE)) return true;
-    	
-        // the other possibility is that we can spawn a new child,
-        // which in turn starts with the enterAttribute transition.
-        Iterator it = s.iterateTransitions(Alphabet.REF_BLOCK);
-    	while(it.hasNext())
-    	{
-    		Transition tr = (Transition)it.next();
-			ScopeInfo sc = tr.getAlphabet().asRef().getTargetScope();
-            if(sc.hasFirstAlphabet(Alphabet.ENTER_ATTRIBUTE)) return true;
-    	}
-    	return false;
-    }
-    
-	
+	// What's the difference of this method and "buildMoveToStateCode"? - Kohsuke
 	private State appendStateTransition(StringBuffer buf, State deststate)
 	{
 		if(deststate.getThreadIndex()==-1)
@@ -739,29 +753,7 @@ public class CodeWriter
 			return deststate;
 	}
 	
-	
-	private static void writeHavingAttributeCheckCode(ScopeInfo sci, Iterator alphabets, StringBuffer code)
-	{
-		boolean first = true;
-		while(alphabets.hasNext())
-		{
-			Alphabet _a = (Alphabet)alphabets.next();
-            if(!_a.isEnterAttribute())   continue;
-            
-            NameClass name = _a.asEnterAttribute().getKey();
-			
-			if(!first) code.append(" || ");
-			code.append("runtime.getAttributeIndex(");
-			code.append(sci.getNSStringConstant(name.getNSURI()));
-			code.append(", \"");
-			code.append(name.getName());
-			code.append("\")!=-1");
-			first = false;
-		}
-	}
-	
-	private void printSection(String title)
-	{
+	private void printSection(String title) {
 		_output.println();
 		_output.print("/* ------------ " + title + " ------------ */");
 		_output.println();

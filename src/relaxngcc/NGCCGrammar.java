@@ -33,7 +33,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.Node;
 
-import relaxngcc.builder.FirstFollow;
+import relaxngcc.builder.NullableChecker;
 import relaxngcc.builder.ScopeBuilder;
 import relaxngcc.builder.ScopeInfo;
 import relaxngcc.builder.CodeWriter;
@@ -270,30 +270,14 @@ public class NGCCGrammar
 //        }
     }
 	
-	public void buildAutomaton() throws NGCCException
-	{
+	public void buildAutomaton() throws NGCCException {
 		Iterator it = _Scopes.values().iterator();
 		while(it.hasNext())
-		{
-			((ScopeBuilder)it.next()).determineNullable();
-		}
-		it = _Scopes.values().iterator();
-		while(it.hasNext())
-		{
 			((ScopeBuilder)it.next()).buildAutomaton();
-		}
 		_Scopes.putAll(_LambdaScopes);
+            
+        NullableChecker.computeNullability(this);
 	}
-    
-    /** Computes FIRST and FOLLOW and updates ScopeInfo appropriately. */
-    public void calcFirstAndFollow() {
-        FirstFollow ff = new FirstFollow(this);
-        Iterator itr = iterateAllScopeBuilder();
-        while(itr.hasNext()) {
-            ScopeInfo si = ((ScopeBuilder)itr.next()).getScopeInfo();
-            si.setFirstAndFollow( ff.getFirst(si), ff.getFollow(si) );
-        }
-    }
 	
 	//for debug
 	public void dump(PrintStream strm)
