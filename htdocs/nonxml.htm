@@ -1,0 +1,61 @@
+<html>
+<head>
+	<title>non-XML syntax</title>
+	<link rel="stylesheet" href="ngcc.css"/>
+	<?ja?><meta HTTP-EQUIV="Content-Type" CONTENT="text/html; CHARSET=shift_jis"><?/ja?>
+</head>
+<body>
+<h1>non-XML syntax <?ja?>サポート<?/ja?><?en?>Support<?/en?></h1>
+<p align="right">Jan 6, 2002</p>
+<h2><?ja?>non-XML syntaxとは<?/ja?><?en?>What is non-XML syntax?<?/en?></h2>
+<?ja?>
+<p>　RELAX NG Non-XML syntaxはJames Clark氏の提案した、RELAX NG文法をXMLではない形式で書き表そうという試みです。使いこなすには少々練習が要りますが、慣れてくるとXML形式の文法に比べ作成時のタイプ量は減り、文法の構造が直感的にわかりやすくなってきます。</p>
+<p>　non-XML syntaxで書かれた文法を通常のXML形式に変換するプログラムはnon-XML syntaxの解説ページ <a href="http://www.thaiopensource.com/relaxng/nonxml/">http://www.thaiopensource.com/relaxng/nonxml/</a> で公開されています。James Clark氏の許可を得て、RelaxNGCCでのnon-XML syntaxサポートはその変換プログラムのソースコードを元になされました。</p><?/ja?>
+<?en?>
+<p> RelaxNG Non-XML syntax, suggested by James Clark, is a representation for RELAX NG with a style like programming language. A little of practice is needed for mastering non-XML syntax, but it will eliminate a lot of typing when you write RelaxNG grammar with text editor and indicate the structure of the grammar intuitively.</p>
+<p> A conversion program from non-XML syntax into regular XML syntax is available from the web page of James Clark <a href="http://www.thaiopensource.com/relaxng/nonxml/">http://www.thaiopensource.com/relaxng/nonxml/</a>. I got a permission from James Clark and added support for non-XML syntax to RelaxNGCC.</p><?/en?>
+
+<h2><?ja?>サンプル<?/ja?><?en?>Sample and explanation<?/en?></h2>
+<p><?ja?>まず、もとになるnon-XML syntaxによる文法です。<?/ja?><?en?>At first, here is the base non-XML syntax grammar.<?/en?></p>
+<pre>
+datatypes xsd = "http://www.w3.org/2001/XMLSchema-datatypes"
+
+start =
+  element team {
+    element player {
+      attribute number {
+	xsd:positiveInteger
+      },
+      element name {
+	text
+      }
+    }+
+  }
+
+</pre>
+
+<p><?ja?>次にこれに対しRelaxNGCCの機能を付け加えたnon-XML syntaxです。non-XML syntaxのannotation機能を使って書いています。<?/ja?><?en?> The next is the input for RelaxNGCC in non-XML syntax. It based on annotation feature of the syntax.<?/en?></p>
+<pre>
+datatypes xsd = "http://www.w3.org/2001/XMLSchema-datatypes"
+namespace c = "http://www.xml.gr.jp/xmlns/relaxngcc"
+
+start [<span class="emph-code">c:class="sample1"</span>] =
+  element team {
+    element player {
+      attribute number {
+	xsd:positiveInteger [<span class="emph-code">c:alias="number"</span>] &gt;&gt; <span class="emph-code">&lt;c:java&gt;System.out.println(number);&lt;/c:java&gt;</span>
+      },
+      element name {
+	text [<span class="emph-code">c:alias="name"</span>] &gt;&gt; <span class="emph-code">&lt;c:java&gt;System.out.println(name);&lt;/c:java&gt;</span>
+      }
+    }+
+  }
+
+</pre>
+
+<h2>RelaxNGCC <?ja?>オプション<?/ja?><?en?>Option<?/en?></h2>
+<p><?ja?>　RelaxNGCCで、non-XML syntaxで書かれた文法を入力として使うときには、RelaxNGCCの起動オプションに<tt>--nonxml</tt>を使います。<?/ja?><?en?> If your input grammar is written in non-XML syntax, add <tt>--nonxml</tt> option at the execution of RelaxNGCC.<?/en?></p>
+<hr>
+<p align="right"><?ja?><a href="index_ja.htm">RelaxNGCC home</a><?/ja?><?en?><a href="index_en.htm">RelaxNGCC home</a><?/en?></p>
+</body>
+</html>
