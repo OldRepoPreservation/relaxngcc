@@ -114,7 +114,7 @@ Class-Path: crimson.jar relaxngDatatype.jar xsdlib.jar msv.jar jaxp-api.jar
 	</target>
 	
 	<!-- create a distribution package -->
-	<target name="release" depends="jar,javadoc">
+	<target name="release" depends="jar,javadoc,doc">
 		<tstamp />
 		<property name="stage" value="relaxngcc-${DSTAMP}"/>
 		
@@ -123,7 +123,16 @@ Class-Path: crimson.jar relaxngDatatype.jar xsdlib.jar msv.jar jaxp-api.jar
 		<zip	zipfile="package/${stage}.zip">
 			<zipfileset dir="." includes="relaxngcc.jar" fullpath="${stage}/relaxngcc.jar" />
 			<zipfileset dir="src" includes="**/*.*" prefix="${stage}/src" />
-			<zipfileset dir="doc" includes="**/*.*" prefix="${stage}" />
+			<zipfileset dir="sample" includes="**/*.*" prefix="${stage}/sample" />
+			<zipfileset dir="htdocs" includes="ja/*.*,en/*.*" prefix="${stage}/doc">
+				<exclude name="**/.cvsignore"/>
+			</zipfileset>
+			<zipfileset dir="lib" prefix="${stage}">
+				<include name="relaxngDatatype.jar" />
+				<include name="xerces.jar" />
+				<include name="msv.jar" />
+				<include name="xsdlib.jar" />
+			</zipfileset>
 		</zip>
 	</target>
 	
