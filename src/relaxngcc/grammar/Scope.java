@@ -37,6 +37,7 @@ public class Scope extends Pattern {
         if(imports==null)   imports=code;
         else                imports+=code;
     }
+    public String getImport() { return imports; }
 
     /** Code specified via &lt;cc:java-body> statements. */
     private String body;
