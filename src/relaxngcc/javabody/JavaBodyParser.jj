@@ -113,14 +113,22 @@ options {
   JAVA_UNICODE_ESCAPE = true;
 }
 
-PARSER_BEGIN(JavaParser)
+PARSER_BEGIN(JavaBodyParser)
+package relaxngcc.javabody;
 
-public class JavaParser
+import java.util.Set;
+import java.util.TreeSet;
+
+/**
+ * Parses Java code fragment inside &lt;cc:java-body>
+ * and records all field declarations.
+ */
+public class JavaBodyParser
 {
 // modified main Andrea Gini 24/02/2002
 // modified main. DW, 7/99
     public static void main (String [] args) {
-        JavaParser parser;
+        JavaBodyParser parser;
         String filename = null;
         long initTime = 0;
         long parseTime = 0;
@@ -129,7 +137,7 @@ public class JavaParser
         if (args.length == 0)
         {
             System.out.println("Java Parser Version 1.1 (for Java1.4 code):  Reading from standard input . . .");
-            parser = new JavaParser(System.in);
+            parser = new JavaBodyParser(System.in);
         } else if (args.length == 1)
         {
             filename = args[0];
@@ -137,7 +145,7 @@ public class JavaParser
             try
             {
                 startTime = System.currentTimeMillis();
-                parser = new JavaParser(new java.io.FileInputStream(filename));
+                parser = new JavaBodyParser(new java.io.FileInputStream(filename));
                 stopTime = System.currentTimeMillis();
                 initTime = stopTime - startTime;
             } catch (java.io.FileNotFoundException e)
@@ -169,10 +177,15 @@ public class JavaParser
             System.out.println("Java Parser Version 1.1 (for Java1.4 code):  Encountered errors during parse.");
         }
     }
-
+	
+	private void addField( String fieldName ) {
+		fields.add(fieldName);
+	}
+	
+	public final Set fields = new TreeSet();
 }
 
-PARSER_END(JavaParser)
+PARSER_END(JavaBodyParser)
 
 
 /* WHITE SPACE */
@@ -590,22 +603,27 @@ void InterfaceMemberDeclaration() :
 }
 
 void FieldDeclaration() :
-{}
+{ String s; }
 {
   ( "public" | "protected" | "private" | "static" | "final" | "transient" | "volatile" )*
-  Type() VariableDeclarator() ( "," VariableDeclarator() )* ";"
+  Type() s=VariableDeclarator() {addField(s);}
+  	( "," s=VariableDeclarator() {addField(s);} )* ";"
 }
 
-void VariableDeclarator() :
-{}
+// return variable name
+String VariableDeclarator() :
+{ String s; }
 {
-  VariableDeclaratorId() [ "=" VariableInitializer() ]
+  s=VariableDeclaratorId() [ "=" VariableInitializer() ]
+  { return s; }
 }
 
-void VariableDeclaratorId() :
-{}
+// return variable name
+String VariableDeclaratorId() :
+{ Token t; }
 {
-  <IDENTIFIER> ( "[" "]" )*
+  t=<IDENTIFIER> ( "[" "]" )*
+  { return t.image; }
 }
 
 void VariableInitializer() :
@@ -1230,4 +1248,17 @@ void AssertStatement() :
 {}
 {
    "assert" Expression() [ ":" Expression() ] ";"
+}
+
+
+
+//==================================================================
+//
+// added for JavaBodyParser
+//
+//==================================================================
+void JavaBody() :
+{}
+{
+  ( ClassBodyDeclaration() )*
 }

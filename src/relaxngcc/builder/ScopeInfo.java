@@ -22,10 +22,12 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.io.StringReader;
 
 import relaxngcc.automaton.State;
 import relaxngcc.automaton.Transition;
 import relaxngcc.automaton.Alphabet;
+import relaxngcc.javabody.JavaBodyParser;
 import relaxngcc.util.SelectiveIterator;
 import relaxngcc.NGCCGrammar;
 import relaxngcc.NGCCUtil;
@@ -195,9 +197,28 @@ public final class ScopeInfo
     
 	//about header and body
 	private String _HeaderSection = "";
-	private String _Body = "";
 	public void appendHeaderSection(String c) { _HeaderSection += c; }
-	public void appendBody(String c) { _Body += c; }
+    
+    private String _Body = "";
+
+    /** Name of fields defined in &lt;cc:java-body>. */
+    private final Set userDefinedFields = new HashSet();
+    
+    /** Appends new &lt;java-body>. */
+    public void appendBody(String c) {
+        _Body += c;
+        
+        JavaBodyParser p = new JavaBodyParser(new StringReader(c));
+        
+        try {
+            p.JavaBody();       // parse the text
+        } catch( relaxngcc.javabody.ParseException e ) {
+            // TODO: report error location and such.
+            System.err.println("[Warning] unable to parse <java-body>");
+        }
+        
+        userDefinedFields.addAll(p.fields);
+    }
 	
 	//type usage information. these flags affect the output of import statements
 	private boolean _UsingBigInteger;
@@ -387,6 +408,8 @@ public final class ScopeInfo
         return a;
 	}
 	
+    
+    
 	
 	public void calcFirst_Step1()
 	{
@@ -555,10 +578,17 @@ public final class ScopeInfo
 		output.println("private int _ngcc_current_state;");
 		if(_ThreadCount>0)
 			output.println("private int[] _ngcc_threaded_state;");
-            
+        
+        // aliases
         Iterator itr = aliases.values().iterator();
 		while(itr.hasNext()) {
 			Alias a = (Alias)itr.next();
+            
+            // if the alias is already declared explicitly by the <java-body>,
+            // don't write it again.
+            if(userDefinedFields.contains(a.name))
+                continue;
+                
 			if(options.style==Options.STYLE_PLAIN_SAX && !a.isUserObject)
 				output.println("private String " + a.name + ";");
 			else
