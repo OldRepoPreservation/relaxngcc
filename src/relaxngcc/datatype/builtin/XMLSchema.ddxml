@@ -4,6 +4,8 @@
   <!ENTITY resource  "&converter;.java">
 ]>
 <datatypeLibrary uri="http://www.w3.org/2001/XMLSchema-datatypes">
+  <!-- TODO: base64Binary, hexBinary -->
+  
   <!-- Conversion code for non-trivial datatypes -->
   <resource name="&resource;">
     <packageDecl/>
@@ -23,15 +25,11 @@
         throw new SAXParseException("'"+text+"' is not a valid boolean value",runtime.getLocator());
       }
       
-      public static int parseInt( String text, NGCCRuntime runtime ) throws SAXException {
+      public static String trim( String text ) throws SAXException {
         text = text.trim();
-        if( text.startsWith("+") ) text = text.substring(1);
-        try {
-          return Integer.parseInt(text);
-        } catch( NumberFormatException e ) {
-          throw new SAXParseException("'"+text+"'" is not a valid integer",runtime.getLocator());
-        }
-      }
+        if( text.startsWith("+") ) return text.substring(1);
+        else                       return text;
+     }
     }
   </resource>
   
@@ -41,9 +39,61 @@
     &converter;.parseBoolean(<value/>,$runtime)
   </datatype>
   
+  <datatype name="float" javaType="float">
+    Float.parseFloat(<value/>)
+  </datatype>
+  
+  <datatype name="double" javaType="double">
+  	Double.parseDouble(<value/>)
+  </datatype>
+  
+  <datatype name="decimal" javaType="java.util.BigDecimal">
+    <useResource name="&resource;" />
+    new java.math.BigDecimal(&converter;.(<value/>))
+  </datatype>
+  
+  <datatype name="integer" javaType="java.util.BigInteger">
+    <useResource name="&resource;" />
+    new java.math.BigInteger(&converter;.(<value/>))
+  </datatype>
+  
+  <datatype name="nonPositiveInteger" javaType="java.util.BigInteger">
+    <useResource name="&resource;" />
+    new java.math.BigInteger(&converter;.(<value/>))
+  </datatype>
+  
+  <datatype name="negativeInteger" javaType="java.util.BigInteger">
+    <useResource name="&resource;" />
+    new java.math.BigInteger(&converter;.(<value/>))
+  </datatype>
+  
+  <datatype name="nonNegativeInteger" javaType="java.util.BigInteger">
+    <useResource name="&resource;" />
+    new java.math.BigInteger(&converter;.(<value/>))
+  </datatype>
+  
+  <datatype name="positiveInteger" javaType="java.util.BigInteger">
+    <useResource name="&resource;" />
+    new java.math.BigInteger(&converter;.(<value/>))
+  </datatype>
+  
+  <datatype name="long" javaType="long">
+    <useResource name="&resource;" />
+    Long.parseLong(&converter;.(<value/>))
+  </datatype>
+  
+  <datatype name="unsignedInt" javaType="long">
+    <useResource name="&resource;" />
+    Long.parseLong(&converter;.(<value/>))
+  </datatype>
+  
   <datatype name="int" javaType="int">
     <useResource name="&resource;" />
-    
-    &converter;.parseInt(<value/>,$runtime)
+    Integer.parseInt(&converter;.trim(<value/>))
+  </datatype>
+  
+  <datatype name="unsignedShort" javaType="int">
+    <useResource name="&resource;" />
+    Integer.parseInt(&converter;.trim(<value/>))
   </datatype>
 </datatypeLibrary>
