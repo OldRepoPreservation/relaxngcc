@@ -152,13 +152,6 @@ public abstract class Alphabet {
         public String toString() { return "@"+getNameClass(); }
         
         /**
-         * See AttributePattern for detail.
-         * With this flag set to true, this attribute transition
-         * will not be cloned. 
-         */
-        public boolean workaroundSignificant;
-        
-        /**
          * The state that will be reached when the whole attribute
          * is consumed.
          */

@@ -53,7 +53,6 @@
     cc:return-type="Pattern" cc:return-value="p">
     
     <cc:java-body>
-      private boolean workaroundSignificant=false;
       private Locator loc;
     </cc:java-body>
     
@@ -70,10 +69,6 @@
       </element>
       
       <element name="attribute">
-        <optional>
-          <attribute name="cc:workaround-significant" />
-          workaroundSignificant = true;
-        </optional>
         <ref name="name" cc:alias="name" cc:with-params="true" />
         <choice>
           <ref name="patterns" cc:alias="p" />
@@ -86,7 +81,7 @@
             p = new DataPattern(loc,new MetaDataType("string"),alias);
           p = new AttributePattern(
             loc,$runtime.createLocator(),
-            name,p,workaroundSignificant);
+            name,p);
         </cc:java>
         <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>

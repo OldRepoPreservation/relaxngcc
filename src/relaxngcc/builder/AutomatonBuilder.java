@@ -125,20 +125,11 @@ public class AutomatonBuilder implements PatternFunction
         
         Alphabet.EnterAttribute ea = new Alphabet.EnterAttribute(
             nc,pattern.endLocator,orgdest);
-        ea.workaroundSignificant = pattern.workaroundSignificant;
         
         Transition ts = createTransition(
             ea,
             middle);
         addAction(ts,true);
-        
-        /*
-        if(!pattern.workaroundSignificant) {
-            // always treat attributes as optional,
-            orgdest.addTransition(ts);
-            return orgdest;
-        } else {
-        */
         
         // if a special flag is specified by the user,
         // do NOT treat it as an optional attribute
