@@ -89,13 +89,11 @@
 			<classpath path="docgen"/>
 			<arg value="ja"/>
 			<arg value="htdocs/*.htm"/>
-			<arg value="htdocs/*.html"/>
 		</java>
 		<java classname="DocGen" fork="true">
 			<classpath path="docgen"/>
 			<arg value="en"/>
 			<arg value="htdocs/*.htm"/>
-			<arg value="htdocs/*.html"/>
 		</java>
 	</target>
 	
