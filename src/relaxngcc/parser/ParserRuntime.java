@@ -15,6 +15,7 @@ import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.LocatorImpl;
 
+import relaxngcc.datatype.Datatype;
 import relaxngcc.grammar.Grammar;
 import relaxngcc.grammar.NameClass;
 import relaxngcc.grammar.SimpleNameClass;
@@ -26,6 +27,33 @@ import relaxngcc.parser.state.NGCCRuntime;
  * @author Kohsuke Kawaguchi (kk@kohsuke.org)
  */
 public abstract class ParserRuntime extends NGCCRuntime {
+    
+    /** Grammar object that we are currently building. */
+    public Grammar grammar;
+    
+    
+    /** Keeps track of values of the ns attribute. */
+    protected final Stack _nsStack = new Stack();
+    
+    protected final Stack _datatypeLibraryStack = new Stack();
+
+    /** static SAX parser factory. */
+    static private final SAXParserFactory _SAXFactory;
+    static {
+        _SAXFactory = SAXParserFactory.newInstance();
+        _SAXFactory.setNamespaceAware(true);
+        _SAXFactory.setValidating(false);
+    }
+
+
+    protected ParserRuntime() {
+        // register the default
+        _nsStack.push("");
+        _datatypeLibraryStack.push("");
+    }
+    
+    
+    
     
     /** Parses a document with this runtime. */
     public void parse(String source) throws SAXException {
@@ -50,14 +78,6 @@ public abstract class ParserRuntime extends NGCCRuntime {
     /** Call-back method that receives the last modified time of a newly parsed file. */
     protected abstract void checkLastModifiedTime( long time );
 
-    /** static SAX parser factory. */
-    static private final SAXParserFactory _SAXFactory;
-    static {
-        _SAXFactory = SAXParserFactory.newInstance();
-        _SAXFactory.setNamespaceAware(true);
-        _SAXFactory.setValidating(false);
-    }
-    
     /** Parses a QName into a SimpleNameClass. */
     public NameClass parseSimpleName( String qname, boolean attributeMode ) {
         String uri,local;
@@ -86,9 +106,6 @@ public abstract class ParserRuntime extends NGCCRuntime {
         return new SimpleNameClass(uri,local);
     }
     
-    /** Grammar object that we are currently building. */
-    public Grammar grammar;
-    
     /** Processes the &lt;include> element. */
     public void processInclude( String href ) throws SAXException {
         // TODO: support entity resolver
@@ -105,23 +122,27 @@ public abstract class ParserRuntime extends NGCCRuntime {
         new IncludeParserRuntime(this).parse(href);
     }
     
-    /** Any global-scope &lt;cc:java-import> will be reported here. */
-    public abstract void appendGlobalImport( String code );
+    /**
+     * Gets the reference to the root runtime.
+     */
+    public abstract RootParserRuntime getRootRuntime();
     
-    /** Any global-scope &lt;cc:java-body> will be reported here. */
-    public abstract void appendGlobalBody( String code );
+//    /** Any global-scope &lt;cc:java-import> will be reported here. */
+//    public abstract void appendGlobalImport( String code );
+//    
+//    /** Any global-scope &lt;cc:java-body> will be reported here. */
+//    public abstract void appendGlobalBody( String code );
     
     
-    
-    /** Keeps track of values of the ns attribute. */
-    protected final Stack _nsStack = new Stack();
-    {// register the default binding
-        _nsStack.push("");
-    }
     
     /** Gets the value of the current "ns". */
     public String getTargetNamespace() {
         return (String)_nsStack.peek();
+    }
+    /** Gets the current datatype library. */
+    public Datatype getDatatype(String name) {
+        return getRootRuntime().datatypeManager.getLibrary(
+            (String)_datatypeLibraryStack.peek()).getDatatype(name);
     }
     
     /** set to true if the ns attribute is present. */
@@ -131,8 +152,7 @@ public abstract class ParserRuntime extends NGCCRuntime {
         return new LocatorImpl(super.getLocator());
     }
     
-    // override start/endElement to handle the ns attribute
-    // TODO: handle datatypeLibrary attribute
+    // override start/endElement to handle the ns/datatypeLibrary attribute
     public void startElement( String uri, String local, String qname, Attributes atts )
         throws SAXException {
             
@@ -140,6 +160,10 @@ public abstract class ParserRuntime extends NGCCRuntime {
         _nsPresent = (ns!=null);
         if(ns==null)    ns = getTargetNamespace();
         _nsStack.push(ns);
+        
+        String dtlib = atts.getValue("datatypeLibrary");
+        if(dtlib==null) _datatypeLibraryStack.push(_datatypeLibraryStack.peek());
+        else            _datatypeLibraryStack.push(dtlib);
         
         super.startElement(uri,local,qname,atts);
     }
@@ -149,6 +173,7 @@ public abstract class ParserRuntime extends NGCCRuntime {
             
         super.endElement(uri,local,qname);
         _nsStack.pop();
+        _datatypeLibraryStack.pop();
     }
 }
 

@@ -13,8 +13,8 @@
          cc:package="relaxngcc.parser.state">
   
   <cc:java-import>
-    import relaxngcc.MetaDataType;
     import relaxngcc.grammar.*;
+    import relaxngcc.datatype.Datatype;
     import org.xml.sax.Locator;
   </cc:java-import>
   
@@ -78,7 +78,7 @@
         <cc:java>
           // if there is no child pattern, assume &lt;text>.
           if(p==null)
-            p = new DataPattern(loc,new MetaDataType("string"),alias);
+            p = new DataPattern(loc,Datatype.NOOP,alias);
           p = new AttributePattern(
             loc,$runtime.createLocator(),
             name,p);
@@ -150,7 +150,7 @@
       <element name="mixed">
         <ref name="patterns" cc:alias="p" />
         <cc:java>
-          p = new InterleavePattern( new DataPattern( loc, new MetaDataType("string"),null), p );
+          p = new InterleavePattern( new DataPattern( loc, Datatype.NOOP, null ), p );
         </cc:java>
         <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
@@ -190,7 +190,7 @@
         <empty/>
         <ref name="NGCC-alias" cc:alias="alias" />
         <cc:java>
-          p = new DataPattern(loc,new MetaDataType("string"),alias);
+          p = new DataPattern(loc,Datatype.NOOP,alias);
         </cc:java>
         <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
@@ -204,7 +204,7 @@
         <ref name="NGCC-alias" cc:alias="alias" />
         <text cc:alias="value"/>
         <cc:java>
-          p = new ValuePattern(loc,value,alias);
+          p = new ValuePattern(loc,Datatype.NOOP,value,alias);
         </cc:java>
         <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
@@ -224,7 +224,7 @@
         </optional-->
         <ref name="NGCC-alias" cc:alias="alias" />
         <cc:java>
-          p = new DataPattern(loc,new MetaDataType(typeName),alias);
+          p = new DataPattern(loc, $runtime.getDatatype(typeName),alias);
         </cc:java>
         <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
@@ -275,13 +275,13 @@
         <element name="cc:java-import">
           <text cc:alias="value"/>
           <cc:java>
-            $runtime.appendGlobalImport(value);
+            $runtime.getRootRuntime().appendGlobalImport(value);
           </cc:java>
         </element>
         <element name="cc:java-body">
           <text cc:alias="value"/>
           <cc:java>
-            $runtime.appendGlobalBody(value);
+            $runtime.getRootRuntime().appendGlobalBody(value);
           </cc:java>
         </element>
         <element name="include">

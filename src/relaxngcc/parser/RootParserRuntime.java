@@ -1,9 +1,19 @@
 package relaxngcc.parser;
 
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URL;
+import java.util.StringTokenizer;
+
 import org.xml.sax.Attributes;
+import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXParseException;
 
 import relaxngcc.NGCCGrammar;
+import relaxngcc.Options;
+import relaxngcc.datatype.DatatypeLibraryManager;
 import relaxngcc.grammar.Grammar;
 import relaxngcc.grammar.NGCCDefineParam;
 import relaxngcc.grammar.Pattern;
@@ -11,14 +21,16 @@ import relaxngcc.grammar.RefPattern;
 import relaxngcc.parser.state.Start;
 
 /**
- * Runtime that parses grammars normally.
+ * {@link ParserRuntime} that parses grammars as the root definition.
  * 
  * @author Kohsuke Kawaguchi (kk@kohsuke.org)
  */
 public class RootParserRuntime extends ParserRuntime {
 
-    public RootParserRuntime() {
+    public RootParserRuntime( Options _options ) {
+        this.options = _options;
         setRootHandler(start=new Start(this));
+        this.datatypeManager = new DatatypeLibraryManager(options);
     }
     
     /** The root state object that we use to parse the RELAX NG grammar. */
@@ -29,6 +41,11 @@ public class RootParserRuntime extends ParserRuntime {
     
     /** The value specified via the cc:runtime-type attribute. */
     private String runtimeType = null;
+    
+    /** Provides the datatype conversions rountines. */
+    protected final DatatypeLibraryManager datatypeManager;
+    
+    private final Options options;
 
     private String globalImportDecls = "";
     public void appendGlobalImport( String code ) {
@@ -39,7 +56,7 @@ public class RootParserRuntime extends ParserRuntime {
     public void appendGlobalBody( String code ) {
         globalBody += code;
     }
-
+    
     /**
      * Timestamp of the source grammar file.
      * If other files are included via some mechanism, those are
@@ -51,6 +68,10 @@ public class RootParserRuntime extends ParserRuntime {
     }
     public long getGrammarTimestamp() { return grammarTimestamp; }
 
+
+    public RootParserRuntime getRootRuntime() {
+        return this;
+    }
     
     /** Gets the parsed result, or null if there was any error. */
     public NGCCGrammar getResult() {
@@ -76,7 +97,6 @@ public class RootParserRuntime extends ParserRuntime {
             grammar,packageName,runtimeType,globalImportDecls,globalBody);
     }
 
-    // TODO: handle datatypeLibrary attribute
     public void startElement( String uri, String local, String qname, Attributes atts )
         throws SAXException {
             
@@ -86,9 +106,59 @@ public class RootParserRuntime extends ParserRuntime {
         
         v = atts.getValue(Const.NGCC_URI,"runtime-type");
         if(v!=null) runtimeType = v;
+
         
+        v = atts.getValue(Const.NGCC_URI,"datatype-defs");
+        if(v!=null)
+            processDatatypeDefs(v);
         
         super.startElement(uri,local,qname,atts);
     }
+    
+    /**
+     * Parses <code>cc:datatype-defs</code> attributes.
+     */
+    private void processDatatypeDefs( String list ) throws SAXException {
+        StringTokenizer tokens = new StringTokenizer(list);
+        while( tokens.hasMoreTokens() ) {
+            String uri = tokens.nextToken();
+            if( uri.startsWith("builtin://") ) {
+                // handle "builtin://XXXX" specially and resolve
+                // them to our built-in datatype definition files.
+                String body = uri.substring(10);
+                URL url = this.getClass().getClassLoader().getResource(
+                    "relaxngcc/datatype/builtin/"+body);
+                if( url==null )
+                    throw new SAXParseException("undefined built-in datatype definition: "+body,getLocator());
+                uri = url.toExternalForm();
+            }
+            
+            try {
+                datatypeManager.parse(new InputSource(absolutize(uri)));
+            } catch (IOException e) {
+                throw new SAXException(e);
+            }
+        }
+    }
+    
+    /**
+     * Absolutizes an URI.
+     */
+    private String absolutize( String uri ) {
+        try {
+            // try URI first
+            return new URI(getLocator().getSystemId()).resolve(uri).toString();
+        } catch( Throwable t ) {
+            // but URI is since JDK1.4 so it might not be available.
+            // if so, try URL.
+            try {
+                return new URL( new URL(getLocator().getSystemId()), uri ).toExternalForm();
+            } catch( MalformedURLException e ) {
+                // everything else fails
+                return uri;
+            }
+        }
+    }
+
 }
 

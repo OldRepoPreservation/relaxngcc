@@ -2,7 +2,7 @@ package relaxngcc.grammar;
 
 import org.xml.sax.Locator;
 
-import relaxngcc.MetaDataType;
+import relaxngcc.datatype.Datatype;
 
 /**
  *
@@ -12,13 +12,13 @@ import relaxngcc.MetaDataType;
  */
 public class DataPattern extends Pattern {
     
-    public DataPattern( Locator loc, MetaDataType _type, String _alias ) {
+    public DataPattern( Locator loc, Datatype _type, String _alias ) {
         this.alias = _alias;
         this.type = _type;
         this.locator = loc;
     }
     
-    public final MetaDataType type;
+    public final Datatype type;
     public final String alias;
     public final Locator locator;
     

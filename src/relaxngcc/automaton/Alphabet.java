@@ -9,9 +9,10 @@ import java.io.PrintStream;
 
 import org.xml.sax.Locator;
 
-import relaxngcc.MetaDataType;
 import relaxngcc.builder.ScopeInfo;
+import relaxngcc.datatype.Datatype;
 import relaxngcc.grammar.NameClass;
+import relaxngcc.grammar.ValuePattern;
 
 /**
  * An alphabet in RelaxNGCC is one of following types:
@@ -303,11 +304,16 @@ public abstract class Alphabet {
     
     
     public static abstract class Text extends Alphabet {
-        protected Text( int type, String alias, Locator loc ) {
+        protected Text( int type, Datatype datatype, String alias, Locator loc ) {
             super(type,loc);
-            _alias = alias;
+            this._datatype = datatype;
+            this._alias = alias;
         }
         public Text asText() { return this; }
+
+        /** Datatype of this &lt;data> element. */
+        private final Datatype _datatype;
+        public Datatype getDatatype() { return _datatype; }
         
         /**
          * User-defined variable name assigned to this alphabet.
@@ -316,17 +322,23 @@ public abstract class Alphabet {
          */
         private final String _alias;
         public String getAlias() { return _alias; }   
+
+        public int hashCode() { return _datatype.hashCode(); }
         
         public boolean equals( Object o ) {
             if(!super.equals(o)) return false;
-            return equals(_alias,((Text)o)._alias);
+            return _datatype.equals( ((Text)o)._datatype )
+            && equals(_alias,((Text)o)._alias);
         }
     }
     
     public static class ValueText extends Text {
-        public ValueText( String value, String alias, Locator loc ) {
-            super(VALUE_TEXT,alias,loc);
+        public ValueText( String value, Datatype dt, String alias, Locator loc ) {
+            super(VALUE_TEXT,dt,alias,loc);
             _value = value;
+        }
+        public ValueText( ValuePattern p ) {
+            this( p.value, p.type, p.alias, p.locator );
         }
         public ValueText asValueText() { return this; }
         
@@ -345,22 +357,12 @@ public abstract class Alphabet {
     }
     
     public static class DataText extends Text {
-        public DataText( MetaDataType dt, String alias, Locator loc ) {
-            super(DATA_TEXT, alias, loc);
-            _dataType = dt;
+        public DataText( Datatype dt, String alias, Locator loc ) {
+            super(DATA_TEXT, dt, alias, loc);
         }
         public DataText asDataText() { return this; }
-
-        /** Datatype of this &lt;data> element. */
-        private final MetaDataType _dataType;
-        public MetaDataType getMetaDataType() { return _dataType; }
         
-        public String toString() { return "data '"+_dataType._name+"'"; }
-        public int hashCode() { return _dataType.hashCode(); }
-        public boolean equals( Object o ) {
-            if(!super.equals(o)) return false;
-            return _dataType.equals( ((DataText)o)._dataType );
-        }
+        public String toString() { return "data '"+getDatatype().displayName()+"'"; }
     }
 
     public static class ForAction extends Alphabet {

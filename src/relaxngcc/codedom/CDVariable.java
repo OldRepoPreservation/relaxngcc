@@ -8,10 +8,10 @@ import java.io.IOException;
  */
 public class CDVariable extends CDExpression implements CDStatement {
 
-    private CDLanguageSpecificString _modifier;
-    private CDType _type;
-    private String _name;
-    private CDExpression _initialValue;
+    private final CDLanguageSpecificString _modifier;
+    private final CDType _type;
+    private final String _name;
+    private final CDExpression _initialValue;
 
     // not directly creatable. Use appropriate factory methods.
     CDVariable(

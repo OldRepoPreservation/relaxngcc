@@ -28,13 +28,9 @@ public class IncludeParserRuntime extends ParserRuntime {
     
     /** Parent runtime object. */
     private final ParserRuntime _parent;
-    
-    public void appendGlobalImport( String code ) {
-        _parent.appendGlobalImport(code);
-    }
-    
-    public void appendGlobalBody( String code ) {
-        _parent.appendGlobalBody(code);
+
+    public RootParserRuntime getRootRuntime() {
+        return _parent.getRootRuntime();
     }
 
     protected void checkLastModifiedTime( long time ) {

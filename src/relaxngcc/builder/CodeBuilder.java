@@ -33,6 +33,7 @@ import relaxngcc.codedom.CDStatement;
 import relaxngcc.codedom.CDSwitchStatement;
 import relaxngcc.codedom.CDType;
 import relaxngcc.codedom.CDVariable;
+import relaxngcc.datatype.NoDefinitionException;
 import relaxngcc.grammar.NGCCDefineParam;
 import relaxngcc.grammar.NameClass;
 import relaxngcc.grammar.SimpleNameClass;
@@ -332,7 +333,7 @@ public class CodeBuilder
     }
     
     
-    public CDClass output() throws IOException {
+    public CDClass output() throws NoDefinitionException, IOException {
         // set of Fork attributes that have already been processed.
         Set processedForks = new HashSet();
         // map from initial state to CDClass that needs to be processed
@@ -562,7 +563,7 @@ public class CodeBuilder
     /**
      * Writes event handlers for (enter|leave)(Attribute|Element) methods.
      */
-    private CDMethod writeEventHandler( TransitionTable table, int type ) {
+    private CDMethod writeEventHandler( TransitionTable table, int type ) throws NoDefinitionException, IOException {
 
         String eventName = eventName(type);
         CDMethod method = new CDMethod(
@@ -679,7 +680,7 @@ public class CodeBuilder
     }
 
     //outputs text consumption handler. this handler branches by output method
-    private CDMethod writeTextHandler(TransitionTable table) {
+    private CDMethod writeTextHandler(TransitionTable table) throws NoDefinitionException, IOException {
 
         EventHandlerParameters $params = new EventHandlerParameters();
         
@@ -772,7 +773,7 @@ public class CodeBuilder
      *      the revertToParentFromXXX method or the
      *      spawnChildFromXXX method.
      */
-    private CDBlock buildTransitionCode( State current, Transition tr, int type, EventHandlerParameters $params) {
+    private CDBlock buildTransitionCode( State current, Transition tr, int type, EventHandlerParameters $params) throws NoDefinitionException, IOException {
         String eventName = eventName(type);
         if(tr==REVERT_TO_PARENT) {
             
@@ -854,7 +855,9 @@ public class CodeBuilder
             Alphabet.Text ta = tr.getAlphabet().asText();
             String alias = ta.getAlias();
             if(alias!=null)
-                sv.assign(new CDLanguageSpecificString(alias), $params.$value);
+                sv.assign(
+                    new CDLanguageSpecificString(alias),
+                    ta.getDatatype().generate( _grammar, $params.$value ) );
             sv.add(buildMoveToStateCode(tr));
             
             return sv;

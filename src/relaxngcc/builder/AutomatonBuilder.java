@@ -7,12 +7,12 @@
 package relaxngcc.builder;
 import java.util.Iterator;
 
-import relaxngcc.MetaDataType;
 import relaxngcc.NGCCGrammar;
 import relaxngcc.automaton.Alphabet;
 import relaxngcc.automaton.State;
 import relaxngcc.automaton.Transition;
 import relaxngcc.codedom.CDType;
+import relaxngcc.datatype.Datatype;
 import relaxngcc.grammar.AttributePattern;
 import relaxngcc.grammar.ChoicePattern;
 import relaxngcc.grammar.DataPattern;
@@ -143,7 +143,7 @@ public class AutomatonBuilder implements PatternFunction
     public Object data( DataPattern pattern ) {
         State result = createState(pattern);
         if(pattern.alias!=null)
-            _scopeInfo.addAlias( CDType.STRING, pattern.alias );
+            _scopeInfo.addAlias( pattern.type.getType(), pattern.alias );
         
         Transition t = createTransition(
             new Alphabet.DataText(pattern.type,pattern.alias,pattern.locator),
@@ -167,8 +167,7 @@ public class AutomatonBuilder implements PatternFunction
         
         State result = createState(pattern);
         Transition t = createTransition(
-            new Alphabet.ValueText(pattern.value, pattern.alias, pattern.locator),
-            _destination);
+            new Alphabet.ValueText(pattern), _destination);
         addAction(t,false);
         result.addTransition(t);
         return result;
@@ -182,9 +181,7 @@ public class AutomatonBuilder implements PatternFunction
             
             State result = createState(pattern);
             Transition t = createTransition(
-                new Alphabet.DataText(
-                    new MetaDataType("string"),
-                    pattern.alias,pattern.locator),
+                new Alphabet.DataText( Datatype.NOOP, pattern.alias,pattern.locator),
                 _destination);
             addAction(t,false);
             result.addTransition(t);
@@ -196,8 +193,7 @@ public class AutomatonBuilder implements PatternFunction
             // then append the "header" transition that tokenizes the text.
             _scopeInfo.addAlias(CDType.STRING, "__text" );
             Transition tr = new Transition(
-                new Alphabet.DataText(
-                    new MetaDataType("string"), "__text", pattern.locator ),
+                new Alphabet.DataText( Datatype.NOOP, "__text", pattern.locator ),
                 head,
                 _orderCounter++ );
             tr.insertEpilogueAction(_scopeInfo.createAction(
