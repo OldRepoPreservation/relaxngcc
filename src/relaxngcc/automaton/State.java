@@ -244,6 +244,7 @@ public final class State implements Comparable
     }
     
     private void getReachableStates( Set r ) {
+        r.add(this);
         for (Iterator itr = iterateTransitions(); itr.hasNext();) {
             Transition t = (Transition) itr.next();
             if(r.add(t.nextState()))

@@ -10,14 +10,17 @@ import org.xml.sax.SAXException;
  * @author Kohsuke Kawaguchi (kk@kohsuke.org)
  */
 public abstract class NGCCInterleaveFilter implements NGCCEventSource, NGCCEventReceiver {
-    protected NGCCInterleaveFilter( NGCCHandler parent, int cookie, NGCCEventReceiver[] receivers ) {
-        this._receivers = receivers;
+    protected NGCCInterleaveFilter( NGCCHandler parent, int cookie ) {
         this._parent = parent;
         this._cookie = cookie;
     }
     
+    protected void setHandlers( NGCCEventReceiver[] receivers ) {
+        this._receivers = receivers;
+    }
+    
     /** event receiverse. */
-    protected final NGCCEventReceiver[] _receivers;
+    protected NGCCEventReceiver[] _receivers;
     
     public int replace(NGCCEventReceiver oldHandler, NGCCEventReceiver newHandler) {
         for( int i=0; i<_receivers.length; i++ )
@@ -254,6 +257,8 @@ public abstract class NGCCInterleaveFilter implements NGCCEventSource, NGCCEvent
     
     public void joinByText( NGCCEventReceiver source,
         String value ) throws SAXException {
+
+        if(isJoining)   return; // we are already in the process of joining. ignore.
         
         isJoining = true;
         // send special token to the rest of the branches.
@@ -264,7 +269,7 @@ public abstract class NGCCInterleaveFilter implements NGCCEventSource, NGCCEvent
         for( int i=0; i<_receivers.length; i++ )
             if( _receivers[i]!=source )
                 _receivers[i].text(value);
-        
+
         // revert to the parent
         _parent.source.replace(this,_parent);
         _parent.onChildCompleted(null,_cookie,true);

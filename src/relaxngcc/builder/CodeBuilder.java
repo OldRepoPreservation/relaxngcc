@@ -470,7 +470,7 @@ public class CodeBuilder
                     "        reader.setContentHandler(runtime);\n"+
                     "        for( int i=0; i<args.length; i++ ) {\n"+
                     "            runtime.setRootHandler(new "+_info.getClassName()+"(runtime));\n"+
-                    "            reader.parse(args[i]);\n"+
+                    "            reader.parse(new org.xml.sax.InputSource(new java.io.FileInputStream(args[i])));\n"+
                     "            runtime.reset();\n"+
                     "        }\n"+
                     "    }"));
@@ -517,12 +517,14 @@ public class CodeBuilder
             CDMethod cotr1 = new CDMethod( null, null, className, null );
             classdef.addMethod(cotr1);
             
+            CDVariable $source = cotr1.param(new CDType("NGCCInterleaveFilter"),"_source");
+            
             // add three parameters (parent,runtime,cookie) and call the super class initializer.
-            cotr1.body().invoke("super").arg($runtime).arg(CDConstant.NULL).arg(new CDConstant(-1));
+            cotr1.body().invoke("super").arg($source).arg(CDConstant.NULL).arg(new CDConstant(-1));
             
             // move to the initial state
             cotr1.body().assign( $state,
-                new CDConstant(_info.getInitialState().getIndex()) );
+                new CDConstant(initial.getIndex()) );
     
             if(_info.getThreadCount()>0)
                 cotr1.body().assign( $threadState,
@@ -643,19 +645,24 @@ public class CodeBuilder
             CDVariable $parent = ctr.param( new CDType(_info.getClassName()), "_parent" );
             CDVariable $cookie = ctr.param( CDType.INTEGER, "_cookie" );
             
+            // [RESULT]
+            //  super(parent,cookie);
+            ctr.body().invoke("super").arg($parent).arg($cookie);
+            
             // [RESULT] new NGCCEventReceiver[]{handler1,handler2,...};
             CDObjectCreateExpression $handlers =
                 new CDType("NGCCEventReceiver").array()._new();
             for( int i=0; i<fork._subAutomata.length; i++ ) {
                 // TODO: ideally these sub-automata classes should be created first.
                 // and references shall be used
-                $handlers.arg( $parent._new(
-                    new CDType("Branch"+fork._subAutomata[i].getIndex())) );
+                $handlers.arg(
+                    new CDType("Branch"+fork._subAutomata[i].getIndex())._new()
+                        .arg($this) );
             }
-            
+
             // [RESULT]
-            //  super(parent,cookie,handlers);
-            ctr.body().invoke("super").arg($parent).arg($cookie).arg($handlers);
+            // setHandlers(handlers);
+            ctr.body().invoke("setHandlers").arg($handlers);
         }        
         
         classDef.addMethod(createFindReceiverMethod(
@@ -1119,17 +1126,22 @@ public class CodeBuilder
         while(states.hasNext()) {
             State st = (State)states.next();
             
-            Iterator trans =st.iterateTransitions(Alphabet.REF_BLOCK);
+            Iterator trans =st.iterateTransitions(Alphabet.REF_BLOCK|Alphabet.FORK);
             while(trans.hasNext()) {
                 Transition tr = (Transition)trans.next();
-                Alphabet.Ref a = tr.getAlphabet().asRef();
                 
                 if(processedTransitions.add(tr)) {
                     
                     CDBlock block = new CDBlock();
                     // if there is an alias, assign to that variable
-                    String alias = a.getAlias();
+                    String alias = null;
+                    
+                    if( tr.getAlphabet().isRef() )
+                        alias = tr.getAlphabet().asRef().getAlias();
+                    
                     if(alias!=null) {
+                        Alphabet.Ref a = tr.getAlphabet().asRef();
+                        
                         ScopeInfo childBlock = a.getTargetScope();
                         CDType returnType = childBlock.scope.getParam().returnType;
                         

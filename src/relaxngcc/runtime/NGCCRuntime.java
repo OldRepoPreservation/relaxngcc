@@ -26,7 +26,7 @@ import org.xml.sax.SAXParseException;
  * 
  *  <li>TODO: provide support for interleaving.
  * 
- * @version $Id: NGCCRuntime.java,v 1.13.2.1 2002/08/05 01:19:00 kkawa Exp $
+ * @version $Id: NGCCRuntime.java,v 1.13.2.2 2002/08/05 02:11:11 kkawa Exp $
  * @author Kohsuke Kawaguchi (kk@kohsuke.org)
  */
 public class NGCCRuntime implements ContentHandler, NGCCEventSource {
@@ -241,6 +241,11 @@ public class NGCCRuntime implements ContentHandler, NGCCEventSource {
     }
     
     public void onLeaveElementConsumed(String uri, String localName, String qname) throws SAXException {
+        attStack.pop();
+        if(attStack.isEmpty())
+            currentAtts = null;
+        else
+            currentAtts = (AttributesImpl)attStack.peek();
     }
     
     public void endElement(String uri, String localname, String qname)
@@ -266,12 +271,6 @@ public class NGCCRuntime implements ContentHandler, NGCCEventSource {
         
         currentHandler.leaveElement(uri, localname, qname);
 //        System.out.println("endElement:"+localname);
-        Attributes a = (Attributes)attStack.pop();
-        if(a.getLength()!=0) {
-            // when debugging, it's useful to set a breakpoint here.
-            ;
-        }
-        currentAtts = (AttributesImpl)attStack.peek();
     }
     
     public void characters(char[] ch, int start, int length) throws SAXException {
