@@ -532,13 +532,27 @@ public class CodeBuilder
 
     
     //variable holder
-    private class EventHandlerParameters {
+    private static class EventHandlerParameters {
         public CDVariable $uri;
         public CDVariable $localName;
         public CDVariable $qname;
         public CDVariable $attrs;
         public CDVariable $value;
-        public CDVariable $ai;
+        private CDVariable $ai;
+        
+        private final CDMethod handlerMethod;
+        
+        EventHandlerParameters( CDMethod handlerMethod ) {
+            this.handlerMethod = handlerMethod;
+        }
+        
+        public CDVariable get$ai() {
+            if( $ai==null ) {
+                // only declare this variable when it's necessary
+                $ai = handlerMethod.body().insertDecl(CDType.INTEGER, GENERATED_VARIABLE_PREFIX+"ai");
+            }
+            return $ai;
+        }
         
         public CDVariable[] toVariableArray(int type) {
             CDVariable[] arr = new CDVariable[type==Alphabet.VALUE_TEXT? 1 : type==Alphabet.ENTER_ELEMENT? 4 : 3];
@@ -571,7 +585,7 @@ public class CodeBuilder
             CDType.VOID, eventName,
             new CDLanguageSpecificString(" throws SAXException") );
         
-        EventHandlerParameters $params = new EventHandlerParameters();
+        EventHandlerParameters $params = new EventHandlerParameters(method);
         $params.$uri = method.param( CDType.STRING, GENERATED_VARIABLE_PREFIX+"__uri" );
         $params.$localName = method.param( CDType.STRING, GENERATED_VARIABLE_PREFIX+"__local" );
         $params.$qname = method.param( CDType.STRING, GENERATED_VARIABLE_PREFIX+"__qname" );
@@ -580,7 +594,6 @@ public class CodeBuilder
         
         CDBlock sv = method.body();
         //printSection(eventName);
-        $params.$ai = sv.decl(CDType.INTEGER, GENERATED_VARIABLE_PREFIX+"ai");
             
         // QUICK HACK
         // copy them to the instance variables so that they can be 
@@ -637,7 +650,7 @@ public class CodeBuilder
 	                        SimpleNameClass snc = (SimpleNameClass)nc;
 	
 	                        CDExpression expr = new CDLanguageSpecificString(MessageFormat.format(
-	                            "("+$params.$ai.getName()+" = "+_$runtime.getName()+".getAttributeIndex(\"{0}\",\"{1}\"))>=0",
+	                            "("+$params.get$ai().getName()+" = "+_$runtime.getName()+".getAttributeIndex(\"{0}\",\"{1}\"))>=0",
 	                            new Object[]{snc.nsUri, snc.localName}));
 	                        condition = condition==null? expr : CDOp.AND(expr, condition);
 	                    }                    
@@ -682,17 +695,16 @@ public class CodeBuilder
     //outputs text consumption handler. this handler branches by output method
     private CDMethod writeTextHandler(TransitionTable table) throws NoDefinitionException, IOException {
 
-        EventHandlerParameters $params = new EventHandlerParameters();
-        
         CDMethod method = new CDMethod(
             new CDLanguageSpecificString("public"),
             CDType.VOID,
             "text",
             new CDLanguageSpecificString(" throws SAXException"));
         
+        EventHandlerParameters $params = new EventHandlerParameters(method);
+        
         CDBlock sv = method.body();
         $params.$value = method.param( CDType.STRING, GENERATED_VARIABLE_PREFIX+"value" );
-        $params.$ai = sv.decl(CDType.INTEGER, GENERATED_VARIABLE_PREFIX+"ai");
         
         if(_options.debug) {
             sv.invoke( _$runtime, "traceln" )
@@ -726,7 +738,7 @@ public class CodeBuilder
 	                    SimpleNameClass snc = (SimpleNameClass)nc;
 	
 	                    condition = new CDLanguageSpecificString(MessageFormat.format(
-	                        "("+$params.$ai.getName()+" = "+_$runtime.getName()+".getAttributeIndex(\"{0}\",\"{1}\"))>=0",
+	                        "("+$params.get$ai().getName()+" = "+_$runtime.getName()+".getAttributeIndex(\"{0}\",\"{1}\"))>=0",
 	                        new Object[]{snc.nsUri, snc.localName}));
 	                    CDBlock code = buildTransitionCode(st,tr,Alphabet.VALUE_TEXT,$params);
 	                    bi.addConditionalCode(st, condition, code);
@@ -824,7 +836,7 @@ public class CodeBuilder
         else if(tr.getAlphabet().isEnterAttribute()) {
             CDBlock sv = new CDBlock();
             if(type==Alphabet.ENTER_ELEMENT ) {
-                sv.invoke(_$runtime, "consumeAttribute").arg($params.$ai);
+                sv.invoke(_$runtime, "consumeAttribute").arg($params.get$ai());
                 sv.invoke(_$runtime, "sendEnterElement")
                     .arg(_$cookie)
                     .arg($params.$uri)
@@ -833,7 +845,7 @@ public class CodeBuilder
                     .arg($params.$attrs);
             }
             else if(type==Alphabet.LEAVE_ELEMENT) {
-                sv.invoke(_$runtime, "consumeAttribute").arg($params.$ai);
+                sv.invoke(_$runtime, "consumeAttribute").arg($params.get$ai());
                 sv.invoke(_$runtime, "sendLeaveElement")
                     .arg(_$cookie)
                     .arg($params.$uri)
@@ -841,7 +853,7 @@ public class CodeBuilder
                     .arg($params.$qname);
             }
             else if(type==Alphabet.DATA_TEXT || type==Alphabet.VALUE_TEXT) {
-                sv.invoke(_$runtime, "consumeAttribute").arg($params.$ai);
+                sv.invoke(_$runtime, "consumeAttribute").arg($params.get$ai());
                 sv.invoke(_$runtime, "sendText")
                     .arg(_$cookie)
                     .arg($params.$value);
@@ -1031,7 +1043,7 @@ public class CodeBuilder
         sv.add(tr.invokePrologueActions());
         State nextstate = tr.nextState();
         
-        State result = appendStateTransition(sv, nextstate);
+        appendStateTransition(sv, nextstate);
         sv.add(tr.invokeEpilogueActions());
         
         return sv;

@@ -28,7 +28,6 @@ public class CDType {
     
     /** Gets the array type of this type. */
     public CDType array() {
-        final CDType baseType = this;
         return new CDType(_name+"[]") {
             public boolean isArray() { return true; }
         };

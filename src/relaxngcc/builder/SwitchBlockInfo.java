@@ -8,7 +8,6 @@ import relaxngcc.codedom.CDBlock;
 import relaxngcc.codedom.CDConstant;
 import relaxngcc.codedom.CDExpression;
 import relaxngcc.codedom.CDIfStatement;
-import relaxngcc.codedom.CDOp;
 import relaxngcc.codedom.CDStatement;
 import relaxngcc.codedom.CDSwitchStatement;
 import relaxngcc.codedom.CDVariable;
@@ -140,14 +139,10 @@ class SwitchBlockInfo
         CDBlock sv = new CDBlock();
         CDSwitchStatement switchBlock = null;
         Iterator i = state2CodeFragment.entrySet().iterator();
-        while(i.hasNext())
-        {
+        while(i.hasNext()) {
             Map.Entry e = (Map.Entry)i.next();
             State st = (State)e.getKey();
             
-            CDExpression condition = CDOp.EQ($state,
-                 new CDConstant(st.getIndex()));
-                
             CDBlock whentrue = ((CodeAboutState)e.getValue()).output(errorHandleMethod);
             
             if(switchBlock==null)

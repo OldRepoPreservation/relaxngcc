@@ -1,6 +1,5 @@
 package relaxngcc.grammar;
 
-import relaxngcc.parser.ParserRuntime;
 /**
  *
  *

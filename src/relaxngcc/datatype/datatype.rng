@@ -6,9 +6,6 @@
          cc:runtime-type="relaxngcc.datatype.ParserRuntime"
          cc:package="relaxngcc.datatype.parser">
   
-  <cc:java-import>
-  	import relaxngcc.datatype.*;
-  </cc:java-import>
   
   <start cc:class="Start" cc:access="public">
   	<element name="datatypeLibrary">
@@ -29,9 +26,9 @@
   
   <!-- resource definition -->
   <define name="resource">
+	 	import relaxngcc.datatype.*;
+	 	
     <element name="resource">
-    	
-    	Macro m = new Macro();
     	
     	<attribute name="name">
     		name = <data type="token"/>
@@ -45,6 +42,8 @@
   
   <!-- datatype definition -->
   <define name="datatype">
+	 	import relaxngcc.datatype.*;
+	 	
   	<cc:java-body>
 	  	java.util.ArrayList resources = new java.util.ArrayList();
   	</cc:java-body>
@@ -75,6 +74,8 @@
   <define name="macro"
   	cc:return-type="Macro"
   	cc:return-value="m">
+	 	import relaxngcc.datatype.*;
+	 	
 		
   	<cc:java-body>
 			Macro m = new Macro();

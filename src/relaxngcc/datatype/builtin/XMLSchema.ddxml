@@ -22,6 +22,16 @@
         if( text.equals("0") || text.equals("false") )  return false;
         throw new SAXParseException("'"+text+"' is not a valid boolean value",runtime.getLocator());
       }
+      
+      public static int parseInt( String text, NGCCRuntime runtime ) throws SAXException {
+        text = text.trim();
+        if( text.startsWith("+") ) text = text.substring(1);
+        try {
+          return Integer.parseInt(text);
+        } catch( NumberFormatException e ) {
+          throw new SAXParseException("'"+text+"'" is not a valid integer",runtime.getLocator());
+        }
+      }
     }
   </resource>
   
@@ -29,5 +39,11 @@
     <useResource name="&resource;" />
     
     &converter;.parseBoolean(<value/>,$runtime)
+  </datatype>
+  
+  <datatype name="int" javaType="int">
+    <useResource name="&resource;" />
+    
+    &converter;.parseInt(<value/>,$runtime)
   </datatype>
 </datatypeLibrary>

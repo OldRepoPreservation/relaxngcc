@@ -1,7 +1,7 @@
 package relaxngcc.grammar;
 
 import org.xml.sax.Locator;
-import relaxngcc.BuildError;
+
 import relaxngcc.parser.ParserRuntime;
 /**
  *

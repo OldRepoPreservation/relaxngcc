@@ -7,10 +7,6 @@
 package relaxngcc;
 import java.io.File;
 import java.io.PrintStream;
-import java.io.IOException;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.OutputStreamWriter;
 import java.util.Iterator;
 
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -22,13 +18,8 @@ import javax.xml.transform.stream.StreamSource;
 
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
-import org.xml.sax.XMLReader;
-import org.xml.sax.InputSource;
 
 import relaxngcc.parser.RootParserRuntime;
-import relaxngcc.samplegen.SampleGenRoot;
-import relaxngcc.samplegen.SampleGenRuntime;
-import relaxngcc.samplegen.XMLSerializer;
 
 /**
  * main class

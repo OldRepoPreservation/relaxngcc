@@ -213,7 +213,6 @@ public class NGCCGrammar {
         BufferedReader in = new BufferedReader(new InputStreamReader(NGCCRuntime.class.getResourceAsStream(file)));
             
         PrintWriter os = new PrintWriter(new FileWriter(out));
-        byte[] buf = new byte[256];
         
         String s;
         while((s=in.readLine())!=null) {

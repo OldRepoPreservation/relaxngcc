@@ -54,6 +54,14 @@ public class CDBlock implements CDStatement {
         add(d);
         return d;
     }
+    
+    /** Declares a new variable at the beginning of the block. */
+    public CDVariable insertDecl( CDType type, String name ) {
+        CDVariable d = new CDVariable(null,type,name,null);
+        _statements.insertElementAt(d,0);
+        return d;
+    }
+    
     /** Adds a new assignment. */
     public CDAssignStatement assign( CDExpression lhs, CDExpression rhs ) {
         CDAssignStatement a = new CDAssignStatement(lhs,rhs);
