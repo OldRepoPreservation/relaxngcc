@@ -8,6 +8,9 @@ package relaxngcc.automaton;
 import relaxngcc.MetaDataType;
 import relaxngcc.builder.NameClass;
 
+// TODO: this class should be better split into multiple classes,
+// each to represent a different type of transitions.
+
 /**
  * An alphabet in RelaxNGCC is one of following types:
  * 1. element start
@@ -19,12 +22,13 @@ import relaxngcc.builder.NameClass;
  */
 public class Alphabet implements Comparable
 {
-	public static final int START_ELEMENT = 1;
-	public static final int END_ELEMENT = 2;
-	public static final int START_ATTRIBUTE = 3;
-	public static final int TYPED_VALUE = 4;
-	public static final int FIXED_VALUE = 5;
-	public static final int REF_BLOCK = 6;
+	public static final int START_ELEMENT      = 1;
+	public static final int END_ELEMENT        = 2;
+	public static final int START_ATTRIBUTE    = 4;
+    public static final int END_ATTRIBUTE      = 8;
+	public static final int TYPED_VALUE        = 16;
+	public static final int FIXED_VALUE        = 32;
+	public static final int REF_BLOCK          = 64;
 
 	private int _Type; //one of above constants
 	private MetaDataType _DataType; //used when _Type is TYPED_VALUE
@@ -32,14 +36,22 @@ public class Alphabet implements Comparable
 	private NameClass _Key;
 	private String _Value;
 	
+    /**
+     * Additional parameters passed to
+     * the constructor of the child object.
+     * 
+     * Used only with Alphabets of the REF_BLOCK type.
+     */
+    private String params;
+    
 	private Alphabet() {}
 	/*
 	 * constructs from type and key
 	 */
 	public Alphabet(int type, NameClass key)
-	{ _Type=type; _Key = key; }
-	public Alphabet(MetaDataType mdt, String alias)
-	{ _Type = TYPED_VALUE; _DataType=mdt; _Alias = alias; }
+    { _Type=type; _Key = key; }
+    public Alphabet(MetaDataType mdt, String alias)
+    { _Type = TYPED_VALUE; _DataType=mdt; _Alias = alias; }
 	
     public static Alphabet createFixedValue(String key, String alias)
     {
@@ -49,19 +61,18 @@ public class Alphabet implements Comparable
         a._Alias = alias;
         return a;
     }
-    public static Alphabet createRef(String n)
+    public static Alphabet createRef(String n) {
+        return createRef(n,null,null);
+    }
+    public static Alphabet createRef(String n, String alias, String params)
 	{
-        Alphabet a = new Alphabet();
-		a._Type = REF_BLOCK;
-		a._Value = n;
-		return a;
-	}
-    public static Alphabet createRef(String n, String alias)
-	{
+        if(n==null) throw new IllegalArgumentException();
+        
         Alphabet a = new Alphabet();
 		a._Type = REF_BLOCK;
 		a._Value = n;
 		a._Alias = alias;
+        a.params = params;
 		return a;
 	}
 	public NameClass getKey() { return _Key; }
@@ -69,7 +80,12 @@ public class Alphabet implements Comparable
 	public String getAlias() { return _Alias; }
 	public int getType() { return _Type; }
 	public String getValue() { return _Value; }
-	
+	public String getParams() {
+        if(params==null)  return "";
+        return ','+params;
+    }
+    
+    
 	public boolean equals(Object obj)
 	{
 		if(!(obj instanceof Alphabet)) return false; //equals never
@@ -77,8 +93,8 @@ public class Alphabet implements Comparable
 		Alphabet i = (Alphabet)obj;
 		if(_Type != i._Type) return false;
 		
-		if(_Type==TYPED_VALUE)
-			return _DataType.equals(i._DataType);
+        if(_Type==TYPED_VALUE)
+            return _DataType.equals(i._DataType);
 		else if(_Type==FIXED_VALUE || _Type==REF_BLOCK)
 			return _Value.equals(i._Value);
 		else
@@ -93,8 +109,8 @@ public class Alphabet implements Comparable
 		if(_Type != i._Type) return _Type-i._Type;
 		
 		if(_Type==TYPED_VALUE)
-			return _DataType.hashCode() - i._DataType.hashCode();
-		else if(_Type==FIXED_VALUE || _Type==REF_BLOCK)
+            return _DataType.hashCode() - i._DataType.hashCode();
+        else if(_Type==FIXED_VALUE || _Type==REF_BLOCK)
 			return _Value.compareTo(i._Value);
 		else
 			return _Key.compareTo(i._Key);
@@ -113,7 +129,9 @@ public class Alphabet implements Comparable
 			case END_ELEMENT:
 				return "endElement '" + _Key.toString() + "'";
 			case START_ATTRIBUTE:
-				return "attribute '" + _Key.toString() + "'";
+				return "startAttribute '" + _Key.toString() + "'";
+            case END_ATTRIBUTE:
+                return "endAttribute '" + _Key.toString() + "'";
 			case TYPED_VALUE:
 				return "data '" + _DataType.getXSTypeName() + "'";
 			case FIXED_VALUE:

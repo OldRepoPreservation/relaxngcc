@@ -28,6 +28,10 @@ public class Options
 	public boolean debug;
 	public String newline;
 	
+    /** print automata. a debug option. */
+    public boolean printAutomata;
+    
+    
 	public Options(String[] args)
 	{
 		input = NORMAL;
@@ -55,6 +59,8 @@ public class Options
 				input = NONXML;
 			else if(args[i].equals("-d"))
 				debug = true;
+            else if(args[i].equals("--print-automata"))
+                printAutomata = true;
 			else
 				System.err.println("[Warning] Unknown option " + args[i]);
 		}

@@ -59,8 +59,7 @@ public class ScopeBuilder
 		if(ns.length()==0) ns = grm.getDefaultNSURI(); //‚È‚¯‚ê‚Îgrammar‚Ì‚à‚Ì‚ðŽg—p
 		_Namespaces.push(ns);
 		
-        String inline = root.getAttributeNS(NGCCGrammar.NGCC_NSURI, "inline");
-        if("true".equals(inline)) { _ExpandInline = true; }
+        _ExpandInline = "true".equals(root.attributeNGCC("inline",null));
         
 		_ScopeInfo = new ScopeInfo(grm, _Type, location, _ExpandInline);
 		_ScopeInfo.addNSURI(ns);
@@ -73,16 +72,24 @@ public class ScopeBuilder
 	{
 		ScopeBuilder inst = new ScopeBuilder(TYPE_NORMAL, grm, location, root);
 		
-		String nameForTargetLang = root.getAttributeNS(NGCCGrammar.NGCC_NSURI, "class");
-		if(nameForTargetLang.length()==0) nameForTargetLang=root.getAttribute("name");
-		if(nameForTargetLang.length()==0) nameForTargetLang="RelaxNGCC_Result";
-
-		String packageName = root.getAttributeNS(NGCCGrammar.NGCC_NSURI, "package");
-		if(packageName.length()==0) packageName = grm.getPackageName();
-		
-		inst._ScopeInfo.setClassNames(root.getAttribute("name"), nameForTargetLang, packageName, root.getAttributeNS(NGCCGrammar.NGCC_NSURI, "access"));
-		
+		String nameForTargetLang = root.attributeNGCC("class",
+            root.getAttribute("name","RelaxNGCC_Result"));
+        
+        setScopeParameters(grm,inst,root,nameForTargetLang);
 		return inst;
+    }
+    
+    private static void setScopeParameters(
+        NGCCGrammar grm, ScopeBuilder inst,NGCCElement root,String nameForTargetLang) {
+        
+        inst._ScopeInfo.setParameters(
+            root.getAttribute("name"),
+            nameForTargetLang,
+            root.attributeNGCC("package", grm.getPackageName()),
+            root.attributeNGCC("access",""),
+            root.attributeNGCC("return-type",null),
+            root.attributeNGCC("return-value","this"),
+            root.attributeNGCC("params",null));
     }
 	
 	/** Creates new ScopeBuilder */
@@ -90,14 +97,8 @@ public class ScopeBuilder
 	{
 		ScopeBuilder inst = new ScopeBuilder(TYPE_ROOT, grm, location, root);
 		
-		String nameForTargetLang = root.getAttributeNS(NGCCGrammar.NGCC_NSURI, "class");
-		if(nameForTargetLang.length()==0) nameForTargetLang="RelaxNGCC_Result";
-
-		String packageName = root.getAttributeNS(NGCCGrammar.NGCC_NSURI, "package");
-		if(packageName.length()==0) packageName = grm.getPackageName();
-		
-		inst._ScopeInfo.setClassNames(root.getAttribute("name"), nameForTargetLang, packageName, root.getAttributeNS(NGCCGrammar.NGCC_NSURI, "access"));
-		
+        setScopeParameters(grm,inst,root,
+            root.attributeNGCC("class","RelaxNGCC_Result"));
 		return inst;
     }
     
@@ -106,7 +107,9 @@ public class ScopeBuilder
 	{
 		ScopeBuilder inst = new ScopeBuilder(TYPE_LAMBDA, grm, location, root);
 		
-		inst._ScopeInfo.setClassNames(lambda_name, root.getAttributeNS(NGCCGrammar.NGCC_NSURI, "class"), null, "");
+		inst._ScopeInfo.setParameters(lambda_name,
+            root.attributeNGCC("class",""),
+            null, "", null, "this",null);
 		return inst;
     }
 
@@ -218,6 +221,8 @@ public class ScopeBuilder
 			initial = processRelaxNGNode(_Root, ctx, finalstate);
 		_ScopeInfo.setThreadCount(_ThreadCount);
 		_ScopeInfo.setInitialState(initial, _PreservedAction);
+        
+        _ScopeInfo.minimizeStates();
 	}
 	
 	private State traverseNodeList(NGCCNodeList nl, ScopeBuildingContext ctx, State destination)
@@ -244,7 +249,7 @@ public class ScopeBuilder
 		{
 			String name = child.getLocalName();
             //process lambda scope
-            if(!name.equals("ref") && child.getAttributeNS(NGCCGrammar.NGCC_NSURI, "class").length()>0)
+            if(!name.equals("ref") && child.hasAttributeNGCC("class"))
             {
                 String tempname = _Grammar.createLambdaName();
 				ScopeBuilder b = ScopeBuilder.createAsLambda(_Grammar, child, _ScopeInfo.getLocation(), tempname);
@@ -358,7 +363,7 @@ public class ScopeBuilder
 		
 		return head;
 	}
-	
+    
 	private State processAttribute(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
 		String attr_name = exp.getAttribute("name");
@@ -370,11 +375,22 @@ public class ScopeBuilder
 		else
 			nc = NameClass.fromElementElement(_ScopeInfo, exp, ns);
 
-		State middle = traverseNodeList(exp.getChildNodes(), ctx, destination);
-		State head = createState(exp, ctx);
-		Transition t = createTransition(new Alphabet(Alphabet.START_ATTRIBUTE, nc), middle);
-		addAction(t);
-		head.addTransition(t);
+        
+        State tail = createState(exp, ctx);
+        Transition te = createTransition(new Alphabet(Alphabet.END_ATTRIBUTE, nc), destination);
+        addAction(te);
+//??        if(ctx.getInterleaveBranchRoot()!=null) te.setEnableState(ctx.getInterleaveBranchRoot());
+        tail.addTransition(te);
+        
+//??        ScopeBuildingContext newctx = new ScopeBuildingContext(ctx);
+//??        newctx.setInterleaveBranchRoot(null);
+        State middle = traverseNodeList(exp.getChildNodes(), ctx/*newctx*/, tail);
+        State head = createState(exp, ctx);
+        Transition ts = createTransition(new Alphabet(Alphabet.START_ATTRIBUTE, nc), middle);
+        addAction(ts);
+//??        if(ctx.getInterleaveBranchRoot()!=null) ts.setDisableState(ctx.getInterleaveBranchRoot());
+        head.addTransition(ts);
+        
 		return head;
 	}
 	private State processData(NGCCElement exp, ScopeBuildingContext ctx, State destination)
@@ -396,11 +412,9 @@ public class ScopeBuilder
 	}
 	private State processData(NGCCElement exp, ScopeBuildingContext ctx, State destination, MetaDataType mdt)
 	{
-		String alias = exp.getAttributeNS(NGCCGrammar.NGCC_NSURI, "alias");
-		if(alias.length()>0)
-			_ScopeInfo.addAlias(alias, mdt.getXSTypeName());
-		else
-			alias = null;
+        String alias = exp.attributeNGCC("alias",null);
+		if(alias!=null)   _ScopeInfo.addAlias(alias, mdt.getXSTypeName());
+        
 		State result = createState(exp, ctx);
 		Transition t = createTransition(new Alphabet(mdt, alias), destination);
 		addAction(t);
@@ -409,11 +423,10 @@ public class ScopeBuilder
 	}
 	private State processValue(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
-		String alias = exp.getAttributeNS(NGCCGrammar.NGCC_NSURI, "alias");
-		if(alias.length()>0)
-			_ScopeInfo.addAlias(alias, "string");
-		else
-			alias = null;
+        String alias = exp.attributeNGCC("alias",null);
+        
+		if(alias!=null)	_ScopeInfo.addAlias(alias, "string");
+        
 		State result = createState(exp, ctx);
 		Transition t = createTransition(Alphabet.createFixedValue(exp.getFullText(), alias), destination);
 		addAction(t);
@@ -422,18 +435,16 @@ public class ScopeBuilder
 	}
 	private State processList(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
-		String alias = exp.getAttributeNS(NGCCGrammar.NGCC_NSURI, "alias");
-		if(alias.length()>0)
-		{
+        String alias = exp.attributeNGCC("alias",null);
+        
+        if(alias!=null) {
 			_ScopeInfo.addAlias(alias, "string");
 			State result = createState(exp, ctx);
 			Transition t = createTransition(new Alphabet(MetaDataType.STRING, alias), destination);
 			addAction(t);
 			result.addTransition(t);
 			return result;
-		}
-		else
-		{
+		} else {
 			destination.setListMode(State.LISTMODE_OFF);
 			State head = traverseNodeList(exp.getChildNodes(), ctx, destination);
 			head.setListMode(State.LISTMODE_ON);
@@ -502,8 +513,10 @@ public class ScopeBuilder
 		addAction(head);
 		head.mergeTransitions(destination, action_last);
 		destination.mergeTransitions(head);
-		if(destination.isAcceptable()) head.setAcceptable(true);
-		return head;
+        return destination;
+//  use less states
+//		if(destination.isAcceptable()) head.setAcceptable(true);
+//		return head;
 	}
 	private State processOptional(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
@@ -511,9 +524,13 @@ public class ScopeBuilder
 		addAction(destination);
 		State head = traverseNodeList(exp.getChildNodes(), ctx, destination);
 		addAction(head);
-		head.mergeTransitions(destination, action_last);
-		if(destination.isAcceptable()) head.setAcceptable(true);
-		return head;
+        
+        destination.mergeTransitions(head,action_last);
+        return destination;
+        
+//		head.mergeTransitions(destination, action_last);
+//		if(destination.isAcceptable()) head.setAcceptable(true);
+//		return head;
 	}
 	
 	private State processRef(NGCCElement exp, ScopeBuildingContext ctx, State destination)
@@ -532,13 +549,16 @@ public class ScopeBuilder
 			addAction(destination);
 			
 			State head = createState(exp, ctx);
-			String alias = exp.getAttributeNS(NGCCGrammar.NGCC_NSURI, "alias");
-			if(alias.length()>0)
-				_ScopeInfo.addUserDefinedAlias(alias, target._ScopeInfo.getNameForTargetLang());
-			else
-				alias = null;
+            
+			String alias = exp.attributeNGCC("alias",null);
+			if(alias!=null)
+				_ScopeInfo.addUserDefinedAlias(alias,
+                    target._ScopeInfo.getReturnType());
 			
-			Transition t = createTransition(Alphabet.createRef(exp.getAttribute("name"), alias), destination);
+			Transition t = createTransition(Alphabet.createRef(
+                exp.getAttribute("name"), alias,
+                exp.attributeNGCC("with-params",null)),
+                destination);
 			head.addTransition(t);
 			if(target.nullable()) head.mergeTransitions(destination, action);
 			return head;

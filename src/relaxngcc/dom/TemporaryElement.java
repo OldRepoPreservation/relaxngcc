@@ -13,7 +13,7 @@ import relaxngcc.NGCCGrammar;
 /**
  * a placeholder of define elements which have combine attribute.
  */
-public class TemporaryElement implements NGCCElement
+public class TemporaryElement extends NGCCElement
 {
 	private String _Name;
 	private Vector _Children;
@@ -31,12 +31,16 @@ public class TemporaryElement implements NGCCElement
 		if(o!=null) return (String)o;
 		else return "";
 	}
-	public boolean hasAttribute(String name)
-	{
-		Object o = _Attributes.get(name);
-		if(o!=null) return true;
-		else return false;
+    
+    
+	public boolean hasAttribute(String name) {
+		return _Attributes.get(name)!=null;
 	}
+    
+    public boolean hasAttributeNGCC(String localName) {
+        return hasAttribute(localName); // ??? Kohsuke
+    }
+    
 	public String getAttributeNS(String uri, String name) { return ""; } //not supported
 	public String getLocalName() { return _Name; }
 	public String getNamespaceURI()	{ return NGCCGrammar.RELAXNG_NSURI;	}

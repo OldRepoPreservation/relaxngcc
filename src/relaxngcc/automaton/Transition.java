@@ -18,11 +18,14 @@ public class Transition
 	private State _EnableState;
 	private State _DisableState;
 	
+    /** value that uniquely identifies a transition. */
+    private final int uniqueId;
+    
 	/**
 	 * creates Transition with no action
 	 */
     public Transition(Alphabet a, State n)
-	{ _Alphabet=a; _NextState=n; }
+    { _Alphabet=a; _NextState=n; uniqueId=iotaGen++; }
 
 	/**
 	 * add a new action at head of current action.
@@ -36,11 +39,11 @@ public class Transition
 		
 		_Action += System.getProperty("line.separator");
 	}
-	/**
-	 * creates Transition with user-defined action
-	 */
+    /**
+     * creates Transition with user-defined action
+     */
     public Transition(Alphabet a, State n, String act)
-	{ _Alphabet=a; _NextState=n; _Action=act; }
+    { _Alphabet=a; _NextState=n; _Action=act; uniqueId=iotaGen++; }
 	
 	public Object clone()
 	{
@@ -52,6 +55,7 @@ public class Transition
 	public Alphabet getAlphabet() { return _Alphabet; }
 	public State nextState() { return _NextState; }
 	public String getAction() { return _Action; }
+    public int getUniqueId() { return uniqueId; }
 
     public void changeDestination(State s) { _NextState=s; }
 	
@@ -61,4 +65,8 @@ public class Transition
 	{ _DisableState = s; }
 	public State getEnableState() { return _EnableState; }
 	public State getDisableState() { return _DisableState; }
+    
+    
+    /** used to produce unique IDs. */
+    private static int iotaGen=1;
 }

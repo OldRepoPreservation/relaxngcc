@@ -10,6 +10,7 @@ import java.io.PrintStream;
 
 import relaxngcc.NGCCGrammar;
 import relaxngcc.dom.NGCCElement;
+import relaxngcc.util.SelectiveIterator;
 import relaxngcc.builder.ScopeInfo;
 
 /**
@@ -22,11 +23,6 @@ public class State implements Comparable
 	public static final int LISTMODE_OFF = 2;
 
 	private Set _AllTransitions;
-	private Set _StartElementTransitions; //collection of startElement type transitions
-	private Set _EndElementTransitions; //collection of endElement type transitions
-	private Set _TextTransitions; //collection of text type transitions
-	private Set _AttributeTransitions; //collection of attribute type transitions
-	private Set _RefTransitions; //collection of ref type transitions 
 	private Set _ReversalTransitions; //collection of transitions that comes to this state from other state
     
 	//acceptable or not
@@ -64,11 +60,6 @@ public class State implements Comparable
 		_Container = container;
 		_LocationHint = e;
 		_AllTransitions = new HashSet();
-		_StartElementTransitions = new HashSet();
-		_EndElementTransitions = new HashSet();
-		_TextTransitions = new HashSet();
-		_AttributeTransitions = new HashSet();
-		_RefTransitions = new HashSet();
         
         _ReversalTransitions = new HashSet();
         
@@ -81,45 +72,59 @@ public class State implements Comparable
 	public void addTransition(Transition t)
 	{
 		_AllTransitions.add(t);
-		switch(t.getAlphabet().getType())
+        t.nextState().addReversalTransition(t);
+/*		switch(t.getAlphabet().getType())
 		{
-			case Alphabet.START_ELEMENT:
-				addTransitionWithCheck(_StartElementTransitions, t, null);
-				break;
-			case Alphabet.END_ELEMENT:
-				addTransitionWithCheck(_EndElementTransitions, t, null);
-				break;
-			case Alphabet.START_ATTRIBUTE:
-				addTransitionWithCheck(_AttributeTransitions, t, null);
-				break;
 			case Alphabet.TYPED_VALUE:
 			case Alphabet.FIXED_VALUE:
 				addTransitionWithCheck(_TextTransitions, t, null);
 				break;
-			case Alphabet.REF_BLOCK:
-				addTransitionWithCheck(_RefTransitions, t, null);
-				break;
 		}
-	}
+*/	}
 	
-	public boolean hasStartElementTransition() { return !_StartElementTransitions.isEmpty(); }
-	public boolean hasEndElementTransition()   { return !_EndElementTransitions.isEmpty(); }
-	public boolean hasAttributeTransition()    { return !_AttributeTransitions.isEmpty(); }
-	public boolean hasTextTransition()         { return !_TextTransitions.isEmpty(); }
-	public boolean hasRefTransition()          { return !_RefTransitions.isEmpty(); }
+    private class TypeIterator extends SelectiveIterator {
+        TypeIterator( int _typeMask ) {
+            super(_AllTransitions.iterator());
+            this.typeMask=_typeMask;
+        }
+        private final int typeMask;
+        protected boolean filter( Object o ) {
+            return (((Transition)o).getAlphabet().getType()&typeMask)!=0;
+        }
+    }
 
-	public Iterator iterateTransitions()             { return _AllTransitions.iterator(); }
-	public Iterator iterateStartElementTransitions() { return _StartElementTransitions.iterator(); }
-	public Iterator iterateEndElementTransitions()   { return _EndElementTransitions.iterator(); }
-	public Iterator iterateAttributeTransitions()    { return _AttributeTransitions.iterator(); }
-	public Iterator iterateTextTransitions()         { return _TextTransitions.iterator(); }
-	public Iterator iterateRefTransitions()          { return _RefTransitions.iterator(); }
+    public Iterator iterateTransitions()             { return _AllTransitions.iterator(); }
+
+    /**
+     * Checks if this state has transitions with
+     * at least one of given types of alphabets.
+     * 
+     * @param alphabetTypes
+     *      OR-ed combination of alphabet types you want to iterate.
+     */
+    public boolean hasTransition( int alphabetTypes ) {
+        return new TypeIterator(alphabetTypes).hasNext();
+    }
+    
+    /**
+     * Iterate transitions with specified alphabets.
+     * 
+     * @param alphabetTypes
+     *      OR-ed combination of alphabet types you want to iterate.
+     */
+    public Iterator iterateTransitions( int alphabetTypes ) {
+        return new TypeIterator(alphabetTypes);
+    }
+    
 	public Iterator iterateReversalTransitions()     { return _ReversalTransitions.iterator(); }
     
-	public Set firstStartElementAlphabets() { return transitionsToFirstAlphabets(_StartElementTransitions); }
-	public Set firstTextAlphabets()         { return transitionsToFirstAlphabets(_TextTransitions); }
-	public Set firstAttributeAlphabets()    { return transitionsToFirstAlphabets(_AttributeTransitions); }
-	
+    /**
+     * Computes the FIRST alphabet set of this state.
+     * Only returns alphabets of the given type.
+     */
+    public Set firstAlphabets( int alphabetType ) {
+        return transitionsToFirstAlphabets(iterateTransitions(alphabetType));
+    }	
 	public void addReversalTransition(Transition t) { _ReversalTransitions.add(t); }
     
 	public void mergeTransitions(State s)
@@ -128,11 +133,14 @@ public class State implements Comparable
 	}
 	public void mergeTransitions(State s, String action)
 	{
+        // TODO: implement this check
+/*
 		addTransitionsWithCheck(_StartElementTransitions, s._StartElementTransitions, action);
 		addTransitionsWithCheck(_EndElementTransitions, s._EndElementTransitions, action);
 		addTransitionsWithCheck(_AttributeTransitions, s._AttributeTransitions, action);
 		addTransitionsWithCheck(_TextTransitions, s._TextTransitions, action);
 		addTransitionsWithCheck(_RefTransitions, s._RefTransitions, action);
+*/
 		_AllTransitions.addAll(s._AllTransitions);
 	}
 	
@@ -185,7 +193,8 @@ public class State implements Comparable
 		Iterator it = newtransitions.iterator();
 		while(it.hasNext()) addTransitionWithCheck(target, (Transition)it.next(), action);
 	}
-	
+
+/*	
 	private static Set transitionsToFirstAlphabets(Set transitions)
 	{
 		Set result = new HashSet();
@@ -197,7 +206,16 @@ public class State implements Comparable
 		}
 		return result;
 	}
-	
+*/
+    private static Set transitionsToFirstAlphabets(Iterator itr) {
+        Set result = new HashSet();
+        while(itr.hasNext()) {
+            Transition t = (Transition)itr.next();
+            result.add(t.getAlphabet());
+        }
+        return result;
+    }
+    	
 	public void checkFirstAlphabetAmbiguousity()
 	{
 		TreeSet alphabets = new TreeSet();
@@ -209,7 +227,7 @@ public class State implements Comparable
 		}
 		
 		NGCCGrammar gr = _Container.getGrammar();
-		Iterator refs = iterateRefTransitions();
+		Iterator refs = iterateTransitions(Alphabet.REF_BLOCK);
 		while(refs.hasNext())
 		{
 			Transition ref = (Transition)refs.next();

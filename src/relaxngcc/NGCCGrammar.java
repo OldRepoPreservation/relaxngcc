@@ -45,6 +45,26 @@ public class NGCCGrammar
 	private String _GlobalImport;
 	private String _DefaultNSURI;
 	private Options _Options;
+    
+    /**
+     * Type name of the runtime.
+     * By default it is relaxngcc.runtime.NGCCRuntime,
+     * but the application can implement a derived class
+     * and use it instead of the default one.
+     */
+    private String runtimeType;
+    /**
+     * Gets the class name of the runtime type
+     * alone without the package name.
+     */
+    public String getRuntimeTypeShortName() {
+        int idx = runtimeType.lastIndexOf('.');
+        if(idx<0)   return runtimeType;
+        else        return runtimeType.substring(idx+1);
+    }
+    public String getRuntimeTypeFullName() {
+        return runtimeType;
+    }
 	
 	private class GrammarLoadingContext
 	{
@@ -60,7 +80,8 @@ public class NGCCGrammar
 		_Scopes = new TreeMap();
 		_LambdaScopes = new TreeMap();
 		_DataTypes = new Vector();
-		_Package = e.getAttributeNS(NGCC_NSURI, "package");
+		_Package = e.attributeNGCC("package","");
+        runtimeType = e.attributeNGCC("runtime-type","relaxngcc.runtime.NGCCRuntime");
 		_DefaultNSURI = e.getAttribute("ns");
 		_GlobalBody = "";
 		_GlobalImport = "";
@@ -249,6 +270,15 @@ public class NGCCGrammar
 			sci.dump(strm);
 		}
 	}
+    
+    /** generates automaton gif files. */
+    public void dumpAutomata(File outDir) throws IOException, InterruptedException {
+        Iterator it = _Scopes.values().iterator();
+        while(it.hasNext()) {
+            ScopeInfo sci = ((ScopeBuilder)it.next()).getScopeInfo();
+            sci.dumpAutomaton(new File(outDir,sci.getNameForTargetLang()+".gif"));
+        }
+    }
 	
 	//outputs data type definition. This is for only typed-sax mode.
 	private void printDataTypes(PrintStream output)

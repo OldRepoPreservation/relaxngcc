@@ -6,8 +6,11 @@
 
 package relaxngcc.builder;
 import java.io.PrintStream;
+import java.text.MessageFormat;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.Vector;
 import relaxngcc.automaton.Alphabet;
@@ -117,10 +120,16 @@ public class CodeWriter
 		_output = out;
 		_Info.printHeaderSection(out, _Options, _Grammar.getGlobalImport());
         writeAcceptableStates();
-		writeStartElementHandler();
-		writeEndElementHandler();
+        
+        writeEventHandler(Alphabet.START_ELEMENT,   "enterElement" );
+        writeEventHandler(Alphabet.END_ELEMENT,     "leaveElement");
+        writeEventHandler(Alphabet.START_ATTRIBUTE, "enterAttribute" );
+        writeEventHandler(Alphabet.END_ATTRIBUTE,   "leaveAttribute");
+    
 		writeTextHandler();
 		writeAttributeHandler();
+        writeChildCompletedHandler();
+        
         Iterator lambda_scopes = _Info.iterateChildScopes();
         while(lambda_scopes.hasNext())
         {
@@ -146,37 +155,43 @@ public class CodeWriter
 				_output.print("_ngcc_threaded_state[" + s.getThreadIndex() + "]=="+ s.getIndex());
 			first = false;
         }
+        
+        if(first)   _output.print("false");
+        
         _output.println(";");
         _output.println("}"); //end of method
     }
 	
-	private void writeStartElementHandler()
-	{
-		Iterator states = _Info.iterateStatesHavingStartElementOrRef();
-		printSection("enterElement");
-		_output.println("public void enterElement(String uri,String localname,String qname) throws SAXException");
-		_output.println("{");
+    
+    private void writeEventHandler( int type, String eventName ) {
+        
+		Iterator states = _Info.iterateStatesHaving(type|Alphabet.REF_BLOCK);// /*HavingStartElementOrRef*/(type);
+        
+		printSection(eventName);
+		_output.println(MessageFormat.format(
+            "public void {0}(String uri,String localName,String qname) throws SAXException '{'",
+            new Object[]{eventName}));
+            
 		if(_Options.debug)
-			_output.println("System.err.println(\"enterElement " + _Info.getNameForTargetLang() + ":\" + qname + \",state=\" + _ngcc_current_state);");
+			_output.println("System.err.println(\""+eventName+" " + _Info.getNameForTargetLang() + ":\" + qname + \",state=\" + _ngcc_current_state);");
 		
-		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.START_ELEMENT);
+		SwitchBlockInfo bi = new SwitchBlockInfo(type);
 		
-		while(states.hasNext())
-		{
+		while(states.hasNext()) {
 			//normal transitions by startElement type alphabets
 			State st = (State)states.next();
-			Iterator transitions = st.iterateStartElementTransitions();
-			while(transitions.hasNext())
-			{
+			Iterator transitions = st.iterateTransitions(type); // iterateStartElementTransitions();
+			
+            while(transitions.hasNext()) {
 				Transition tr = (Transition)transitions.next();
 				Alphabet a = tr.getAlphabet();
 				bi.addConditionalCode(st, 
-					a.getKey().createJudgementClause(_Info, "uri", "localname"),
+					a.getKey().createJudgementClause(_Info, "uri", "localName"),
 					transitionCode(tr));
 			}
 			
 			//ref elements
-			transitions = st.iterateRefTransitions();
+			transitions = st.iterateTransitions(Alphabet.REF_BLOCK);
 			while(transitions.hasNext())
 			{
 				Transition ref_tr = (Transition)transitions.next();
@@ -187,37 +202,16 @@ public class CodeWriter
 				while(first_alphabets.hasNext())
 				{
 					Alphabet a = (Alphabet)first_alphabets.next();
-					if(a.getType()!=Alphabet.START_ELEMENT) continue;
+					if(a.getType()!=type)  continue;
 					if(!first_clause) clause += "|| ";
-					clause += "(" +  a.getKey().createJudgementClause(_Info, "uri", "localname") + ") ";
+					clause += "(" +  a.getKey().createJudgementClause(_Info, "uri", "localName") + ") ";
 					first_clause = false;
 				}
 				
 				if(!first_clause)
-				{
-					StringBuffer code = new StringBuffer();
-					if(ref_tr.getAction()!=null) code.append(ref_tr.getAction());
-					appendStateTransition(code, ref_tr.nextState());
-					String handler_name = ref_tr.getAlphabet().getAlias();
-					if(handler_name==null)
-					{
-						String typename = (_Options.style==Options.STYLE_MSV? "NGCCTypedContentHandler" : "NGCCPlainHandler");
-						code.append(typename + " h = new " + ref_block.getNameForTargetLang() + "(_ngcc_reader, this);" + _Options.newline);
-						handler_name = "h";
-					}
-					else
-						code.append(handler_name + " = new " + ref_block.getNameForTargetLang() + "(_ngcc_reader, this);" + _Options.newline);
-						
-					if(_Options.debug)
-						code.append("System.err.println(\"Change Handler " + ref_block.getNameForTargetLang() + "\");" + _Options.newline);
-					
-					code.append("setupNewHandler(" + handler_name + ", uri, localname, qname);" + _Options.newline);
-					code.append(_Options.newline);
-					if(ref_tr.nextState().hasAttributeTransition())
-						code.append("processAttribute();");
-					
-					bi.addConditionalCode(st, clause, code.toString());
-				}
+					bi.addConditionalCode(st, clause, 
+                        buildCodeToSpawnChild(eventName,ref_tr,
+                            "uri,localName,qname"));
 			}
 			
 		}
@@ -231,174 +225,87 @@ public class CodeWriter
 			while(follows.hasNext())
 			{
 				Alphabet f = (Alphabet)follows.next();
-				if(f.getType()==Alphabet.START_ELEMENT)
+				if(f.getType()==type)
 				{
-					String action = "resetHandlerByStart(uri,localname,qname);";
-					if(st.getActionOnExit()!=null) action = st.getActionOnExit() + action;
-					bi.addConditionalCode(st, f.getKey().createJudgementClause(_Info, "uri", "localname"), action);
+                    String action = MessageFormat.format(
+                        "runtime.revertToParentFrom{0}({1},cookie, uri,localName,qname);",
+                        new Object[]{
+                            capitalize(eventName),
+                            _Info.getReturnVariable(),
+                        });
+                        
+					if(st.getActionOnExit()!=null)
+                        action = st.getActionOnExit() + action;
+					bi.addConditionalCode(
+                        st,
+                        f.getKey().createJudgementClause(_Info, "uri", "localName"),
+                        action);
 				}
 			}
 		}
 		
-		outputSwitchBlock(bi);
+		outputSwitchBlock(bi,"unexpected"+capitalize(eventName));
 		
 		_output.println("}");   //end of method
 	}
-	private void writeEndElementHandler()
-	{
-		Iterator states = _Info.iterateStatesHavingEndElement();
-		printSection("leaveElement");
-		_output.println("public void leaveElement(String uri,String localname,String qname) throws SAXException");
-		_output.println("{");
-		if(_Options.debug)
-			_output.println("System.err.println(\"" + _Info.getNameForTargetLang() + ":leaveElement \" + qname + \",state=\" + _ngcc_current_state);"); 
-		
-		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.END_ELEMENT);
-		
-		//normal transitions by endElement type transitions
-		while(states.hasNext())
-		{
-			State st = (State)states.next();
-			Iterator transitions = st.iterateEndElementTransitions();
-			while(transitions.hasNext())
-			{
-				Transition tr = (Transition)transitions.next();
-				Alphabet a = tr.getAlphabet();
-				bi.addConditionalCode(st, a.getKey().createJudgementClause(_Info, "uri", "localname"), transitionCode(tr));
-			}
-		}
-		
-		//end of scope
-		states = _Info.iterateAcceptableStates();
-		while(states.hasNext())
-		{
-			State st = (State)states.next();
-			Iterator follows = _Info.iterateFollowAlphabets();
-			while(follows.hasNext())
-			{
-				Alphabet f = (Alphabet)follows.next();
-				if(f.getType()==Alphabet.END_ELEMENT)
-				{
-					String action = "resetHandlerByEnd(uri,localname,qname);";
-					if(_Options.debug) action = "System.out.println(\"reset handler\"); " + action;
-					if(st.getActionOnExit()!=null) action = st.getActionOnExit() + action;
-					bi.addConditionalCode(st, f.getKey().createJudgementClause(_Info, "uri", "localname"), action);
-				}
-			}
-		}
-		
-		outputSwitchBlock(bi);
-		
-		_output.println("}");   //end of function
-	}
+    
+    /**
+     * Generates a code fragment that creates a new child object
+     * and switches to it.
+     * 
+     * @param eventName
+     *      The event name for which we are writing an event handler.
+     * @param ref_tr
+     *      The transition with REF_BLOCK type alphabet.
+     * @param eventParams
+     *      Additional parameters that will be passed to the
+     *      spawnChildFromXXX method. Usually the parameters
+     *      given to the event handler.
+     * @return
+     *      code fragment.
+     */
+    private String buildCodeToSpawnChild(String eventName,Transition ref_tr,
+        String eventParams) {
+        
+        Alphabet alpha = ref_tr.getAlphabet();
+        StringBuffer code = new StringBuffer();
+        ScopeInfo ref_block =
+            _Grammar.getScopeInfoByName(alpha.getValue());
+        
+        if(ref_tr.getAction()!=null) code.append(ref_tr.getAction());
+        
+        code.append(MessageFormat.format(
+            "NGCCHandler h = new {0}(this,runtime,{1}{2});{3}", new Object[]{
+                ref_block.getNameForTargetLang(),
+                new Integer(ref_tr.getUniqueId()),
+                alpha.getParams(),
+                _Options.newline}));
+            
+        if(_Options.debug)
+            code.append("System.err.println(\"Change Handler " + ref_block.getNameForTargetLang() + "\");" + _Options.newline);
+        
+        code.append(MessageFormat.format(
+            "runtime.spawnChildFrom{0}(h,{1});\n",
+            new Object[]{
+                capitalize(eventName),
+                eventParams}));
+                
+        code.append(_Options.newline);
+        
+        return code.toString();
+    }
+    
+    /** Capitalizes the first character. */
+    private String capitalize( String name ) {
+        return Character.toUpperCase(name.charAt(0))+name.substring(1);
+    }
+    
 	
 	//outputs text consumption handler. this handler branches by output method
-	private void writeTextHandler()
-	{
-		switch(_Options.style)
-		{
-			case Options.STYLE_MSV:
-				writeMSVTextHandler();
-				break;
-			case Options.STYLE_TYPED_SAX:
-				writeTypedSAXTextHandler();
-				break;
-			case Options.STYLE_PLAIN_SAX:
-				writePlainSAXTextHandler();
-				break;
-		}
-	}
-	private void writeTypedSAXTextHandler()
-	{
-		Iterator states = _Info.iterateStatesHavingText();
-		printSection("text");
-		_output.println("public void text(String value) throws SAXException");
-		_output.println("{");
-		
-		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.TYPED_VALUE);
-		
-		while(states.hasNext())
-		{
-			State st = (State)states.next();
-			Iterator transitions = st.iterateTextTransitions();
-			while(transitions.hasNext())
-			{
-				Transition tr = (Transition)transitions.next();
-				Alphabet a = tr.getAlphabet();
-				StringBuffer buf = new StringBuffer();
-				String alias = tr.getAlphabet().getAlias();
-				if(a.getType()==Alphabet.FIXED_VALUE)
-				{
-					if(alias!=null)
-						buf.append(alias + "=value;");
-					buf.append(transitionCode(tr));
-					bi.addConditionalCode(st, "value.equals(\"" + a.getValue() + "\")", buf.toString());
-				}
-				else	
-				{
-					MetaDataType mdt = tr.getAlphabet().getMetaDataType();
-					if(mdt==MetaDataType.STRING) // case of string type
-					{
-						if(alias!=null)
-							buf.append(alias + "=value;");
-						buf.append(transitionCode(tr));
-						bi.addElseCode(st, buf.toString());
-					}
-					else
-					{
-						int typeindex = mdt.getIndex();
-						if(alias!=null)
-							buf.append(alias + "=(" + mdt.getJavaTypeName() + ")DataTypes.dt[" + typeindex + "].createJavaObject(value,null);");
-						buf.append(transitionCode(tr));
-						bi.addConditionalCode(st, "DataTypes.dt[" + typeindex + "].isValid(value,null)", buf.toString());
-					}
-				}
-			}
-		}
-		outputSwitchBlock(bi);
-		_output.println("}");   //end of function
-	}
-	private void writeMSVTextHandler()
-	{
-		Iterator states = _Info.iterateStatesHavingText();
-		printSection("text");
-		_output.println("public void text(String value, XSDatatype type) throws SAXException");
-		_output.println("{");
-		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.TYPED_VALUE);
-		while(states.hasNext())
-		{
-			State st = (State)states.next();
-			Iterator transitions = st.iterateTextTransitions();
-			while(transitions.hasNext())
-			{
-				Transition tr = (Transition)transitions.next();
-				Alphabet a = tr.getAlphabet();
-				StringBuffer buf = new StringBuffer();
-				String alias = tr.getAlphabet().getAlias();
-				
-				if(a.getType()==Alphabet.FIXED_VALUE)
-				{
-					if(alias!=null)
-						buf.append(alias + "=" + a.getKey() + ";");
-					buf.append(transitionCode(tr));
-					bi.addConditionalCode(st, "value.equals(\"" + a.getValue() + "\")", buf.toString());
-				}
-				else	
-				{
-					MetaDataType mdt = tr.getAlphabet().getMetaDataType();
-					if(alias!=null)
-						buf.append(alias + "=(" + mdt.getJavaTypeName() + ")type.createJavaObject(value,null);");
-					buf.append(transitionCode(tr));
-					bi.addElseCode(st, buf.toString());
-				}
-			}
-		}
-		outputSwitchBlock(bi);
-		_output.println("}");   //end of function
-	}
-	private void writePlainSAXTextHandler()
-	{
-		Iterator states = _Info.iterateStatesHavingText();
+	private void writeTextHandler() {
+		Iterator states = _Info.iterateStatesHaving(
+            Alphabet.FIXED_VALUE|Alphabet.TYPED_VALUE|Alphabet.REF_BLOCK ); //Text();
+            
 		printSection("text");
 		_output.println("public void text(String value) throws SAXException");
 		_output.println("{");
@@ -406,7 +313,7 @@ public class CodeWriter
 		while(states.hasNext())
 		{
 			State st = (State)states.next();
-			Iterator transitions = st.iterateTextTransitions();
+			Iterator transitions = st.iterateTransitions(Alphabet.FIXED_VALUE|Alphabet.TYPED_VALUE);
 			while(transitions.hasNext())
 			{
 				Transition tr = (Transition)transitions.next();
@@ -421,20 +328,106 @@ public class CodeWriter
 					bi.addConditionalCode(st, "value.equals(\"" + a.getValue() + "\")", buf.toString());
 				else	
 					bi.addElseCode(st, buf.toString());
-			}
+            }
+            
+            
+            //ref elements
+            transitions = st.iterateTransitions(Alphabet.REF_BLOCK);
+            while(transitions.hasNext())
+            {
+                Transition ref_tr = (Transition)transitions.next();
+                ScopeInfo ref_block = _Grammar.getScopeInfoByName(ref_tr.getAlphabet().getValue());
+                
+                if(ref_block.hasFirstAlphabet(Alphabet.TYPED_VALUE)
+                || ref_block.hasFirstAlphabet(Alphabet.FIXED_VALUE)) {
+                    bi.addPrologue(st,
+                        buildCodeToSpawnChild("text",ref_tr,
+                            "value"));
+                    break;
+                }
+            }
 		}
-		outputSwitchBlock(bi);
+		outputSwitchBlock(bi,null);
 		_output.println("}");   //end of function
 	}
+    
+    /**
+     * Returns true if the specified state can be reached by
+     * a Ref transition.
+     */
+    private boolean hasReverseRef( State s ) {
+        Iterator i = s.iterateReversalTransitions();
+        while(i.hasNext()) {
+            Transition t = (Transition)i.next();
+            if(t.getAlphabet().getType()==Alphabet.REF_BLOCK)
+                return true;
+        }
+        return false;
+    }
+    
+    private void writeChildCompletedHandler() {
+        printSection("child completed");
+        _output.println("public void onChildCompleted(Object result, int cookie) throws SAXException {");
+        if(_Options.debug)
+            _output.println("\tSystem.out.println(\"onChildCompleted(\"+cookie+\")\");");
+        _output.println("switch(cookie) {");
+        
+        
+        Set processedTransitions = new HashSet();
+        
+        Iterator states = _Info.iterateAllStates();
+        while(states.hasNext()) {
+            State st = (State)states.next();
+            
+            Iterator trans =st.iterateTransitions(Alphabet.REF_BLOCK);
+            while(trans.hasNext()) {
+                Transition tr = (Transition)trans.next();
+                
+                if(processedTransitions.add(tr)) {
+                    _output.println("case "+tr.getUniqueId()+":");
+                    
+                    // if there is an alias, assign to that variable
+                    String alias = tr.getAlphabet().getAlias();
+                    if(alias!=null) {
+                        ScopeInfo childBlock = _Grammar.getScopeInfoByName(
+                            tr.getAlphabet().getValue());
+        
+                        _output.println(MessageFormat.format(
+                            "this.{0}=({1})result;",
+                            new Object[]{ alias, childBlock.getReturnType() }));
+                    }
+                    
+                    StringBuffer buf= new StringBuffer();
+                    appendStateTransition(buf, tr.nextState());
+                    
+                    if(tr.nextState().hasTransition(Alphabet.START_ATTRIBUTE))
+                        _output.println("processAttribute();");
+                        
+                    _output.println(buf);
+                    _output.println("return;");
+                    
+                    _output.println();
+                }
+            }
+        }
+        
+        _output.println("default:");
+        // TODO: assertion failed
+        _output.println("    throw new InternalError();");
+        
+        _output.println("}");   //end of the switch-case
+        _output.println("}");   //end of the function
+    }
+    
 	private void writeAttributeHandler()
 	{
 		Iterator states = _Info.iterateAllStates();
 		printSection("attribute");
 		_output.println("public void processAttribute() throws SAXException");
 		_output.println("{");
-		_output.println("int __attr_index;");
+		_output.println("int ai;");
 		if(_Options.debug)
-			_output.println("System.err.println(\"" + _Info.getNameForTargetLang() + ":processAttribute \" + currentAttrs().getLength() + \",\" + _ngcc_current_state);"); 
+			_output.println("System.err.println(\"" + _Info.getNameForTargetLang() + ":processAttribute \" + runtime.getCurrentAttributes().getLength() + \",\" + _ngcc_current_state);"); 
 		
 		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.START_ATTRIBUTE);
 		
@@ -443,54 +436,30 @@ public class CodeWriter
 			State st = (State)states.next();
 			if(!needToCheckAttribute(st)) continue;
 			
-			Iterator transitions = st.iterateAttributeTransitions();
+			Iterator transitions = st.iterateTransitions(Alphabet.START_ATTRIBUTE);
 			while(transitions.hasNext())
 			{
 				Transition tr = (Transition)transitions.next();
 				Alphabet a = tr.getAlphabet();
 				
-				StringBuffer buf = new StringBuffer();
-				bi.addPrologue(st, "__attr_index = getAttributeIndex("+ _Info.getNSStringConstant(a.getKey().getNSURI()) +", \"" + a.getKey().getName() + "\");" + _Options.newline);
-				buf.append(transitionCode(tr));
-				buf.append("consumeAttribute(__attr_index);" + _Options.newline);
-				bi.addConditionalCode(st, "__attr_index>=0", buf.toString());
-			}
-			
-			//ref elements
-			transitions = st.iterateRefTransitions();
-			while(transitions.hasNext())
-			{
-				Transition ref_tr = (Transition)transitions.next();
-				ScopeInfo destscope = _Grammar.getScopeInfoByName(ref_tr.getAlphabet().getValue());
-				if(destscope.containsFirstAttributeAlphabet())
-				{
-					StringBuffer clause = new StringBuffer();
-					StringBuffer action = new StringBuffer();
-					writeHavingAttributeCheckCode(destscope, destscope.iterateFirstAlphabets(), clause);
-					if(_Options.debug)
-						action.append("System.err.println(\"Change Handler " + destscope.getNameForTargetLang() + "\");" + _Options.newline);
-					
-					appendStateTransition(action, ref_tr.nextState());
-					String handler_name = ref_tr.getAlphabet().getAlias();
-					if(handler_name==null)
-					{
-						String typename = (_Options.style==Options.STYLE_MSV? "NGCCTypedContentHandler" : "NGCCPlainHandler");
-						action.append(typename + " h = new " + destscope.getNameForTargetLang() + "(_ngcc_reader, this);" + _Options.newline);
-						handler_name = "h";
-					}
-					else
-						action.append(handler_name + " = new " + destscope.getNameForTargetLang() + "(_ngcc_reader, this);" + _Options.newline);
-						
-					action.append("setupNewHandler(" + handler_name + ");" + _Options.newline);
-					bi.addConditionalCode(st, clause.toString(), action.toString());
-				}
+				
+                bi.addConditionalCode(st,
+                    MessageFormat.format(
+                    "(ai = runtime.getAttributeIndex({0},\"{1}\"))>=0",
+                        new Object[]{
+                            _Info.getNSStringConstant(a.getKey().getNSURI()),
+                            a.getKey().getName()}),
+                    "runtime.consumeAttribute(ai);" + _Options.newline);
 			}
 		}
 		
-		outputSwitchBlock(bi);
+        // TODO: end of scope handling.
+        
+		outputSwitchBlock(bi,null);
 		
 		_output.println("}");   //end of function
 	}
+
 	
 	private String transitionCode(Transition tr/*, boolean output_process_attribute*/)
 	{
@@ -529,13 +498,14 @@ public class CodeWriter
 		if(_Options.style!=Options.STYLE_MSV)
 		{
 			if(result.getListMode()==State.LISTMODE_ON)
-				buf.append("_tokenizeText=true;");
-			else if(result.getListMode()==State.LISTMODE_OFF)
-				buf.append("_tokenizeText=false;");
+				buf.append("runtime.setListMode();"); // _tokenizeText=true;");
+//  TODO: why do we need this?
+//			else if(result.getListMode()==State.LISTMODE_OFF)
+//				buf.append("_tokenizeText=false;");
 		}
 		
 		boolean in_if_block = false;
-		//in accept state, try unwinding
+/*		//in accept state, try unwinding
 		if(result.isAcceptable() && _Info.containsFollowAttributeAlphabet())
 		{
 			buf.append("if(");
@@ -544,7 +514,7 @@ public class CodeWriter
 			buf.append(_Options.newline);
 			in_if_block = true;
 		}
-		
+*/		
 		if(needToCheckAttribute(nextstate))
 		{
 			if(in_if_block) buf.append("else ");
@@ -555,13 +525,13 @@ public class CodeWriter
 	}
     private boolean needToCheckAttribute(State s)
     {
-    	if(s.hasAttributeTransition()) return true;
-    	Iterator it = s.iterateRefTransitions();
+    	if(s.hasTransition(Alphabet.START_ATTRIBUTE)) return true;
+    	Iterator it = s.iterateTransitions(Alphabet.REF_BLOCK);
     	while(it.hasNext())
     	{
     		Transition tr = (Transition)it.next();
 			ScopeInfo sc = _Grammar.getScopeInfoByName(tr.getAlphabet().getValue());
-			if(sc.containsFirstAttributeAlphabet()) return true;
+            if(sc.hasFirstAlphabet(Alphabet.END_ATTRIBUTE)) return true;
     	}
     	return false;
     }
@@ -596,7 +566,7 @@ public class CodeWriter
 			return deststate;
 	}
 	
-	private void outputSwitchBlock(SwitchBlockInfo bi)
+	private void outputSwitchBlock(SwitchBlockInfo bi, String errorHandleMethod)
 	{
 		boolean first = true;
 		Iterator i = bi.state2CodeFragment.entrySet().iterator();
@@ -638,22 +608,23 @@ public class CodeWriter
 				_output.println(cas.elsecode);
 				//_output.println(_Options.newline);
 				_output.println("}");
+                flag=true;
 			}
 			
-			if(flag && (bi.getType()==Alphabet.START_ELEMENT || bi.getType()==Alphabet.END_ELEMENT))
-				_output.println("else this.throwUnexpectedElementException(qname);");
+            if(flag && errorHandleMethod!=null) {
+                 _output.print("else ");
+                _output.println(errorHandleMethod+"(qname);");
+            }
+            
 			_output.println("}");
 			_output.println();
 			first = false;
 		}
 		
-		if(bi.getType()==Alphabet.START_ELEMENT || bi.getType()==Alphabet.END_ELEMENT)
-		{
-			if(first)
-				_output.println("this.throwUnexpectedElementException(qname);");
-			else
-				_output.println("else this.throwUnexpectedElementException(qname);");
-		}
+        if(errorHandleMethod!=null) {
+    		if(!first)    _output.print("else ");
+    		_output.println(errorHandleMethod+"(qname);");
+        }
 	}
 	
 	private static void writeHavingAttributeCheckCode(ScopeInfo sci, Iterator alphabets, StringBuffer code)
@@ -665,7 +636,7 @@ public class CodeWriter
 			if(a.getType()!=Alphabet.START_ATTRIBUTE) continue;
 			
 			if(!first) code.append(" || ");
-			code.append("getAttributeIndex(");
+			code.append("runtime.getAttributeIndex(");
 			code.append(sci.getNSStringConstant(a.getKey().getNSURI()));
 			code.append(", \"");
 			code.append(a.getKey().getName());

@@ -58,6 +58,8 @@ public class RelaxNGCC
 		grm.calcFollow();
 		//for debug
 		if(o.debug) grm.dump(System.err);
+        if(o.printAutomata)     grm.dumpAutomata(new File("."));
+            
 		grm.output(o.targetdir);
 	}
 
@@ -113,7 +115,7 @@ public class RelaxNGCC
 	{
 		PrintStream s = System.err;
 		s.println("RELAX NG Compiler Compiler 0.7");
-		s.println("   Copyright(c) Daisuke Okajima 2001-2002");
+		s.println("   Copyright(c) Daisuke Okajima 2001-2002x");
 		s.println();
 		s.println("[Usage]");
 		s.println("java [java-options] relaxngcc.RelaxNGCC [options] <grammarfile>");

@@ -84,7 +84,10 @@ public class NameClass implements Comparable
 			buf.append("\") && ");
 			buf.append(nsuri_variable);
 			buf.append(".equals(");
-			buf.append(sci.getNSStringConstant(_NSURI));
+            // TODO: this doesn't work for attributes but I couldn't figure out why.
+            // - Kohsuke
+//			buf.append(sci.getNSStringConstant(_NSURI));
+            buf.append("\""+_NSURI +"\"");
 			buf.append(")");
 		}
 		else if(n.equals("anyName"))
@@ -112,14 +115,16 @@ public class NameClass implements Comparable
 			buf.append(")");
 			
 			//skips 'except' element
-			Vector v = ((NameClass)_Children.get(0))._Children;
-			for(int i=0; i<v.size(); i++)
-			{
-				buf.append(" && ");
-				buf.append("!(");
-				((NameClass)v.get(i))._createJudgementClause(sci, buf, nsuri_variable, localname_variable);
-				buf.append(")");
-			}
+            if(_Children.size()!=0) {
+    			Vector v = ((NameClass)_Children.get(0))._Children;
+    			for(int i=0; i<v.size(); i++)
+    			{
+    				buf.append(" && ");
+    				buf.append("!(");
+    				((NameClass)v.get(i))._createJudgementClause(sci, buf, nsuri_variable, localname_variable);
+    				buf.append(")");
+    			}
+            }
 		}
 		else if(n.equals("choice"))
 		{
