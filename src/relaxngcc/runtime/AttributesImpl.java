@@ -2,7 +2,7 @@
 // Written by David Megginson, sax@megginson.com
 // NO WARRANTY!  This class is in the public domain.
 
-// $Id: AttributesImpl.java,v 1.1 2002/05/18 17:32:34 kkawa Exp $
+// $Id: AttributesImpl.java,v 1.1.1.1 2002/05/18 17:32:34 kkawa Exp $
 
 //fixed bug at removeAttribute!! by Daisuke OKAJIMA 2002.4.21
 
