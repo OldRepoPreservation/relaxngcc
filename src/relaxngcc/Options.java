@@ -28,9 +28,11 @@ public class Options
 	public boolean debug;
 	public String newline;
 	
-    /** print automata. a debug option. */
+    /** Print automata. A debug option. */
     public boolean printAutomata;
     
+    /** Print FIRST and FOLLOW. A debug option. */
+    public boolean printFirstFollow;
     
 	public Options(String[] args)
 	{
@@ -61,6 +63,8 @@ public class Options
 				debug = true;
             else if(args[i].equals("--print-automata"))
                 printAutomata = true;
+            else if(args[i].equals("--print-first-follow"))
+                printFirstFollow = true;
 			else
 				System.err.println("[Warning] Unknown option " + args[i]);
 		}
