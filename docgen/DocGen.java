@@ -32,9 +32,10 @@ public class DocGen {
     }
 
     static void convert(File src, File dst, String lang) throws IOException {
+        String encoding = "MS932";
         BufferedReader in =
-            new BufferedReader(new InputStreamReader(new FileInputStream(src)));
-        Writer out = new OutputStreamWriter(new FileOutputStream(dst));
+            new BufferedReader(new InputStreamReader(new FileInputStream(src),encoding));
+        Writer out = new OutputStreamWriter(new FileOutputStream(dst),encoding);
 
         StringBuffer contents = new StringBuffer();
 
