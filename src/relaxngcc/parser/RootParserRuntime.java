@@ -18,7 +18,7 @@ import relaxngcc.parser.state.Start;
 public class RootParserRuntime extends ParserRuntime {
 
     public RootParserRuntime() {
-        pushHandler(start=new Start(this));
+        setRootHandler(start=new Start(this));
     }
     
     /** The root state object that we use to parse the RELAX NG grammar. */

@@ -48,8 +48,12 @@ public class AutomatonBuilder implements PatternFunction
      */
     private int _OrderCounter;
     
-    /** actions are added to this buffer until it is processed */
-    private StringBuffer preservedAction = new StringBuffer();
+    /**
+     * Actions are added to this buffer until it is processed.
+     * Note that we can't use StringBuffer bcause we need to
+     * add *in front*, not at the end.
+     */
+    private String preservedAction="";
 
 	
 	
@@ -228,7 +232,11 @@ public class AutomatonBuilder implements PatternFunction
     
 
     public Object javaBlock( JavaBlock block ) {
-        preservedAction.append(block.code);
+        // because we traverse the grammar backward, we need
+        // to add new code in front of the existing ones.
+        // it's also safe to add NL because the new code might
+        // contain a comment at its end.
+        preservedAction = block.code+"\n"+preservedAction;
         return destination;
     }
     
@@ -391,7 +399,7 @@ public class AutomatonBuilder implements PatternFunction
 		if(preservedAction.length()==0)   return;
         
         ScopeInfo.Action action = _ScopeInfo.createAction(preservedAction);
-        preservedAction = new StringBuffer();
+        preservedAction = "";
         
         if(prologue)    t.insertPrologueAction(action);
         else            t.insertEpilogueAction(action);
@@ -427,7 +435,7 @@ public class AutomatonBuilder implements PatternFunction
         if(preservedAction.length()==0) return s;
         
         ScopeInfo.Action act = _ScopeInfo.createAction(preservedAction);
-        preservedAction = new StringBuffer();
+        preservedAction = "";
         
         State ss = createState(s.locationHint);
         ss.mergeTransitions(s);

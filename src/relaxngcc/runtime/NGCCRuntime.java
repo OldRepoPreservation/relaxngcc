@@ -26,7 +26,7 @@ import org.xml.sax.SAXParseException;
  * 
  *  <li>TODO: provide support for interleaving.
  * 
- * @version $Id: NGCCRuntime.java,v 1.13.2.2 2002/08/05 02:11:11 kkawa Exp $
+ * @version $Id: NGCCRuntime.java,v 1.13.2.3 2002/08/08 13:43:32 kkawa Exp $
  * @author Kohsuke Kawaguchi (kk@kohsuke.org)
  */
 public class NGCCRuntime implements ContentHandler, NGCCEventSource {
@@ -238,6 +238,8 @@ public class NGCCRuntime implements ContentHandler, NGCCEventSource {
     public void onEnterElementConsumed(
         String uri, String localName, String qname,Attributes atts) throws SAXException {
         attStack.push(currentAtts=new AttributesImpl(atts));
+        nsEffectiveStack.push( new Integer(nsEffectivePtr) );
+        nsEffectivePtr = namespaces.size();
     }
     
     public void onLeaveElementConsumed(String uri, String localName, String qname) throws SAXException {
@@ -246,6 +248,7 @@ public class NGCCRuntime implements ContentHandler, NGCCEventSource {
             currentAtts = null;
         else
             currentAtts = (AttributesImpl)attStack.peek();
+        nsEffectivePtr = ((Integer)nsEffectiveStack.pop()).intValue();
     }
     
     public void endElement(String uri, String localname, String qname)
@@ -448,9 +451,34 @@ public class NGCCRuntime implements ContentHandler, NGCCEventSource {
      * namespaces[2n  ] := prefix
      * namespaces[2n+1] := namespace URI */
     private final ArrayList namespaces = new ArrayList();
+    /**
+     * Index on the namespaces array, which points to
+     * the top of the effective bindings. Because of the
+     * timing difference between the startPrefixMapping method
+     * and the execution of the corresponding actions,
+     * this value can be different from <code>namespaces.size()</code>.
+     * <p>
+     * For example, consider the following schema:
+     * <pre><xmp>
+     *  <oneOrMore>
+     *   <element name="foo"><empty/></element>
+     *  </oneOrMore>
+     *  code fragment X
+     *  <element name="bob"/>
+     * </xmp></pre>
+     * Code fragment X is executed after we see a startElement event,
+     * but at this time the namespaces variable already include new
+     * namespace bindings declared on "bob".
+     */
+    private int nsEffectivePtr=0;
+    
+    /**
+     * Stack to preserve old nsEffectivePtr values.
+     */
+    private final Stack nsEffectiveStack = new Stack();
     
     public String resolveNamespacePrefix( String prefix ) {
-        for( int i = namespaces.size()-2; i>=0; i-=2 )
+        for( int i = nsEffectivePtr-2; i>=0; i-=2 )
             if( namespaces.get(i).equals(prefix) )
                 return (String)namespaces.get(i+1);
         

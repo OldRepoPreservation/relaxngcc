@@ -60,9 +60,6 @@ public final class ScopeInfo
     public void setInitialState(State s) {
         _initialState = s;
     }
-    
-	private int _threadCount;
-    public int getThreadCount() { return _threadCount; }
 
     /**
      * See {@link NullableChecker} for the definition of nullability.
@@ -70,7 +67,6 @@ public final class ScopeInfo
     private boolean _Nullable;
 	public boolean isNullable() { return _Nullable; }	
     public void setNullable(boolean v) { _Nullable = v; }
-	public void setThreadCount(int n) { _threadCount = n; } 
 	
 	public int getStateCount() { return _allStates.size(); }
 	

@@ -37,13 +37,17 @@ public class CodeBuilder
 	{
 		public CDBlock prologue;
         public CDBlock epilogue;
-		public CDIfStatement conditionalCodes;
+		public CDIfStatement conditionalCodes,top;
 		public CDBlock elsecode;
 		
-		public void addConditionalCode(CDExpression cond, CDBlock code)
-		{
-			if(conditionalCodes==null) conditionalCodes = new CDIfStatement(cond, code);
-			else conditionalCodes.addClause(cond, code);
+		public void addConditionalCode(CDExpression cond, CDBlock code) {
+			if(conditionalCodes==null)
+                conditionalCodes = top = new CDIfStatement(cond);
+			else
+                // add another "if" statement.
+                top = top._else()._if(cond);
+            
+            top.setThenBlock(code);
 		}
         
         public CDBlock output(CDStatement errorHandleMethod) {
@@ -53,20 +57,17 @@ public class CodeBuilder
             
             //elsecode, null‚È‚çerrorHandleMethod‚Å•Â‚¶‚é
             
-            if(elsecode!=null) {
-            	if(conditionalCodes!=null)
-	            	conditionalCodes.closeClause(elsecode);
-	            else
-	            	sv.add(elsecode);
-            } else if(errorHandleMethod!=null) {
-            	if(conditionalCodes!=null)
-	            	conditionalCodes.closeClause(new CDBlock(errorHandleMethod));
-	            else
-	            	sv.add(errorHandleMethod);
+            CDBlock terminal = elsecode;
+            if(terminal==null)  terminal = new CDBlock(errorHandleMethod);
+
+            if(conditionalCodes!=null) {
+                if(terminal!=null)
+                        top.setElseBlock(terminal);
+                sv.add(conditionalCodes);
+            } else {
+                if(terminal!=null)
+	            	sv.add(terminal);
             }
-            
-           	if(conditionalCodes!=null)
-	            sv.add(conditionalCodes);
             
             if(epilogue!=null)
                 sv.add(epilogue);
@@ -154,7 +155,7 @@ public class CodeBuilder
 
         private CDBlock output(CDStatement errorHandleMethod) {
         	CDBlock sv = new CDBlock();
-        	CDIfStatement ifblock = null;
+            CDSwitchStatement switchBlock = null;
             Iterator i = state2CodeFragment.entrySet().iterator();
             while(i.hasNext())
             {
@@ -166,30 +167,29 @@ public class CodeBuilder
                     
                 CDBlock whentrue = ((CodeAboutState)e.getValue()).output(errorHandleMethod);
                 
-                if(ifblock==null)
-                	ifblock = new CDIfStatement(condition, whentrue);
-                else
-                	ifblock.addClause(condition, whentrue);
+                if(switchBlock==null)
+                	switchBlock = new CDSwitchStatement($state);
                 
+                switchBlock.addCase(new CDConstant(st.getIndex()), whentrue );
             }
             
-            if(errorHandleMethod!=null) {
-            	if(ifblock!=null) ifblock.closeClause(new CDBlock(errorHandleMethod));
+            if(switchBlock!=null) {
+                if(errorHandleMethod!=null)
+                    switchBlock.defaultCase().add(errorHandleMethod);
+                sv.add(switchBlock);
             }
-            
-            if(ifblock!=null) sv.add(ifblock);
             return sv;
         }
 	}
 	
 	private ScopeInfo _info;
 	private NGCCGrammar _grammar;
-	private Options _Options;
+	private Options _options;
 	
     public CodeBuilder(NGCCGrammar grm, ScopeInfo sci, Options o) {
 		_info = sci;
 		_grammar = grm;
-		_Options = o;
+		_options = o;
     }
     
     
@@ -261,11 +261,6 @@ public class CodeBuilder
     private CDClass classdef;
     /** Reference to _ngcc_current_state. */
     private CDExpression $state;
-    /** Reference to _ngcc_threaded_state. */
-    private CDExpression $threadState;
-    private CDExpression getThreadStateExp( int idx ) {
-        return $threadState.arrayRef(idx);
-    }
     /** Reference to runtime. */
     private CDVariable $runtime;
     /** Reference to super.source */
@@ -305,7 +300,7 @@ public class CodeBuilder
         println(buf, "import org.xml.sax.XMLReader;");
         println(buf, "import org.xml.sax.Attributes;");
         
-        if(!_Options.usePrivateRuntime)
+        if(!_options.usePrivateRuntime)
             println(buf, "import relaxngcc.runtime.NGCCHandler;");
         if(!_grammar.getRuntimeTypeFullName().equals(_grammar.getRuntimeTypeShortName()))
             println(buf, "import "+_grammar.getRuntimeTypeFullName()+";");
@@ -357,7 +352,7 @@ public class CodeBuilder
 
         {// runtime field and the getRuntime method.
             String runtimeBaseName = "relaxngcc.runtime.NGCCRuntime";
-            if(_Options.usePrivateRuntime) runtimeBaseName = "NGCCRuntime";
+            if(_options.usePrivateRuntime) runtimeBaseName = "NGCCRuntime";
     
             
             $runtime = classdef.addMember(
@@ -379,12 +374,6 @@ public class CodeBuilder
             new CDLanguageSpecificString("private"),
             CDType.INTEGER,
             "_ngcc_current_state");
-            
-        if(_info.getThreadCount()>0)
-            $threadState = classdef.addMember(
-                new CDLanguageSpecificString("private"),
-                CDType.INTEGER.array(),
-                "_ngcc_threaded_state");
         
         
         
@@ -416,10 +405,6 @@ public class CodeBuilder
             // move to the initial state
             cotr1.body().assign( $state,
                 new CDConstant(_info.getInitialState().getIndex()) );
-    
-            if(_info.getThreadCount()>0)
-                cotr1.body().assign( $threadState,
-                    new CDLanguageSpecificString("new int[" + _info.getThreadCount() + "]"));
         }        
         
         {// external constructor
@@ -495,7 +480,7 @@ public class CodeBuilder
 
         {// runtime field and the getRuntime method.
             String runtimeBaseName = "relaxngcc.runtime.NGCCRuntime";
-            if(_Options.usePrivateRuntime) runtimeBaseName = "NGCCRuntime";
+            if(_options.usePrivateRuntime) runtimeBaseName = "NGCCRuntime";
     
             CDMethod getRuntime = new CDMethod(
                 new CDLanguageSpecificString("public final"),
@@ -525,10 +510,6 @@ public class CodeBuilder
             // move to the initial state
             cotr1.body().assign( $state,
                 new CDConstant(initial.getIndex()) );
-    
-            if(_info.getThreadCount()>0)
-                cotr1.body().assign( $threadState,
-                    new CDLanguageSpecificString("new int[" + _info.getThreadCount() + "]"));
         }        
         
         return classdef;
@@ -700,15 +681,10 @@ public class CodeBuilder
         
         CDBlock body = method.body();
         
-        for( int i=0; i<nameClasses.length; i++ ) {
-            if( nameClasses[i]!=null) {
-                CDBlock then = new CDBlock();
-                then._return(new CDConstant(i));
-                body.add(new CDIfStatement(
-                    NameTestBuilder.build(nameClasses[i],$uri,$local),
-                    then ));
-            }
-        }
+        for( int i=0; i<nameClasses.length; i++ )
+            if( nameClasses[i]!=null)
+                body._if(NameTestBuilder.build(nameClasses[i],$uri,$local))
+                    ._then()._return(new CDConstant(i));
         
         body._return(new CDConstant(-1));
         
@@ -770,7 +746,7 @@ public class CodeBuilder
         sv.assign($super.prop("localName"), $localName);
         sv.assign($super.prop("qname"),     $qname);
             
-		if(_Options.debug) {
+		if(_options.debug) {
 			sv.invoke( $runtime, "traceln")
                     .arg(new CDLanguageSpecificString("\""+eventName + " \"+qname+\" #\" + _ngcc_current_state"));
         }
@@ -944,7 +920,7 @@ public class CodeBuilder
         CDExpression $h = sv.decl(new CDType("NGCCHandler"), "h", oe );
         
         
-        if(_Options.debug) {
+        if(_options.debug) {
         	CDExpression msg = new CDConstant(MessageFormat.format(
                 "Change Handler to {0} (will back to:#{1})",
                 new Object[]{
@@ -1032,7 +1008,7 @@ public class CodeBuilder
         
 		CDBlock sv = method.body();
 		
-        if(_Options.debug) {
+        if(_options.debug) {
         	sv.invoke( $runtime, "trace" )
                 .arg(new CDLanguageSpecificString("\"text '\"+___$value.trim()+\"' #\" + _ngcc_current_state"));
         }
@@ -1074,7 +1050,7 @@ public class CodeBuilder
         }
         
         CDStatement errorHandler = null;
-        if(_Options.debug)
+        if(_options.debug)
             errorHandler = $runtime.invoke("traceln")
                     .arg(new CDConstant("ignored")).asStatement();
 		sv.add(bi.output(errorHandler));
@@ -1116,7 +1092,7 @@ public class CodeBuilder
         
         CDBlock sv = method.body();
         
-        if(_Options.debug) {
+        if(_options.debug) {
         	sv.invoke( $runtime, "traceln" )
                 .arg( new CDLanguageSpecificString("\"onChildCompleted(\"+cookie+\") back to "+_info.getClassName()+"\""));
         }
@@ -1191,7 +1167,7 @@ public class CodeBuilder
 		CDBlock sv = method.body();
         
 		CDVariable $ai = sv.decl(CDType.INTEGER, "ai");
-		if(_Options.debug)
+		if(_options.debug)
 			sv.invoke( $runtime, "traceln")
                 .arg( new CDLanguageSpecificString("\"processAttribute (\" + runtime.getCurrentAttributes().getLength() + \" atts) #\" + _ngcc_current_state")); 
 		
@@ -1266,51 +1242,25 @@ public class CodeBuilder
 		
 		sv.assign(statevariable, new CDConstant(deststate.getIndex()));
 		
-		if(_Options.debug) {
+		if(_options.debug) {
         	sv.invoke( $runtime, "traceln" )
                 .arg( new CDConstant("-> #" + deststate.getIndex()));
         }
 
         if(!deststate.attHead().isEmpty()) {
-        	
-        	CDStatement processAttribute =
-                new CDMethodInvokeExpression("processAttribute").asStatement();
+            CDBlock block = sv;
+            if( flagVar!=null )
+                block = sv._if(flagVar)._then();
             
-            if(flagVar!=null)
-                sv.add(new CDIfStatement(flagVar, new CDBlock(processAttribute)));
-            else
-	            sv.add(processAttribute);
+            block.invoke("processAttribute");
         }
 		
-//		if(deststate.getMeetingDestination()!=null) {
-//			CDExpression condition = null;
-//			Iterator it = deststate.getMeetingDestination().iterateStatesForWait();
-//			while(it.hasNext()) {
-//				State s = (State)it.next();
-//				if(s==deststate) continue;
-//				
-//				CDExpression t = CDOp.EQ(
-//                    getThreadStateExp(s.getThreadIndex()),
-//					new CDConstant(s.getIndex()));
-//				
-//				condition = condition==null? t : CDOp.AND(condition, t);
-//			}
-//			
-//			CDBlock whentrue = new CDBlock();
-//			State t = appendStateTransition(whentrue, deststate.getMeetingDestination());
-//			if(condition==null)
-//				sv.add(whentrue);
-//			else
-//				sv.add(new CDIfStatement(condition, whentrue));
-//			return t;
-//		}
-//		else
-			return deststate;
+		return deststate;
 	}
 
 
     private void println(StringBuffer buf, String data) {
         buf.append(data);
-        buf.append(_Options.newline);
+        buf.append(_options.newline);
     }
 }

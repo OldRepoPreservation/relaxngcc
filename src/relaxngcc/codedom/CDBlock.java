@@ -27,6 +27,12 @@ public class CDBlock implements CDStatement {
 		_Statements.addAll(sv._Statements);
 	}
     
+    public CDIfStatement _if( CDExpression exp ) {
+        CDIfStatement s = new CDIfStatement(exp);
+        _Statements.add(s);
+        return s;
+    }
+    
     /** Adds a new method invocation. */
     public CDMethodInvokeExpression invoke( CDExpression obj, String method ) {
         CDMethodInvokeExpression e = new CDMethodInvokeExpression(obj,method);
