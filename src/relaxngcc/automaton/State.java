@@ -24,10 +24,6 @@ import relaxngcc.util.SelectiveIterator;
  */
 public final class State implements Comparable
 {
-	public static final int LISTMODE_PRESERVE = 0;
-	public static final int LISTMODE_ON = 1;
-	public static final int LISTMODE_OFF = 2;
-
 	private Set _AllTransitions;
     
 	//acceptable or not
@@ -71,11 +67,6 @@ public final class State implements Comparable
 	
 	public int getThreadIndex() { return _ThreadIndex; }
 	private int _ThreadIndex;
-
-	//about list operation
-	private int _ListMode;
-	public void setListMode(int n) { _ListMode=n; }
-	public int getListMode() { return _ListMode; }
 	
     /** Pattern from which this state was created. */
     public final Pattern locationHint;
@@ -93,7 +84,6 @@ public final class State implements Comparable
 		_Acceptable = false;
 		_Index = index;
 		_ThreadIndex = thread;
-		_ListMode = LISTMODE_PRESERVE;
         this.locationHint = location;
     }
 
@@ -183,9 +173,11 @@ public final class State implements Comparable
 			Transition tr = (Transition)it.next();
 			Alphabet existing_alphabet = tr.getAlphabet();
             
-            if(a.isText())
-            	printAmbiguousTransitionsWarning(tr, newtransition);
-			else
+            // I don't see why this constitutes ambiguity -kk
+//            if(a.isText())
+//            	printAmbiguousTransitionsWarning(tr, newtransition);
+//			else
+
             if(existing_alphabet.equals(a)) {
                 if(tr.nextState()==newtransition.nextState()) {
                     if(action==null)
@@ -228,18 +220,9 @@ public final class State implements Comparable
 		s.print("(to #");
 		s.print(b.nextState().getIndex());
 		s.println(".)");
-        if(a.getAlphabet().locator!=null)
-            printLocator(s,a.getAlphabet().locator);
-        if(b.getAlphabet().locator!=null)
-            printLocator(s,b.getAlphabet().locator);
+        a.getAlphabet().printLocator(s);
+        b.getAlphabet().printLocator(s);
 	}
-    
-    private void printLocator( PrintStream s, Locator loc ) {
-        s.print("  line ");
-        s.print(loc.getLineNumber());
-        s.print(" of ");
-        s.println(loc.getSystemId());
-    }
     
 	private void printStateWarningHeader(PrintStream s) {
 		s.print("[Warning] ");

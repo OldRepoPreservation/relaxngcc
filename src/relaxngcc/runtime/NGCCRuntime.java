@@ -47,7 +47,6 @@ public class NGCCRuntime implements ContentHandler {
         currentHandler = null;
         handlerStack.clear();
         indent=0;
-        listMode = false;
         locator = null;
         namespaces.clear();
         needIndent = true;
@@ -92,7 +91,6 @@ public class NGCCRuntime implements ContentHandler {
     
     /** accumulated text. */
     private StringBuffer text = new StringBuffer();
-    private boolean listMode = false;
     
     
     
@@ -187,25 +185,18 @@ public class NGCCRuntime implements ContentHandler {
         if(ignorable && text.toString().trim().length()==0)
             ; // ignore. See the above javadoc comment for the description
         else
-            consumeText(text.toString());   // otherwise consume this token.
+            currentHandler.text(text.toString());   // otherwise consume this token
         
         // truncate StringBuffer, but avoid excessive allocation.
         if(text.length()>1024)  text = new StringBuffer();
         else                    text.setLength(0);
     }
     
-    private void consumeText(String str) throws SAXException {
-        if(listMode) {
-            listMode = false;
-            StringTokenizer t = new StringTokenizer(str, " \t\r\n");
-            while(t.hasMoreTokens())
-                currentHandler.text(t.nextToken());
-        }
-        else
-            currentHandler.text(str);
+    public void processList( String str ) throws SAXException {
+        StringTokenizer t = new StringTokenizer(str, " \t\r\n");
+        while(t.hasMoreTokens())
+            currentHandler.text(t.nextToken());
     }
-    
-    public void setListMode() { listMode=true; }
     
     public void startElement(String uri, String localname, String qname, Attributes atts)
             throws SAXException {
@@ -290,7 +281,7 @@ public class NGCCRuntime implements ContentHandler {
         currentAtts.removeAttribute(index);
         
         currentHandler.enterAttribute(uri,local,qname);
-        consumeText(value);
+        currentHandler.text(value);
         currentHandler.leaveAttribute(uri,local,qname);
     }
 

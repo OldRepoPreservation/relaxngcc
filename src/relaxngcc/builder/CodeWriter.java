@@ -218,10 +218,12 @@ public class CodeWriter
             if(m.containsKey(alphabet)) {
                 // TODO: proper error report
                 System.out.println(MessageFormat.format(
-                    "State {0} has a conflict by {1}",
+                    "State #{0}  of \"{1}\" has a conflict by {2}",
                     new Object[]{
                         Integer.toString(s.getIndex()),
+                        s.getContainer().scope.name,
                         alphabet } ));
+                alphabet.printLocator(System.out);
             }
             m.put(alphabet,action);
         }
@@ -508,22 +510,21 @@ public class CodeWriter
      * Creates code that changes the current state to the nextState
      * of the transition.
      */
-    private String buildMoveToStateCode(Transition tr/*, boolean output_process_attribute*/)
-    {
+    private String buildMoveToStateCode(Transition tr) {
         StringBuffer buf = new StringBuffer();
         
         buf.append(tr.invokePrologueActions());
         State nextstate = tr.nextState();
-        if(tr.getDisableState()!=null)
-        {
+        
+        if(tr.getDisableState()!=null) {
             if(tr.getDisableState().getThreadIndex()==-1)
                 buf.append("_ngcc_current_state=-1;");
             else
                 buf.append("_ngcc_threaded_state[" + tr.getDisableState().getThreadIndex() + "]=-1;");
             buf.append(_Options.newline);
         }
-        if(tr.getEnableState()!=null)
-        {
+        
+        if(tr.getEnableState()!=null) {
             if(tr.getEnableState().getThreadIndex()==-1)
                 buf.append("_ngcc_current_state=" + tr.getEnableState().getIndex());
             else
@@ -531,19 +532,13 @@ public class CodeWriter
             buf.append(";");
             buf.append(_Options.newline);
         }
-        buf.append(tr.invokeEpilogueActions());
+        
+        // change the state
         State result = appendStateTransition(buf, nextstate);
         buf.append(_Options.newline);
-        
-//        if(_Options.style!=Options.STYLE_MSV)
-//        {
-            if(result.getListMode()==State.LISTMODE_ON)
-                buf.append("runtime.setListMode();"); // _tokenizeText=true;");
-//  TODO: why do we need this?
-//          else if(result.getListMode()==State.LISTMODE_OFF)
-//              buf.append("_tokenizeText=false;");
-//        }
-        
+
+        buf.append(tr.invokeEpilogueActions());
+
         boolean in_if_block = false;
                                 
         return buf.toString();

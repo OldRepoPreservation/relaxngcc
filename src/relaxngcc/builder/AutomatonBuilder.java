@@ -238,10 +238,24 @@ public class AutomatonBuilder implements PatternFunction
 	        return result;
         } else {
             // treat this list as a structured text
-            destination.setListMode(State.LISTMODE_OFF);
             State head = (State)pattern.p.apply(this);
-            head.setListMode(State.LISTMODE_ON);
-            return head;
+            
+            // then append the "header" transition that tokenizes the text.
+            _ScopeInfo.addAlias("__text","string");
+            Transition tr = new Transition(
+                new Alphabet.DataText(
+                    new MetaDataType("string"), "__text", pattern.locator ),
+                head );
+            tr.insertEpilogueAction(_ScopeInfo.createAction(
+                "runtime.processList(__text);"));
+            addAction(tr,false);
+            // add user-defined action before the processList method,
+            // so that those are executed before <list> is processed.
+            
+            State top = createState(pattern);
+            top.addTransition(tr);
+            
+            return top;
         }
     }
     

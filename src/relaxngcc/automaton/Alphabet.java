@@ -5,6 +5,7 @@
  */
 
 package relaxngcc.automaton;
+import java.io.PrintStream;
 import java.util.Comparator;
 
 import org.xml.sax.Locator;
@@ -46,6 +47,17 @@ public abstract class Alphabet
     protected Alphabet( int type, Locator loc ) {
         this._Type = type;
         this.locator = loc;
+    }
+
+
+    /** Prints the locator associated with this. */    
+    public void printLocator( PrintStream out ) {
+        if(locator!=null) {
+            out.print("  line ");
+            out.print(locator.getLineNumber());
+            out.print(" of ");
+            out.println(locator.getSystemId());
+        }
     }
 
 

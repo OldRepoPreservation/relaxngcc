@@ -165,7 +165,6 @@ public final class ScopeInfo
             m.put(orig,st);
             
             st.setAcceptable(orig.isAcceptable());
-            st.setListMode  (orig.getListMode());
             
             // clone transitions
             Iterator itr = orig.iterateTransitions();
@@ -232,7 +231,7 @@ public final class ScopeInfo
      * User-defined code fragment.
      */
     public final class Action {
-        Action( String _codeFragment ) {
+        private Action( String _codeFragment ) {
             this.codeFragment = _codeFragment;
             this.uniqueId = actionIdGen++;
         }
@@ -616,8 +615,6 @@ public final class ScopeInfo
             buf.append("s");
             buf.append(s.getIndex());
         }
-        if(s.getListMode()==State.LISTMODE_ON)
-            buf.append('*');
             
         buf.append(buildActionList('+',s.getActionsOnExit()));
         buf.append('"');
