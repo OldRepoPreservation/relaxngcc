@@ -5,6 +5,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Writer;
+import java.io.OutputStreamWriter;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -23,6 +25,8 @@ import relaxngcc.grammar.Grammar;
 import relaxngcc.grammar.PatternFunction;
 import relaxngcc.grammar.Scope;
 import relaxngcc.runtime.NGCCRuntime;
+import relaxngcc.codedom.OutputParameter;
+import relaxngcc.codedom.Language;
 
 /**
  * Keeps information about the global setting effective
@@ -171,9 +175,12 @@ public class NGCCGrammar {
             if(!f.exists() || f.lastModified()<=sourceTimestamp || !opt.smartOverwrite) {
                 generated = true;
                 f.delete();
-                PrintStream out = new PrintStream(new FileOutputStream(f));
-                w.output(out);
-                out.close();
+                
+                
+                OutputParameter param = new OutputParameter(Language.JAVA);
+                Writer writer = new OutputStreamWriter(new FileOutputStream(f));
+                w.output().writeTo(param, writer);
+                writer.close();
                 f.setReadOnly();
             }
 //            }

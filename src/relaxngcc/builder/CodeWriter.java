@@ -5,7 +5,8 @@
  */
 
 package relaxngcc.builder;
-import java.io.PrintStream;
+import java.io.Writer;
+import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -23,67 +24,76 @@ import relaxngcc.automaton.Transition;
 import relaxngcc.grammar.NameClass;
 import relaxngcc.grammar.SimpleNameClass;
 
+import relaxngcc.codedom.ClassDefinition;
+import relaxngcc.codedom.StatementVector;
+import relaxngcc.codedom.Statement;
+import relaxngcc.codedom.IfStatement;
+import relaxngcc.codedom.SwitchStatement;
+import relaxngcc.codedom.AssignStatement;
+import relaxngcc.codedom.ExpressionStatement;
+import relaxngcc.codedom.ReturnStatement;
+import relaxngcc.codedom.LanguageSpecificStatement;
+import relaxngcc.codedom.VariableDeclarationStatement;
+import relaxngcc.codedom.Expression;
+import relaxngcc.codedom.VariableExpression;
+import relaxngcc.codedom.ConstantExpression;
+import relaxngcc.codedom.ArrayElementReferenceExpression;
+import relaxngcc.codedom.PropertyReferenceExpression;
+import relaxngcc.codedom.MethodInvokeExpression;
+import relaxngcc.codedom.ObjectCreateExpression;
+import relaxngcc.codedom.CastExpression;
+import relaxngcc.codedom.BinaryOperatorExpression;
+import relaxngcc.codedom.LanguageSpecificExpression;
+import relaxngcc.codedom.TypeDescriptor;
+import relaxngcc.codedom.MemberDefinition;
+import relaxngcc.codedom.MethodDefinition;
+import relaxngcc.codedom.LanguageSpecificString;
+
 /**
  * generates Java code that parses XML data via NGCCHandler interface
  */
 public class CodeWriter
 {
 	//utility classes: for switch-case-if structure of each handler
-	private class ConditionalCode
-	{
-		public String condition;
-		public String code;
-		public ConditionalCode(String t1, String t2) { condition=t1; code=t2; }
-	}
 	private class CodeAboutState
 	{
-		public String prologue;
-        public String epilogue;
-		public Vector conditionalCodes;
-		public String elsecode;
+		public StatementVector prologue;
+        public StatementVector epilogue;
+		public IfStatement conditionalCodes;
+		public StatementVector elsecode;
 		
-		public void addConditionalCode(String cond, String code)
+		public void addConditionalCode(Expression cond, StatementVector code)
 		{
-			if(conditionalCodes==null) conditionalCodes = new Vector();
-			conditionalCodes.add(new ConditionalCode(cond, code));
+			if(conditionalCodes==null) conditionalCodes = new IfStatement(cond, code);
+			else conditionalCodes.addClause(cond, code);
 		}
         
-        public void output(String errorHandleMethod) {
-            if(prologue!=null) _output.println(prologue);
+        public StatementVector output(Statement errorHandleMethod) {
+        	StatementVector sv = new StatementVector();
+        	
+            if(prologue!=null) sv.addStatement(prologue);
             
-            boolean flag = false;
-            if(conditionalCodes!=null)
-            {
-                Iterator ccs = conditionalCodes.iterator();
-                while(ccs.hasNext())
-                {
-                    ConditionalCode cc = (ConditionalCode)ccs.next();
-                    _output.print(flag? "else if(" : "if(");
-                    _output.print(cc.condition);
-                    _output.println(") {");
-                    //_output.println(_Options.newline);
-                    _output.println(cc.code);
-                    //_output.println(_Options.newline);
-                    _output.println("}");
-                    flag = true;
-                }
+            //elsecode, null‚È‚çerrorHandleMethod‚Å•Â‚¶‚é
+            
+            if(elsecode!=null) {
+            	if(conditionalCodes!=null)
+	            	conditionalCodes.closeClause(elsecode);
+	            else
+	            	sv.addStatement(elsecode);
+            } else if(errorHandleMethod!=null) {
+            	if(conditionalCodes!=null)
+	            	conditionalCodes.closeClause(new StatementVector(errorHandleMethod));
+	            else
+	            	sv.addStatement(errorHandleMethod);
             }
             
-            if(elsecode!=null)
-            {
-                if(flag) _output.println("else {"); else _output.println("{");
-                //_output.println(_Options.newline);
-                _output.println(elsecode);
-                //_output.println(_Options.newline);
-                _output.println("}");
-            } else
-            if(errorHandleMethod!=null) {
-                if(flag) _output.print("else ");
-                _output.println(errorHandleMethod);
-            }
+           	if(conditionalCodes!=null)
+	            sv.addStatement(conditionalCodes);
             
             if(epilogue!=null)
-                _output.println(epilogue);
+                sv.addStatement(epilogue);
+                
+            return sv;
         }
 	}
     
@@ -135,64 +145,69 @@ public class CodeWriter
         }
         
 		//if "cond" is "", "code" is put with no if-else clause. this behavior is not smart...
-		public void addConditionalCode(State state, String cond, String code) {
+		public void addConditionalCode(State state, Expression cond, StatementVector code) {
 			getCAS(state).addConditionalCode(cond,code);
 		}
         
-		public void addElseCode(State state, String code) {
+		public void addElseCode(State state, StatementVector code) {
 			CodeAboutState cas = getCAS(state);
             
 			if(cas.elsecode==null)
 				cas.elsecode = code;
 			else
-				cas.elsecode += code;
+				cas.elsecode.addStatement(code);
 		}
         
-		public void addPrologue(State state, String code) {
+		public void addPrologue(State state, Statement code) {
 			CodeAboutState cas = getCAS(state);
 			if(cas.prologue==null)
-				cas.prologue = code;
+				cas.prologue = new StatementVector(code);
 			else
-				cas.prologue += code;
+				cas.prologue.addStatement(code);
 		}
         
-        public void addEpilogue(State state, String code) {
+        public void addEpilogue(State state, Statement code) {
             CodeAboutState cas = getCAS(state);
             if(cas.epilogue==null)
-                cas.epilogue = code;
+                cas.epilogue = new StatementVector(code);
             else
-                cas.epilogue += code;
+                cas.epilogue.addStatement(code);
         }
 
-        private void output(String errorHandleMethod) {
-            boolean first = true;
+        private StatementVector output(Statement errorHandleMethod) {
+        	StatementVector sv = new StatementVector();
+        	IfStatement ifblock = null;
             Iterator i = state2CodeFragment.entrySet().iterator();
             while(i.hasNext())
             {
                 Map.Entry e = (Map.Entry)i.next();
                 State st = (State)e.getKey();
-                if(!first) _output.print("else ");
-                if(st.getThreadIndex()==-1)
-                    _output.println("if(_ngcc_current_state==" + st.getIndex()+") {");
-                else
-                    _output.println("if(_ngcc_threaded_state[" + st.getThreadIndex() + "]=="+ st.getIndex()+") {");
-                    
-                ((CodeAboutState)e.getValue()).output(errorHandleMethod);
                 
-                _output.println("}");
-                _output.println();
-                first = false;
+                Expression condition = null;
+                if(st.getThreadIndex()==-1)
+                    condition = BinaryOperatorExpression.EQ(new VariableExpression("_ngcc_current_state"), new ConstantExpression(st.getIndex()));
+                else
+                	condition = BinaryOperatorExpression.EQ(new ArrayElementReferenceExpression(new VariableExpression("_ngcc_threaded_state"), new ConstantExpression(st.getThreadIndex())), new ConstantExpression(st.getIndex()));
+                    
+                StatementVector whentrue = ((CodeAboutState)e.getValue()).output(errorHandleMethod);
+                
+                if(ifblock==null)
+                	ifblock = new IfStatement(condition, whentrue);
+                else
+                	ifblock.addClause(condition, whentrue);
+                
             }
             
             if(errorHandleMethod!=null) {
-                if(!first)    _output.print("else ");
-                _output.println(errorHandleMethod);
+            	if(ifblock!=null) ifblock.closeClause(new StatementVector(errorHandleMethod));
             }
+            
+            if(ifblock!=null) sv.addStatement(ifblock);
+            return sv;
         }
 	}
 	
 	private ScopeInfo _Info;
-	private PrintStream _output;
 	private NGCCGrammar _Grammar;
 	private Options _Options;
 	
@@ -263,14 +278,15 @@ public class CodeWriter
         }
     }
     
-	public void output(PrintStream out)
+	public ClassDefinition output() throws IOException
 	{
-		_output = out;
-		_Info.printHeaderSection(out, _Options, _Grammar.globalImportDecls);
+		ClassDefinition classdef = _Info.createClassCode(_Options, _Grammar.globalImportDecls);
         
-        out.println("private String uri,localName,qname;");
+        classdef.addMember(new MemberDefinition(new LanguageSpecificString("private"), TypeDescriptor.STRING, "uri"));
+        classdef.addMember(new MemberDefinition(new LanguageSpecificString("private"), TypeDescriptor.STRING, "localName"));
+        classdef.addMember(new MemberDefinition(new LanguageSpecificString("private"), TypeDescriptor.STRING, "qname"));
         
-        writeAcceptableStates();
+        classdef.addMethod(createAcceptedMethod());
         
         // build transition table map< state, map<non-ref alphabet,transition> >
         TransitionTable table = new TransitionTable();
@@ -297,15 +313,16 @@ public class CodeWriter
             }
         }
         
-        
-        writeEventHandler(table,Alphabet.ENTER_ELEMENT,   "enterElement",",Attributes atts",",atts");
-        writeEventHandler(table,Alphabet.LEAVE_ELEMENT,   "leaveElement");
-        writeEventHandler(table,Alphabet.ENTER_ATTRIBUTE, "enterAttribute");
-        writeEventHandler(table,Alphabet.LEAVE_ATTRIBUTE, "leaveAttribute");
+        TypeDescriptor[] types = new TypeDescriptor[] { new TypeDescriptor("Attributes") };
+        String[] args = new String[] { "attrs" };
+        classdef.addMethod(writeEventHandler(table,Alphabet.ENTER_ELEMENT,   "enterElement", types, args));
+        classdef.addMethod(writeEventHandler(table,Alphabet.LEAVE_ELEMENT,   "leaveElement"));
+        classdef.addMethod(writeEventHandler(table,Alphabet.ENTER_ATTRIBUTE, "enterAttribute"));
+        classdef.addMethod(writeEventHandler(table,Alphabet.LEAVE_ATTRIBUTE, "leaveAttribute"));
     
-		writeTextHandler(table);
-		writeAttributeHandler();
-        writeChildCompletedHandler();
+		classdef.addMethod(writeTextHandler(table));
+		classdef.addMethod(writeAttributeHandler());
+        classdef.addMethod(writeChildCompletedHandler());
 
 /*        
         Iterator lambda_scopes = _Info.iterateChildScopes();
@@ -315,65 +332,64 @@ public class CodeWriter
             wr.output(out);
         }
 */
-		_Info.printTailSection(_Grammar.globalBody, out);
+		_Info.printTailSection(classdef, _Grammar.globalBody);
+		return classdef;
 	}
 	
-    private void writeAcceptableStates()
+    private MethodDefinition createAcceptedMethod()
     {
-        _output.println("public boolean accepted() {");
-		_output.print("return ");
-        boolean first = true;
         Iterator states = _Info.iterateAcceptableStates();
+        Expression statecheckexpression = null;
 		while(states.hasNext())
 		{
-            if(!first) _output.print(" || ");
+            Expression temp = null;
 			State s = (State)states.next();
 			if(s.getThreadIndex()==-1)
-				_output.print("_ngcc_current_state==" + s.getIndex());
+				temp = BinaryOperatorExpression.EQ(new VariableExpression("_ngcc_current_state"), new ConstantExpression(s.getIndex()));
 			else
-				_output.print("_ngcc_threaded_state[" + s.getThreadIndex() + "]=="+ s.getIndex());
-			first = false;
+				temp = BinaryOperatorExpression.EQ(new ArrayElementReferenceExpression(new VariableExpression("_ngcc_threaded_state"), new ConstantExpression(s.getThreadIndex())), new ConstantExpression(s.getIndex()));
+			
+			statecheckexpression = (statecheckexpression==null)? temp : BinaryOperatorExpression.OR(temp, statecheckexpression);
         }
         
-        if(first)   _output.print("false");
+        if(statecheckexpression==null) statecheckexpression = new ConstantExpression(false);
         
-        _output.println(";");
-        _output.println("}"); //end of method
+        return new MethodDefinition(new LanguageSpecificString("public"), TypeDescriptor.BOOLEAN, "accepted", null, null, null, new StatementVector(new ReturnStatement(statecheckexpression)));
     }
 
-    private void writeEventHandler( TransitionTable table, int type, String eventName ) {
-        writeEventHandler(table,type,eventName,"","");
+    private MethodDefinition writeEventHandler( TransitionTable table, int type, String eventName ) {
+        return writeEventHandler(table,type,eventName,new TypeDescriptor[0],new String[0]);
     }
 	
     /**
      * Writes event handlers for (enter|leave)(Attribute|Element) methods.
      */
-    private void writeEventHandler( TransitionTable table, int type, String eventName,
-        String argumentsWithTypes, String arguments ) {
+    private MethodDefinition writeEventHandler( TransitionTable table, int type, String eventName, TypeDescriptor[] additionaltypes, String[] additionalargs ) {
         
-		printSection(eventName);
-		_output.println(MessageFormat.format(
-            "public void {0}(String uri,String localName,String qname{1}) throws SAXException '{'",
-            new Object[]{eventName,argumentsWithTypes}));
+        StatementVector sv = new StatementVector();
+		//printSection(eventName);
             
         // QUICK HACK
         // copy them to the instance variables so that they can be 
         // accessed from action functions.
         // we should better not keep them at Runtime, because
         // this makes it impossible to emulate events.
-        _output.println("this.uri=uri;");
-        _output.println("this.localName=localName;");
-        _output.println("this.qname=qname;");
+        sv.addStatement(new AssignStatement(new PropertyReferenceExpression(new VariableExpression("this"), "uri"), new VariableExpression("uri")));
+        sv.addStatement(new AssignStatement(new PropertyReferenceExpression(new VariableExpression("this"), "localName"), new VariableExpression("localName")));
+        sv.addStatement(new AssignStatement(new PropertyReferenceExpression(new VariableExpression("this"), "qname"), new VariableExpression("qname")));
             
 		if(_Options.debug) {
-			_output.println(MessageFormat.format(
-                "runtime.trace(\"{0} \"+qname+\" #\" + _ngcc_current_state);",
-                new Object[]{
-                    eventName
-                }));
+			sv.addStatement(new ExpressionStatement(new MethodInvokeExpression(new VariableExpression("runtime"), "traceln",
+				new Expression[]{ new LanguageSpecificExpression(new LanguageSpecificString("\""+eventName + " \"+qname+\" #\" + _ngcc_current_state")) })));
         }
         
 		SwitchBlockInfo bi = new SwitchBlockInfo(type);
+		Expression[] arguments = new Expression[3 + additionalargs.length];
+		arguments[0] = new VariableExpression("uri");
+		arguments[1] = new VariableExpression("localName");
+		arguments[2] = new VariableExpression("qname");
+		for(int i=0; i<additionalargs.length; i++)
+			arguments[3+i] = new VariableExpression(additionalargs[i]);
 		
         Iterator states = _Info.iterateAllStates();
 		while(states.hasNext()) {
@@ -391,23 +407,39 @@ public class CodeWriter
                     continue;   // we are not interested in this attribute now.
                 
 				bi.addConditionalCode(st,
-//                    a.asMarkup().getKey().createJudgementClause(_Info, "uri", "localName"),
-                    (String)a.asMarkup().getKey().apply(new NameTestBuilder("uri","localName")),
-					buildTransitionCode(st,tr,eventName,"uri,localName,qname"+arguments));
+                    new LanguageSpecificExpression((String)a.asMarkup().getKey().apply(new NameTestBuilder("uri","localName"))),
+					buildTransitionCode(st,tr,eventName,arguments));
 			}
 
             // if there is EVERYTHING_ELSE transition, add an else clause.
             Transition tr = table.getEverythingElse(st);
             if(tr!=null)
                 bi.addElseCode(st,
-                    buildTransitionCode(st,tr,eventName,"uri,localName,qname"+arguments));
+                    buildTransitionCode(st,tr,eventName,arguments));
 		}
         
-        
+        Statement eh = new ExpressionStatement(new MethodInvokeExpression("unexpected"+capitalize(eventName), new Expression[]{ new VariableExpression("qname") }));
+		sv.addStatement(bi.output(eh));
+
+		TypeDescriptor[] types = new TypeDescriptor[3 + additionaltypes.length];
+		types[0] = TypeDescriptor.STRING;
+		types[1] = TypeDescriptor.STRING;
+		types[2] = TypeDescriptor.STRING;
+		System.arraycopy(additionaltypes, 0, types, 3, additionaltypes.length);
 		
-		bi.output("unexpected"+capitalize(eventName)+"(qname);");
+		String[] args = new String[3 + additionalargs.length];
+		args[0] = "uri";
+		args[1] = "localName";
+		args[2] = "qname";
+		System.arraycopy(additionalargs, 0, args, 3, additionalargs.length);
 		
-		_output.println("}");   //end of method
+		return new MethodDefinition(new LanguageSpecificString("public"), TypeDescriptor.VOID, eventName, types, args, new LanguageSpecificString("throws SAXException"), sv);
+		
+		//_output.println(MessageFormat.format(
+        //    "public void {0}(String uri,String localName,String qname{1}) throws SAXException '{'",
+        //    new Object[]{eventName,argumentsWithTypes}));
+
+		
 	}
     
     /**
@@ -420,36 +452,47 @@ public class CodeWriter
      *      the revertToParentFromXXX method or the
      *      spawnChildFromXXX method.
      */
-    private String buildTransitionCode( State current, Transition tr, String eventName, String params ) {
+    private StatementVector buildTransitionCode( State current, Transition tr, String eventName, Expression[] additionalparams ) {
+	    
 	    if(tr==REVERT_TO_PARENT) {
-	        return current.invokeActionsOnExit()+
-                MessageFormat.format(
-		            "runtime.revertToParentFrom{0}({1},cookie, {2});",
-		            new Object[]{
-		                capitalize(eventName),
-		                _Info.scope.getParam().returnValue,
-	                    params,
-		            });
+	    	Expression[] args = new Expression[2 + additionalparams.length];
+	    	args[0] = new VariableExpression(_Info.scope.getParam().returnValue);
+	    	args[1] = new VariableExpression("cookie");
+	    	System.arraycopy(additionalparams, 0, args, 2, additionalparams.length);
+	    	
+	    	StatementVector sv = current.invokeActionsOnExit();
+	    	sv.addStatement(new ExpressionStatement(new MethodInvokeExpression(
+	    		new VariableExpression("runtime"),
+	    		"revertToParentFrom"+capitalize(eventName),
+	    		args)));
+	    	return sv;
         }
+        
         if(tr.getAlphabet().isEnterElement()) {
-            StringBuffer buf = new StringBuffer();
-            buf.append("runtime.pushAttributes(atts);");
-            buf.append(buildMoveToStateCode(tr));
+        	
+        	Expression[] args = new Expression[1];
+        	args[0] = new VariableExpression("attrs");
+        	StatementVector sv = new StatementVector(new ExpressionStatement(new MethodInvokeExpression(
+	    		new VariableExpression("runtime"),
+	    		"pushAttributes",
+	    		args)));
+            sv.addStatement(buildMoveToStateCode(tr));
             
-            return buf.toString();
+            return sv;
         }
+        
         if(tr.getAlphabet().isText()) {
+            StatementVector sv = new StatementVector();
             Alphabet.Text ta = tr.getAlphabet().asText();
-            StringBuffer buf = new StringBuffer();
             String alias = ta.getAlias();
             if(alias!=null)
-                buf.append(alias + "=___$value;");
-            buf.append(buildMoveToStateCode(tr));
+                sv.addStatement(new AssignStatement(new VariableExpression(alias), new VariableExpression("___$value")));
+            sv.addStatement(buildMoveToStateCode(tr));
             
-            return buf.toString();
+            return sv;
         }
 	    if(tr.getAlphabet().isRef())
-	        return buildCodeToSpawnChild(eventName,tr,params);
+	        return buildCodeToSpawnChild(eventName,tr,additionalparams);
             
         return buildMoveToStateCode(tr);
     }
@@ -469,40 +512,46 @@ public class CodeWriter
      * @return
      *      code fragment.
      */
-    private String buildCodeToSpawnChild(String eventName,Transition ref_tr,
-        String eventParams) {
+    private StatementVector buildCodeToSpawnChild(String eventName,Transition ref_tr, Expression[] eventParams) {
         
+        StatementVector sv = new StatementVector();
         Alphabet.Ref alpha = ref_tr.getAlphabet().asRef();
-        StringBuffer code = new StringBuffer();
         ScopeInfo ref_block = alpha.getTargetScope();
         
-        code.append(ref_tr.invokePrologueActions());
+        sv.addStatement(ref_tr.invokePrologueActions());
         
-        code.append(MessageFormat.format(
-            "NGCCHandler h = new {0}(this,runtime,{1}{2});{3}", new Object[]{
-                ref_block.getClassName(),
-                new Integer(ref_tr.getUniqueId()).toString()/*to avoid ,*/,
-                alpha.getParams(),
-                _Options.newline}));
-            
+        /* Caution
+         *  alpha.getParams() may return more than one argument concatinated by ','.
+         *  But I give it away because separating the string into Expression[] is hard.
+         */
+        String extraarg = alpha.getParams();
+        Expression[] args = new Expression[extraarg.length()==0? 3 : 4];
+        args[0] = new VariableExpression("this"); //TODO: literal 'this' is specific to programming language 
+        args[1] = new VariableExpression("runtime");
+        args[2] = new ConstantExpression(ref_tr.getUniqueId());
+        if(extraarg.length()>0)
+	        args[3] = new LanguageSpecificExpression(extraarg.substring(1));
+        sv.addStatement(new VariableDeclarationStatement(new TypeDescriptor("NGCCHandler"), "h",
+        	new ObjectCreateExpression(new TypeDescriptor(ref_block.getClassName()), args)));
+        
+        
         if(_Options.debug) {
-            code.append(MessageFormat.format(
-                "runtime.traceln(\"\");\n"+
-                "runtime.traceln(\"Change Handler to {0} (will back to:#{1})\");" + _Options.newline,
+        	args = new Expression[] { new ConstantExpression(MessageFormat.format(
+                "Change Handler to {0} (will back to:#{1})",
                 new Object[]{
                     ref_block.getClassName(),
                     new Integer(ref_tr.nextState().getIndex())
-                }));
-        }
-        code.append(MessageFormat.format(
-            "runtime.spawnChildFrom{0}(h,{1});\n",
-            new Object[]{
-                capitalize(eventName),
-                eventParams}));
+                })) };
                 
-        code.append(_Options.newline);
+        	sv.addStatement(new ExpressionStatement(new MethodInvokeExpression(new VariableExpression("runtime"), "traceln", args)));
+        }
         
-        return code.toString();
+        args = new Expression[1+eventParams.length];
+        args[0] = new VariableExpression("h");
+        System.arraycopy(eventParams, 0, args, 1, eventParams.length);
+        sv.addStatement(new ExpressionStatement(new MethodInvokeExpression(new VariableExpression("runtime"), "spawnChildFrom"+capitalize(eventName), args)));
+                
+        return sv;
     }
 
     
@@ -510,38 +559,36 @@ public class CodeWriter
      * Creates code that changes the current state to the nextState
      * of the transition.
      */
-    private String buildMoveToStateCode(Transition tr) {
-        StringBuffer buf = new StringBuffer();
+    private StatementVector buildMoveToStateCode(Transition tr)
+    {
+        StatementVector sv = new StatementVector();
         
-        buf.append(tr.invokePrologueActions());
+        sv.addStatement(tr.invokePrologueActions());
         State nextstate = tr.nextState();
         
         if(tr.getDisableState()!=null) {
+        	Expression dest;
             if(tr.getDisableState().getThreadIndex()==-1)
-                buf.append("_ngcc_current_state=-1;");
+                dest = new VariableExpression("_ngcc_current_state");
             else
-                buf.append("_ngcc_threaded_state[" + tr.getDisableState().getThreadIndex() + "]=-1;");
-            buf.append(_Options.newline);
+                dest = new ArrayElementReferenceExpression(new VariableExpression("_ngcc_threaded_state"), new ConstantExpression(tr.getDisableState().getThreadIndex()));
+            sv.addStatement(new AssignStatement(dest, new ConstantExpression(-1)));
         }
         
         if(tr.getEnableState()!=null) {
+        	Expression dest;
             if(tr.getEnableState().getThreadIndex()==-1)
-                buf.append("_ngcc_current_state=" + tr.getEnableState().getIndex());
+                dest = new VariableExpression("_ngcc_current_state");
             else
-                buf.append("_ngcc_threaded_state[" + tr.getEnableState().getThreadIndex() + "]="+ tr.getEnableState().getIndex());
-            buf.append(";");
-            buf.append(_Options.newline);
+                dest = new ArrayElementReferenceExpression(new VariableExpression("_ngcc_threaded_state"), new ConstantExpression(tr.getEnableState().getThreadIndex()));
+        
+            sv.addStatement(new AssignStatement(dest, new ConstantExpression(tr.getEnableState().getIndex())));
         }
         
-        // change the state
-        State result = appendStateTransition(buf, nextstate);
-        buf.append(_Options.newline);
-
-        buf.append(tr.invokeEpilogueActions());
-
-        boolean in_if_block = false;
-                                
-        return buf.toString();
+        State result = appendStateTransition(sv, nextstate);
+        sv.addStatement(tr.invokeEpilogueActions());
+        
+        return sv;
     }
     
     /** Capitalizes the first character. */
@@ -551,13 +598,16 @@ public class CodeWriter
     
 	
 	//outputs text consumption handler. this handler branches by output method
-	private void writeTextHandler(TransitionTable table) {
-		printSection("text");
-		_output.println("public void text(String ___$value) throws SAXException");
-		_output.println("{");
-
+	private MethodDefinition writeTextHandler(TransitionTable table) {
+		//printSection("text");
+		
+		StatementVector sv = new StatementVector();
+		
         if(_Options.debug) {
-            _output.println("runtime.trace(\"text '\"+___$value.trim()+\"' #\" + _ngcc_current_state);");
+        	sv.addStatement(new ExpressionStatement(new MethodInvokeExpression(
+        		new VariableExpression("runtime"),
+        		"trace", 
+        		new Expression[] { new LanguageSpecificExpression(new LanguageSpecificString("\"text '\"+___$value.trim()+\"' #\" + _ngcc_current_state")) })));
         }
 
 		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.VALUE_TEXT);
@@ -580,44 +630,45 @@ public class CodeWriter
                 if(!a.isText())
                     continue;   // we are not interested in this attribute now.
                 
-                String code = buildTransitionCode(st,tr,"text","___$value");
+                StatementVector code = buildTransitionCode(st,tr,"text",new Expression[]{ new VariableExpression("___$value") });
                 if(a.isValueText())
-                    bi.addConditionalCode(st, "___$value.equals(\""
-                        + a.asValueText().getValue() + "\")", code );
+                    bi.addConditionalCode(st, BinaryOperatorExpression.EQ(new VariableExpression("___$value"), new ConstantExpression(a.asValueText().getValue())), code);
                 else {
                     dataPresent = true;
-                    bi.addElseCode(st, code );
+                    bi.addElseCode(st, code);
                 }
             }
 
             // if there is EVERYTHING_ELSE transition, add an else clause.
             Transition tr = table.getEverythingElse(st);
             if(tr!=null && !dataPresent)
-                bi.addElseCode(st,
-                    buildTransitionCode(st,tr,"text","___$value"));
+                bi.addElseCode(st, buildTransitionCode(st,tr,"text",new Expression[]{ new VariableExpression("___$value") }));
         }
         
-        String errorHandler = null;
+        Statement errorHandler = null;
         if(_Options.debug)
-            errorHandler = "runtime.traceln(\" ignored\");";
-		bi.output(errorHandler);
+            errorHandler = new ExpressionStatement(new MethodInvokeExpression(new VariableExpression("runtime"), "traceln", new Expression[] { new ConstantExpression("ignored") }));
+		sv.addStatement(bi.output(errorHandler));
         
-		_output.println("}");   //end of function
+		//_output.println("public void text(String ___$value) throws SAXException");
+		//_output.println("{");
+		TypeDescriptor[] types = new TypeDescriptor[] { TypeDescriptor.STRING };
+		String[] args = new String[] { "___$value" };
+		return new MethodDefinition(new LanguageSpecificString("public"), TypeDescriptor.VOID, "text", types, args, new LanguageSpecificString("throws SAXException"), sv);
+
+        
 	}
     
-    private void writeChildCompletedHandler() {
-        printSection("child completed");
-        _output.println("public void onChildCompleted(Object result, int cookie,boolean needAttCheck) throws SAXException {");
-        if(_Options.debug) {
-            _output.println("runtime.traceln(\"\");");
-            _output.println(MessageFormat.format(
-                "runtime.trace(\"onChildCompleted(\"+cookie+\") back to {0}\");",
-                new Object[]{
-                    _Info.getClassName()
-                }));
-        }
-        _output.println("switch(cookie) {");
+    private MethodDefinition writeChildCompletedHandler() {
+        //printSection("child completed");
         
+        StatementVector sv = new StatementVector();
+        if(_Options.debug) {
+        	sv.addStatement(new ExpressionStatement(new MethodInvokeExpression(new VariableExpression("runtime"), "traceln",
+        		new Expression[] { new LanguageSpecificExpression("\"onChildCompleted(\"+cookie+\") back to "+_Info.getClassName()+"\"") })));
+        }
+        
+        SwitchStatement switchstatement = new SwitchStatement(new VariableExpression("cookie"));
         
         Set processedTransitions = new HashSet();
         
@@ -631,48 +682,47 @@ public class CodeWriter
                 Alphabet.Ref a = tr.getAlphabet().asRef();
                 
                 if(processedTransitions.add(tr)) {
-                    _output.println("case "+tr.getUniqueId()+":");
                     
+                    StatementVector block = new StatementVector();
                     // if there is an alias, assign to that variable
                     String alias = a.getAlias();
                     if(alias!=null) {
                         ScopeInfo childBlock = a.getTargetScope();
-        
-                        _output.println(MessageFormat.format(
-                            "this.{0}=({1})result;",
-                            new Object[]{ alias, childBlock.scope.getParam().returnType }));
+                        block.addStatement(new AssignStatement(
+                        	new PropertyReferenceExpression(new VariableExpression("this"), alias),
+                        	new CastExpression(new TypeDescriptor(childBlock.scope.getParam().returnType), new VariableExpression("result"))));
                     }
                     
-                    StringBuffer buf= new StringBuffer();
+                    block.addStatement(tr.invokeEpilogueActions());
 
-                    buf.append(tr.invokeEpilogueActions());
-
-                    appendStateTransition(buf, tr.nextState(), "needAttCheck");
+                    appendStateTransition(block, tr.nextState(), "needAttCheck");
                         
-                    _output.println(buf);
-                    _output.println("return;");
-                    
-                    _output.println();
+                    switchstatement.addCase(new ConstantExpression(tr.getUniqueId()), block);
                 }
             }
         }
+        sv.addStatement(switchstatement);
         
-        _output.println("default:");
         // TODO: assertion failed
-        _output.println("    throw new InternalError();");
+        //_output.println("default:");
+        //_output.println("    throw new InternalError();");
         
-        _output.println("}");   //end of the switch-case
-        _output.println("}");   //end of the function
+        //_output.println("public void onChildCompleted(Object result, int cookie,boolean needAttCheck) throws SAXException {");
+        TypeDescriptor[] types = new TypeDescriptor[] { new TypeDescriptor("Object"), TypeDescriptor.INTEGER, TypeDescriptor.BOOLEAN };
+        String[] args = new String[] { "result", "cookie", "needAttCheck" };
+        return new MethodDefinition(new LanguageSpecificString("public"), TypeDescriptor.VOID, "onChildCompleted", types, args, new LanguageSpecificString("throws SAXException"), sv);
     }
     
     
-	private void writeAttributeHandler() {
-		printSection("attribute");
-		_output.println("public void processAttribute() throws SAXException");
-		_output.println("{");
-		_output.println("int ai;");
+	private MethodDefinition writeAttributeHandler() {
+		//printSection("attribute");
+		//_output.println("public void processAttribute() throws SAXException");
+		
+		StatementVector sv = new StatementVector();
+		sv.addStatement(new VariableDeclarationStatement(TypeDescriptor.INTEGER, "ai"));
 		if(_Options.debug)
-			_output.println("runtime.traceln(\"processAttribute (\" + runtime.getCurrentAttributes().getLength() + \" atts) #\" + _ngcc_current_state);"); 
+			sv.addStatement(new ExpressionStatement(new MethodInvokeExpression(new VariableExpression("runtime"), "traceln",
+				new Expression[] { new LanguageSpecificExpression("\"processAttribute (\" + runtime.getCurrentAttributes().getLength() + \" atts) #\" + _ngcc_current_state") }))); 
 		
 		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.ENTER_ATTRIBUTE);
 		
@@ -682,8 +732,7 @@ public class CodeWriter
             writeAttributeHandler(bi,st,st);
         }
         
-        bi.output(null);
-        _output.println("}");   //end of function
+        return new MethodDefinition(new LanguageSpecificString("public"), TypeDescriptor.VOID, "processAttribute", null, null, new LanguageSpecificString("throws SAXException"), sv);
     }
     
     private void writeAttributeHandler( SwitchBlockInfo bi, State source, State current ) {
@@ -693,27 +742,28 @@ public class CodeWriter
             Alphabet a = (Alphabet)jtr.next();
             
             if(a.isRef()) {
-                writeAttributeHandler( bi, source,
-                    a.asRef().getTargetScope().getInitialState() );
+                writeAttributeHandler( bi, source, a.asRef().getTargetScope().getInitialState() );
             } else {
                 writeAttributeHandlerBlock( bi, source, a.asEnterAttribute() );
             }
         }
     }
 
-    private void writeAttributeHandlerBlock( SwitchBlockInfo bi, State st, 
-        Alphabet.EnterAttribute a ) {
+    private void writeAttributeHandlerBlock( SwitchBlockInfo bi, State st, Alphabet.EnterAttribute a ) {
         
         NameClass nc = a.getKey();
         if(nc instanceof SimpleNameClass) {
             SimpleNameClass snc = (SimpleNameClass)nc;
             
-	        bi.addConditionalCode(st,
-	            MessageFormat.format(
+            Expression condition = new LanguageSpecificExpression(MessageFormat.format(
 	            "(ai = runtime.getAttributeIndex(\"{0}\",\"{1}\"))>=0",
 	                new Object[]{
-	                    snc.nsUri, snc.localName}),
-	            "runtime.consumeAttribute(ai);" + _Options.newline);
+	                    snc.nsUri, snc.localName})); //chotto sabori gimi
+	                    
+	        Statement consumeattr = new ExpressionStatement(new MethodInvokeExpression(new VariableExpression("runtime"), "getAttributeIndex",
+	        	new Expression[] { new VariableExpression("ai") }));
+	        	
+	        bi.addConditionalCode(st, condition, new StatementVector(consumeattr));
         } else {
             // if the name class is complex
             throw new UnsupportedOperationException(
@@ -721,8 +771,8 @@ public class CodeWriter
         }
     }
     
-    private State appendStateTransition(StringBuffer buf, State deststate ) {
-        return appendStateTransition(buf,deststate,null);
+    private State appendStateTransition(StatementVector sv, State deststate ) {
+        return appendStateTransition(sv,deststate,null);
     }
     
     /**
@@ -731,52 +781,70 @@ public class CodeWriter
      *      should be called if and only if this variable is true.
      */
 	// What's the difference of this method and "buildMoveToStateCode"? - Kohsuke
-	private State appendStateTransition(StringBuffer buf, State deststate, String flagVarName)
+	private State appendStateTransition(StatementVector sv, State deststate, String flagVarName)
 	{
+		
+		Expression statevariable = null;
 		if(deststate.getThreadIndex()==-1)
-			buf.append("_ngcc_current_state=" + deststate.getIndex());
+			statevariable = new VariableExpression("_ngcc_current_state");
 		else
-			buf.append("_ngcc_threaded_state[" + deststate.getThreadIndex() + "]="+ deststate.getIndex());
-		buf.append(";");
-        if(_Options.debug)
+			statevariable = new ArrayElementReferenceExpression(new VariableExpression("_ngcc_threaded_state"), new ConstantExpression(deststate.getThreadIndex()));
+		
+		sv.addStatement(new AssignStatement(statevariable, new ConstantExpression(deststate.getIndex())));
+		
+		if(_Options.debug)
         {
+        	String trace;	
             if(deststate.getThreadIndex()==-1)
-                buf.append("runtime.traceln(\" -> #" + deststate.getIndex() + "\");");
+                trace = "-> #" + deststate.getIndex();
             else
-                buf.append("runtime.traceln(\" -> #[" + deststate.getThreadIndex() + "]"+ deststate.getIndex() + "\");");
-            buf.append(_Options.newline);
+                trace = "-> #[" + deststate.getThreadIndex() + "]"+ deststate.getIndex();
+
+        	sv.addStatement(new ExpressionStatement(new MethodInvokeExpression(new VariableExpression("runtime"), "traceln",
+        		new Expression[] { new ConstantExpression(trace) })));
+               
         }
 
         if(!deststate.attHead().isEmpty()) {
+        	
+        	Statement processAttribute = new ExpressionStatement(new MethodInvokeExpression("processAttribute", null));
             if(flagVarName!=null)
-                buf.append("if("+flagVarName+")");
-            buf.append("processAttribute();");
+                sv.addStatement(new IfStatement(new VariableExpression(flagVarName), new StatementVector(processAttribute)));
+            else
+	            sv.addStatement(processAttribute);
         }
 		
 		if(deststate.getMeetingDestination()!=null)
 		{
-			buf.append(_Options.newline);
-			buf.append("if(");
-			boolean first = true;
+			Expression condition = null;
 			Iterator it = deststate.getMeetingDestination().iterateStatesForWait();
 			while(it.hasNext())
 			{
 				State s = (State)it.next();
 				if(s==deststate) continue;
-				if(!first) buf.append(" && ");
-				buf.append("_ngcc_threaded_state[" + s.getThreadIndex() + "]=="+ s.getIndex());
-				first = false;
+				
+				Expression t = BinaryOperatorExpression.EQ(
+					new ArrayElementReferenceExpression(new VariableExpression("_ngcc_threaded_state"), new ConstantExpression(s.getThreadIndex())),
+					new ConstantExpression(s.getIndex()));
+				
+				condition = condition==null? t : BinaryOperatorExpression.AND(condition, t);
 			}
-			buf.append(") ");
-			return appendStateTransition(buf, deststate.getMeetingDestination());
+			
+			StatementVector whentrue = new StatementVector();
+			State t = appendStateTransition(whentrue, deststate.getMeetingDestination());
+			if(condition==null)
+				sv.addStatement(whentrue);
+			else
+				sv.addStatement(new IfStatement(condition, whentrue));
+			return t;
 		}
 		else
 			return deststate;
 	}
 	
 	private void printSection(String title) {
-		_output.println();
-		_output.print("/* ------------ " + title + " ------------ */");
-		_output.println();
+		//_output.println();
+		//_output.print("/* ------------ " + title + " ------------ */");
+		//_output.println();
 	}
 }

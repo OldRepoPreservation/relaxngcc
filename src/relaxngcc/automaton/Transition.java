@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.Vector;
 
 import relaxngcc.builder.ScopeInfo;
+import relaxngcc.codedom.StatementVector;
 
 /**
  * A Trnasition is a tuple of an Alphabet, a next state, and user-defined action.
@@ -82,18 +83,18 @@ public final class Transition
     }
     
     /** Gets the code to invoke all the prologue actions. */
-    public String invokePrologueActions() {
+    public StatementVector invokePrologueActions() {
         return invokeActions(prologueActions);
     }
     /** Gets the code to invoke all the epilogue actions. */
-    public String invokeEpilogueActions() {
+    public StatementVector invokeEpilogueActions() {
         return invokeActions(epilogueActions);
     }
-    private static String invokeActions(Vector vec) {
-        StringBuffer buf = new StringBuffer();
+    private static StatementVector invokeActions(Vector vec) {
+        StatementVector sv = new StatementVector();
         for( int i=0; i<vec.size(); i++ )
-            buf.append(((ScopeInfo.Action)vec.get(i)).invoke());
-        return buf.toString();
+            sv.addStatement(((ScopeInfo.Action)vec.get(i)).invoke());
+        return sv;
     }
     /** Returns true if this transition has any associated action. */
     public boolean hasAction() {
