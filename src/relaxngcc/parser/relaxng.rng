@@ -1,0 +1,350 @@
+<?xml version="1.0"?>
+<!-- RELAX NG for RELAX NG -->
+<!-- $Id: relaxng.rng,v 1.1 2002/06/14 22:22:41 kkawa Exp $ -->
+<grammar datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes"
+         ns="http://relaxng.org/ns/structure/1.0"
+         xmlns="http://relaxng.org/ns/structure/1.0"
+         xmlns:cc="http://www.xml.gr.jp/xmlns/relaxngcc"
+         
+         cc:runtime-type="relaxngcc.parser.ParserRuntime"
+         cc:package="relaxngcc.parser.state">
+  
+  <cc:java-import>
+    import relaxngcc.grammar.*;
+  </cc:java-import>
+  
+  <start cc:class="Start">
+    <!-- the root element must be always <grammar> -->
+    <element name="grammar">
+      <ref name="grammar-content"/>
+    </element>
+  </start>
+  
+  <!-- name for an attribute/element -->
+  <define name="name" cc:params="boolean attributeMode"
+    cc:return-type="NameClass" cc:return-value="nc">
+    <choice>
+      <attribute name="name">
+        <data type="QName" cc:alias="name" />
+        <cc:java>nc = runtime.parseSimpleName(name,attributeMode);
+        </cc:java>
+      </attribute>
+      <ref name="name-class" cc:alias="nc" />
+    </choice>
+  </define>
+  
+  <define name="pattern" cc:class="PatternState"
+    cc:return-type="Pattern" cc:return-value="p">
+    <choice>
+      <element name="element">
+        <ref name="name" cc:alias="name" cc:with-params="false" />
+        <ref name="patterns" cc:alias="p"/>
+        <cc:java>
+          p = new ElementPattern(name,p);
+        </cc:java>
+      </element>
+      <element name="attribute">
+        <ref name="name" cc:alias="name" cc:with-params="true" />
+        <ref name="patterns" cc:alias="p"/>
+        <cc:java>
+          p = new AttributePattern(name,p);
+        </cc:java>
+      </element>
+      <element name="group">
+        <ref name="patterns" cc:alias="p" />
+      </element>
+      <element name="interleave">
+        <oneOrMore>
+          <ref name="pattern" cc:alias="child"/>
+          <cc:java>
+            if(p==null)  p = child;
+            else         p = new InterleavePattern(p,child);
+          </cc:java>
+        </oneOrMore>
+      </element>
+      <element name="choice">
+        <oneOrMore>
+          <ref name="pattern" cc:alias="child"/>
+          <cc:java>
+            if(p==null)  p = child;
+            else         p = new ChoicePattern(p,child);
+          </cc:java>
+        </oneOrMore>
+      </element>
+      <element name="optional">
+        <ref name="patterns" cc:alias="p" />
+        <cc:java>
+          p = new ChoicePattern( p, EmptyPattern.theInstance );
+        </cc:java>
+      </element>
+      <element name="zeroOrMore">
+        <ref name="patterns" cc:alias="p" />
+        <cc:java>
+          p = new ChoicePattern( new OneOrMorePattern(p),
+              EmptyPattern.theInstance );
+        </cc:java>
+      </element>
+      <element name="oneOrMore">
+        <ref name="patterns" cc:alias="p" />
+        <cc:java>
+          p = new OneOrMorePattern( p );
+        </cc:java>
+      </element>
+      <element name="list">
+        <ref name="patterns" cc:alias="p" />
+        <cc:java>
+          p = new ListPattern( p );
+        </cc:java>
+      </element>
+      <element name="mixed">
+        <ref name="patterns" cc:alias="p" />
+        <cc:java>
+          p = new InterleavePattern( new DataPattern(null), p );
+        </cc:java>
+      </element>
+      <element name="ref">
+        <ref name="NGCC-call" cc:alias="params" />
+        <attribute name="name">
+          <text cc:alias="target" />
+        </attribute>
+        <cc:java>
+          p = new RefPattern(runtime.grammar.getOrCreate(target),params);
+        </cc:java>
+      </element>
+      <element name="empty">
+        <empty/>
+        <cc:java>
+          p = EmptyPattern.theInstance;
+        </cc:java>
+      </element>
+      <element name="text">
+        <empty/>
+        <ref name="NGCC-call" cc:alias="params" />
+        <cc:java>
+          p = new DataPattern(params);
+        </cc:java>
+      </element>
+      <element name="value">
+        <optional><!-- we can't handle types other than 'token' -->
+          <attribute name="type">
+            <value>token</value>
+          </attribute>
+        </optional>
+        <ref name="NGCC-call" cc:alias="params" />
+        <text cc:alias="value"/>
+        <cc:java>
+          p = new ValuePattern(value,params);
+        </cc:java>
+      </element>
+      <element name="data">
+        <!--attribute name="type">
+          <data type="NCName"/>
+        </attribute-->
+        <zeroOrMore>
+          <element name="param">
+            <attribute name="name" />
+            <text/>
+          </element>
+        </zeroOrMore>
+        <!--optional>
+          <element name="except">
+            <ref name="patterns"/>
+          </element>
+        </optional-->
+        <ref name="NGCC-call" cc:alias="params" />
+        <cc:java>
+          p = new DataPattern(params);
+        </cc:java>
+      </element>
+      <element name="notAllowed">
+        <empty/>
+        <cc:java>
+          p = NotAllowedPattern.theInstance;
+        </cc:java>
+      </element>
+      <!--element name="externalRef">
+        <attribute name="href">
+          <data type="anyURI"/>
+        </attribute>
+        <ref name="common-atts"/>
+        <ref name="other"/>
+      </element-->
+      <!--element name="grammar">
+        <ref name="grammar-content"/>
+      </element-->
+      <!--element name="parentRef">
+        <ref name="NGCC-call" cc:alias="params" />
+        <attribute name="name" cc:alias="target" />
+        <cc:java>
+          p = new RefPattern(params,runtime.grammar.parent.getOrCreate(target));
+        </cc:java>
+      </element-->
+      <element name="cc:java">
+        <text cc:alias="value"/>
+        <cc:java> p = new JavaBlock(value); </cc:java>
+      </element>
+    </choice>
+  </define>
+
+  <define name="grammar-content" cc:class="GrammarContent">
+    <zeroOrMore>
+      <choice>
+        <ref name="start-element"/>
+        <ref name="define-element"/>
+        <element name="div">
+          <ref name="grammar-content"/>
+        </element>
+        <element name="include">
+          <attribute name="href">
+            <text cc:alias="href" />
+          </attribute>
+          <cc:java>
+            runtime.processInclude(href);
+          </cc:java>
+          <!-- TODO: support redefinition -->
+          <!--ref name="include-content"/-->
+        </element>
+      </choice>
+    </zeroOrMore>
+  </define>
+
+  <!--define name="include-content">
+    <zeroOrMore>
+      <choice>
+        <ref name="start-element"/>
+        <ref name="define-element"/>
+        <element name="div">
+          <ref name="include-content"/>
+        </element>
+      </choice>
+    </zeroOrMore>
+  </define-->
+
+  <define name="start-element" cc:class="StartElement">
+    <element name="start">
+      <ref name="pattern-definition"
+        cc:with-params="runtime.grammar.start"/>
+    </element>
+  </define>
+  
+  <define name="define-element" cc:class="DefineElement">
+    <element name="define">
+      <attribute name="name">
+        <text cc:alias="name"/>
+      </attribute>
+      <ref name="pattern-definition"
+        cc:with-params="runtime.grammar.getOrCreate(name)"/>
+    </element>
+  </define>
+  
+  <define name="pattern-definition" cc:class="PatternDefinition"
+    cc:params="Scope scope">
+    <optional>
+      <attribute name="combine">
+        <text cc:alias="combine" />
+      </attribute>
+    </optional>
+    <ref name="pattern" cc:alias="p"/>
+    <cc:java>
+      scope.append(p,combine);
+    </cc:java>
+  </define>
+  
+  
+  <!-- sequence of patterns combined by Group -->
+  <define name="patterns" cc:return-type="Pattern" cc:return-value="p">
+    <cc:java-body>
+      private Pattern p=null;
+    </cc:java-body>
+    <oneOrMore>
+      <ref name="pattern" cc:alias="child"/>
+      <cc:java>
+        if(p==null)  p = child;
+        else         p = new GroupPattern(p,child);
+      </cc:java>
+    </oneOrMore>
+  </define>
+
+  <define name="name-class" cc:class="NameClassState"
+    cc:return-type="NameClass" cc:return-value="nc">
+    
+    <cc:java-body>
+      private NameClass nc;
+    </cc:java-body>
+    
+    <choice>
+      <element name="name">
+        <text cc:alias="name"/>
+        <cc:java>
+          nc = runtime.parseSimpleName(name,false);
+        </cc:java>
+      </element>
+      <element name="anyName">
+        <ref name="except-name-class" cc:alias="child"/>;
+        <cc:java>
+          nc = new AnyNameClass(child);
+        </cc:java>
+      </element>
+      <element name="nsName">
+        <ref name="except-name-class" cc:alias="child"/>
+        <cc:java>
+          nc = new NsNameClass(runtime.getTargetNamespace(),child);
+        </cc:java>
+      </element>
+      <element name="choice">
+        <ref name="name-classes" cc:alias="nc"/>
+      </element>
+    </choice>
+  </define>
+
+  <define name="except-name-class" cc:class="ExceptNameClass"
+    cc:return-type="NameClass" cc:return-value="nc">
+    
+    <optional>
+      <element name="except">
+        <ref name="name-classes" cc:alias="nc"/>
+      </element>
+    </optional>
+  </define>
+
+  <define name="name-classes" cc:class="NameClasses"
+    cc:return-type="NameClass" cc:return-value="nc">
+    
+    <cc:java-body>
+      private NameClass nc=null;
+    </cc:java-body>
+    
+    <oneOrMore>
+      <ref name="name-class" cc:alias="child" />
+      <cc:java>
+        if(nc==null)  nc=child;
+        else          nc=new ChoiceNameClass(nc,child);
+      </cc:java>
+    </oneOrMore>
+  </define>
+  
+  
+  
+  
+  <!-- NGCC attributes -->
+  <define name="NGCC-call" cc:class="NGCCcall"
+    cc:return-type="NGCCCallParam" cc:return-value="param">
+    
+    <cc:java-body>
+      NGCCCallParam param;
+    </cc:java-body>
+    <optional>
+      <attribute name="cc:with-params">
+        <text cc:alias="withParams"/>
+      </attribute>
+    </optional>
+    <optional>
+      <attribute name="cc:alias">
+        <text cc:alias="alias"/>
+      </attribute>
+    </optional>
+    <cc:java>
+      param = new NGCCCallParam(withParams,alias);
+    </cc:java>
+  </define>
+</grammar>
