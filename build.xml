@@ -1,6 +1,10 @@
 <?xml version="1.0"?>
 <project name="RELAXNGCC" basedir="." default="jar">
-
+	
+	<taskdef name="relaxngcc" classname="relaxngcc.ant.RelaxNGCCTask">
+		<classpath path="lib/bootstrap-relaxngcc.jar"/>
+	</taskdef>
+	
 	<!-- check if the parser generator needs to be run -->
 	<target name="ngcc-check">
 		<uptodate property="ngcc.notrequired"
@@ -11,24 +15,15 @@
 	
 	<!-- use bootstrap RelaxNGCC to compile the parser -->
 	<target name="ngcc" unless="ngcc.notrequired" depends="ngcc-check">
+		
 		<mkdir dir="src/relaxngcc/parser/automata"/>
 		<delete dir="src/relaxngcc/parser/automata" includes="*.gif" />
 		<delete dir="src/relaxngcc/parser/state" includes="*.java" />
-		<java jar="lib/bootstrap-relaxngcc.jar" fork="true">
-			<!-- enable debug statements -->
-			<!--arg value="-d"/-->
-			
-			<!-- dump automata -->
-			<arg value="--print-automata"/>
-			<arg path="src/relaxngcc/parser/automata"/>
-			
-			<!-- specify output directory -->
-			<arg value="--target"/>
-			<arg path="src/relaxngcc/parser/state" />
-			
-			<!-- source file -->
-			<arg path="src/relaxngcc/parser/relaxng.rng"/>
-		</java>
+		
+		<relaxngcc source="src/relaxngcc/parser/relaxng.rng"
+			targetdir="src/relaxngcc/parser/state"
+			automata="src/relaxngcc/parser/automata">
+		</relaxngcc>
 	</target>
 	
 	<!-- compile Java source files -->
