@@ -87,7 +87,7 @@ public class CodeBuilder
     /**
      * Builds the code.
      */
-    public CDClass createClassCode(String globalimport) {
+    private CDClass createClassCode(String globalimport) {
         StringBuffer buf = new StringBuffer();
         
         //notice
