@@ -42,26 +42,6 @@ import relaxngcc.grammar.ValuePattern;
  */
 public class AutomatonBuilder implements PatternFunction
 {
-	private int _ThreadCount;
-
-	class Context {
-	    private State _InterleaveBranchRoot;
-	    private int _CurrentThreadIndex;
-	    
-		public Context() {
-			_CurrentThreadIndex = -1;
-		}
-		public Context(Context ctx) {
-			_InterleaveBranchRoot = ctx._InterleaveBranchRoot;
-			_CurrentThreadIndex = ctx._CurrentThreadIndex;
-		}
-        
-	    public int getCurrentThreadIndex() { return _CurrentThreadIndex; }
-	    public void setCurrentThreadIndex(int n) { _CurrentThreadIndex = n; }
-	    
-	    public State getInterleaveBranchRoot() { return _InterleaveBranchRoot; }
-	    public void  setInterleaveBranchRoot(State s) { _InterleaveBranchRoot = s; }
-	}
 
     /**
      * Used to give order numbers to EnterAttribute alphabets.
@@ -87,7 +67,6 @@ public class AutomatonBuilder implements PatternFunction
     private final ScopeInfo _ScopeInfo;
     
 	public void build() {
-		ctx = new Context();
 		//starts from final state
 	    destination = createState(null);
 		destination.setAcceptable(true);
@@ -101,8 +80,6 @@ public class AutomatonBuilder implements PatternFunction
 //		else
 //			initial = processRelaxNGNode(_Root, ctx, finalstate);
 		
-        _ScopeInfo.setThreadCount(_ThreadCount);
-        
 		_ScopeInfo.setInitialState(initial);
         
         _ScopeInfo.copyAttributeHandlers();
@@ -111,7 +88,6 @@ public class AutomatonBuilder implements PatternFunction
 	}
 	
 
-    private Context ctx;
     private State destination;
     
     public Object element( ElementPattern pattern ) {
@@ -123,17 +99,9 @@ public class AutomatonBuilder implements PatternFunction
         addAction(te,false);
         tail.addTransition(te);
         
-        // start a new context
-        Context oldContext = ctx;
-        ctx = new Context(ctx);
-        
-        ctx.setInterleaveBranchRoot(null);
-
         // process descendants
         destination = tail;
         State middle = (State)pattern.body.apply(this);
-        
-        oldContext = ctx;
         
         State head = createState(pattern);
         Transition ts = createTransition(
@@ -321,8 +289,6 @@ public class AutomatonBuilder implements PatternFunction
 	
 
     public Object interleave( InterleavePattern pattern ) {
-        Context oldContext = ctx;
-        
         State join = addAction(destination,true);
         
         Pattern[] children = pattern.getChildPatterns();
@@ -400,7 +366,7 @@ public class AutomatonBuilder implements PatternFunction
 	
     
 	private State createState(Pattern source) {
-		State s = new State(_ScopeInfo, ctx.getCurrentThreadIndex(), _ScopeInfo.getStateCount(), source);
+		State s = new State(_ScopeInfo, _ScopeInfo.getStateCount(), source);
 		_ScopeInfo.addState(s);
 		return s;
 	}

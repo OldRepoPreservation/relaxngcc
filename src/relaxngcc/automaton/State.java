@@ -68,9 +68,6 @@ public final class State implements Comparable
 	public int getIndex() { return _Index; }
 	private int _Index;
 	
-	public int getThreadIndex() { return _ThreadIndex; }
-	private int _ThreadIndex;
-	
     /** Pattern from which this state was created. */
     public final Pattern locationHint;
     
@@ -79,14 +76,13 @@ public final class State implements Comparable
      * @param location
      *      Indicates the pattern object from which this state is created.
      */
-    public State(ScopeInfo container, int thread, int index, Pattern location )
+    public State(ScopeInfo container, int index, Pattern location )
 	{
 		_Container = container;
 		_AllTransitions = new HashSet();
         
 		_Acceptable = false;
 		_Index = index;
-		_ThreadIndex = thread;
         this.locationHint = location;
     }
 

@@ -161,9 +161,7 @@ public class CodeBuilder
                 Map.Entry e = (Map.Entry)i.next();
                 State st = (State)e.getKey();
                 
-                CDExpression condition = CDOp.EQ(
-                    (st.getThreadIndex()==-1) ?
-                        $state : getThreadStateExp(st.getThreadIndex()),
+                CDExpression condition = CDOp.EQ($state,
                      new CDConstant(st.getIndex()));
                     
                 CDBlock whentrue = ((CodeAboutState)e.getValue()).output(errorHandleMethod);
@@ -716,13 +714,7 @@ public class CodeBuilder
 		while(states.hasNext())
 		{
 			State s = (State)states.next();
-            CDExpression temp = null;
-			if(s.getThreadIndex()==-1)
-				temp = $state;
-			else
-				temp = getThreadStateExp(s.getThreadIndex());
-			
-            temp = CDOp.EQ( temp, new CDConstant(s.getIndex()) );
+            CDExpression temp = CDOp.EQ( $state, new CDConstant(s.getIndex()) );
             
 			statecheckexpression = (statecheckexpression==null)? temp : CDOp.OR(temp, statecheckexpression);
         }
@@ -1250,24 +1242,13 @@ public class CodeBuilder
 	private State appendStateTransition(CDBlock sv, State deststate, CDVariable flagVar)
 	{
 		
-		CDExpression statevariable = null;
-		if(deststate.getThreadIndex()==-1)
-			statevariable = $state;
-		else
-			statevariable = getThreadStateExp(deststate.getThreadIndex());
+		CDExpression statevariable = $state;
 		
 		sv.assign(statevariable, new CDConstant(deststate.getIndex()));
 		
 		if(_Options.debug) {
-        	String trace;	
-            if(deststate.getThreadIndex()==-1)
-                trace = "-> #" + deststate.getIndex();
-            else
-                trace = "-> #[" + deststate.getThreadIndex() + "]"+ deststate.getIndex();
-
         	sv.invoke( $runtime, "traceln" )
-                .arg( new CDConstant(trace));
-               
+                .arg( new CDConstant("-> #" + deststate.getIndex()));
         }
 
         if(!deststate.attHead().isEmpty()) {

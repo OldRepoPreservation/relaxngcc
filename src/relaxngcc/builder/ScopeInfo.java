@@ -159,7 +159,6 @@ public final class ScopeInfo
             // we need to clone the state
             st = new State(
                 this,
-                orig.getThreadIndex(),
                 getStateCount(),
                 orig.locationHint);
             addState(st);
