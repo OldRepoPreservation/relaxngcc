@@ -13,7 +13,7 @@
 
 <h1>RelaxNGCC ( RELAX NG Compiler Compiler)</h1>
 <div align="right">
-	$Revision: 1.11 $
+	$Revision: 1.12 $
 	By RelaxNGCC SourceForge Project /
 	<a href="mailto:daisuke.okajima@nifty.ne.jp">
 		<?ja?>岡嶋 大介<?/ja?>
@@ -102,15 +102,6 @@
 
 <h2><?ja?>リリース<?/ja?><?en?>Release Notes<?/en?></h2>
 <ul>
-<li><?ja?>2002/03/03 バージョン0.51を公開しました。<?/ja?><?en?>Mar 3, 2002   Version 0.51 is released. <?/en?></li>
-<ul>
-<li><?ja?>JDK1.4上での動作確認と、開発環境の<a href="http://www.eclipse.org/">Eclipse</a>への移行をしました。RelaxNGCCの機能自体は変わっていません。<?/ja?><?en?>Tested with JDK1.4 and changed my development environment into <a href="http://www.eclipse.org/">Eclipse</a>. The feature of RelaxNGCC is same as version 0.5.<?/en?></li>
-</ul>
-<li><?ja?>2002/03/17 バージョン0.6を公開しました。<?/ja?><?en?>Mar 17, 2002   Version 0.6 is released. <?/en?></li>
-<ul>
-<li><?ja?>RelaxNGCCで処理できない文法が入力された場合のエラーメッセージを強化しました。<?/ja?><?en?>Enhanced error messages when RelaxNGCC can not process the input grammar.<?/en?></li>
-<li><?ja?><code>list</code>に<code>alias</code>アトリビュートをつけることができるようにしました。<?/ja?><?en?>Added feature for <code>alias</code> attributes with <code>list</code> element.<?/en?></li>
-</ul>
 <li><?ja?>2002/05/03 バージョン0.7を公開しました。<?/ja?><?en?>May 3, 2002   Version 0.7 is released. <?/en?></li>
 	<ul>
 		<li><?ja?><code>inline</code>アトリビュートを導入し、スコープの展開ができるようになりました。<?/ja?><?en?>Added <code>inline</code> attribute for expanding a scope into other scopes.<?/en?></li>
@@ -140,13 +131,12 @@
 	<?/ja?>
 	</ul>
 <li>
-	<?ja?>バージョン1.1へ向けて作業中<?/ja?>
-	<?en?>Work toward version 1.1<?/en?>
+	<?ja?>2002/10 バージョン1.1をリリースしました。<?/ja?><?en?>Oct, 2002   Version 1.1 is released.<?/en?>
 	<ul>
-		<li>Changed the way &lt;interleave> is handled.
-		<li>Implemented an Ant task for RelaxNGCC.
-		<li>Internal change: introduced CodeDOM for more stable code generation
-		<li><code>cc:class</code> attribute can be now specified for any pattern, and it will become its own class, as if it were &lt;define>d as a separate block.
+		<li><?ja?>RelaxNGCCのAnt用タスクを導入しました。<?/ja?><?en?>Implemented an Ant task for RelaxNGCC.<?/en?></li>
+		<li><?ja?>CodeDOMを導入し、生成されるソースコードが統一的なフォーマットで出力されるようになりました。<?/ja?><?en?>Introduced CodeDOM for more stable code generation.<?/en?></li>
+		<li><code>cc:class</code> <?ja?>アトリビュートがどこにでもかけるようになりました。これにより&lt;define>ブロックがどこにでもあるかのように扱えます。<?/ja?><?en?>attribute can be now specified for any pattern, and it will become its own class, as if it were &lt;define>d as a separate block.<?/en?>
+		<li><?ja?>生成されたコードの仕組み、特にアトリビュートの取り扱いを整理しました。<?/ja?><?en?>Organized the structure of the generated code especially the treatment of attributes.<?/en?></li>
 	</ul>
 </ul>
 <p><?ja?>さらに前のリリース履歴は<a href="history.htm">こちら</a>です。<?/ja?><?en?>Earlier release notes are available <a href="history.htm">here</a>.<?/en?></p>

@@ -135,7 +135,7 @@ public class RelaxNGCC {
         
         if(msg!=null)       s.println(msg);
         
-        s.println("RELAX NG Compiler Compiler 1.0");
+        s.println("RELAX NG Compiler Compiler 1.1");
         s.println("   Copyright(c) Daisuke Okajima and Kohsuke Kawaguchi 2001-2002");
         s.println();
         s.println("[Usage]");
