@@ -232,8 +232,8 @@ public class CodeWriter
         _output.println("this.qname=qname;");
             
 		if(_Options.debug)
-			_output.println("System.err.println(\""+eventName+" " + _Info.getNameForTargetLang() + ":\" + qname + \",state=\" + _ngcc_current_state);");
-		
+			_output.println("runtime.trace(\""+eventName+" " + _Info.getNameForTargetLang() + ":\" + qname + \",state=\" + _ngcc_current_state);");
+        
 		SwitchBlockInfo bi = new SwitchBlockInfo(type);
 		
 		while(states.hasNext()) {
@@ -351,8 +351,12 @@ public class CodeWriter
                 _Options.newline}));
             
         if(_Options.debug)
-            code.append("System.err.println(\"Change Handler " + ref_block.getNameForTargetLang() + "\");" + _Options.newline);
-        
+            code.append(MessageFormat.format(
+                "runtime.trace(\"Change Handler to {0} (will back to:{1})\");" + _Options.newline,
+                new Object[]{
+                    ref_block.getNameForTargetLang(),
+                    new Integer(ref_tr.nextState().getIndex())
+                }));
         code.append(MessageFormat.format(
             "runtime.spawnChildFrom{0}(h,{1});\n",
             new Object[]{
@@ -439,7 +443,7 @@ public class CodeWriter
         printSection("child completed");
         _output.println("public void onChildCompleted(Object result, int cookie) throws SAXException {");
         if(_Options.debug)
-            _output.println("\tSystem.out.println(\"onChildCompleted(\"+cookie+\")\");");
+            _output.println("runtime.trace(\"onChildCompleted(\"+cookie+\")\");");
         _output.println("switch(cookie) {");
         
         
@@ -500,7 +504,7 @@ public class CodeWriter
 		_output.println("{");
 		_output.println("int ai;");
 		if(_Options.debug)
-			_output.println("System.err.println(\"" + _Info.getNameForTargetLang() + ":processAttribute \" + runtime.getCurrentAttributes().getLength() + \",\" + _ngcc_current_state);"); 
+			_output.println("runtime.trace(\"" + _Info.getNameForTargetLang() + ":processAttribute \" + runtime.getCurrentAttributes().getLength() + \",\" + _ngcc_current_state);"); 
 		
 		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.ENTER_ATTRIBUTE);
 		
@@ -563,9 +567,9 @@ public class CodeWriter
 		if(_Options.debug)
 		{
 			if(result.getThreadIndex()==-1)
-				buf.append("System.err.println(\"state " + result.getIndex() + "\");");
+				buf.append("runtime.trace(\"state " + result.getIndex() + "\");");
 			else
-				buf.append("System.err.println(\"state [" + result.getThreadIndex() + "]"+ result.getIndex() + "\");");
+				buf.append("runtime.trace(\"state [" + result.getThreadIndex() + "]"+ result.getIndex() + "\");");
 			buf.append(_Options.newline);
 		}
 		if(_Options.style!=Options.STYLE_MSV)

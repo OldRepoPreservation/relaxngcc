@@ -103,12 +103,15 @@ public class NGCCRuntime extends XMLFilterImpl implements ValidationContext {
         attStack.push(currentAtts=new AttributesImpl(atts));
 //        System.out.println("startElement:"+localname+"->"+_attrStack.size());
         currentHandler.enterElement(uri, localname, qname);
+        indent++;
     }
     
     public void endElement(String uri, String localname, String qname)
             throws SAXException {
                 
         processPendingText();
+        
+        indent--;
         currentHandler.leaveElement(uri, localname, qname);
 //        System.out.println("endElement:"+localname);
         attStack.pop();
@@ -205,7 +208,7 @@ public class NGCCRuntime extends XMLFilterImpl implements ValidationContext {
         NGCCHandler h, String uri, String localname, String qname) throws SAXException {
             
         pushHandler(h);
-        currentHandler.enterElement(uri,localname,qname);
+        currentHandler.leaveElement(uri,localname,qname);
     }
     public void spawnChildFromLeaveAttribute(
         NGCCHandler h, String uri, String localname, String qname) throws SAXException {
@@ -255,5 +258,18 @@ public class NGCCRuntime extends XMLFilterImpl implements ValidationContext {
     }
 
 
-
+//
+//
+// trace functions
+//
+//
+    private int indent=0;
+    private void printIndent() {
+        for( int i=0; i<indent; i++ )
+            System.out.print("  ");
+    }
+    public void trace( String s ) {
+        printIndent();
+        System.out.println(s);
+    }
 }
