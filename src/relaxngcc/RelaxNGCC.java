@@ -5,36 +5,21 @@
  */
 
 package relaxngcc;
-import java.io.File;
-import java.io.PrintStream;
-import java.io.InputStream;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
-import java.io.BufferedInputStream;
-import java.text.ParseException;
-
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.xml.sax.SAXException;
-import org.xml.sax.XMLReader;
+import java.io.PrintStream;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.SAXParserFactory;
 
-import com.sun.corba.se.internal.core.OSFCodeSetRegistry;
-import com.thaiopensource.relaxng.nonxml.SchemaBuilderImpl;
+import org.w3c.dom.Document;
+import org.xml.sax.SAXException;
+import org.xml.sax.SAXParseException;
+import relaxngcc.parser.RootParserRuntime;
+
 import com.thaiopensource.relaxng.nonxml.NonXmlSyntax;
-import relaxngcc.dom.NGCCElement;
-import relaxngcc.dom.W3CDOMElement;
-import relaxngcc.dom.NonXmlElement;
-import relaxngcc.grammar.Grammar;
-import relaxngcc.grammar.Pattern;
-import relaxngcc.grammar.RefPattern;
-import relaxngcc.parser.ParserRuntime;
-import relaxngcc.parser.state.Start;
-import relaxngcc.builder.ScopeBuilder;
-import relaxngcc.builder.CodeWriter;
+import com.thaiopensource.relaxng.nonxml.SchemaBuilderImpl;
 
 
 /**
@@ -65,47 +50,43 @@ public class RelaxNGCC
 		_SAXFactory.setNamespaceAware(true);
 		_SAXFactory.setValidating(false);
         
-        if(o.input==o.NEWPARSER) {
-            // TODO: this code should be moved to somewhere else.
-            try {// debug
-	            ParserRuntime runtime = new ParserRuntime();
-	            Start s = new Start(runtime);
-	            runtime.pushHandler(s);
-	            
-	            XMLReader reader = _SAXFactory.newSAXParser().getXMLReader();
-	            reader.setContentHandler(runtime);
-	            reader.parse(o.sourcefile);
-                
-                Grammar grammar;
-                Pattern p = s.getResult();
-                if(p instanceof RefPattern) {
-                    grammar = (Grammar)((RefPattern)p).target;
-                } else {
-                    // if the parsed tree doesn't have the enclosing &lt;grammar>, add one.
-                    grammar = new Grammar(null);
-                    grammar.append(p,null);
-                }
-                
-                // set breakpoint here and debug
-                return;
-            } catch( SAXException e ) {
-                if(e.getException()!=null)
-                    throw e.getException();
-                throw e;
-            }
+        // TODO: this code should be moved to somewhere else.
+        try {// debug
+            RootParserRuntime runtime = new RootParserRuntime();
+            runtime.parse(o.sourcefile);
+            NGCCGrammar grammar = runtime.getResult();
+            
+            grammar.buildAutomaton();
+            
+            // process debug options
+            if(o.printFirstFollow)    grammar.dump(System.err);
+            if(o.printAutomata!=null) grammar.dumpAutomata(o.printAutomata);
+            
+            if(!o.noCodeGeneration) grammar.output(o);
+            
+        } catch( SAXException e ) {
+            if( e instanceof SAXParseException )
+                System.err.println(((SAXParseException)e).getSystemId());
+            if(e.getException()!=null)
+                throw e.getException();
+            throw e;
         }
-		NGCCGrammar grm = new NGCCGrammar(o);
-        
-		grm.buildAutomaton();
-        
-		// process debug options
-		if(o.printFirstFollow)    grm.dump(System.err);
-        if(o.printAutomata!=null) grm.dumpAutomata(o.printAutomata);
-        
-        if(!o.noCodeGeneration) grm.output();
+/*        } else {
+            // classic parser
+			NGCCGrammar grm = new NGCCGrammar(o);
+	        
+			grm.buildAutomaton();
+	        
+			// process debug options
+			if(o.printFirstFollow)    grm.dump(System.err);
+	        if(o.printAutomata!=null) grm.dumpAutomata(o.printAutomata);
+	        
+	        if(!o.noCodeGeneration) grm.output();
+        }
+*/
 	}
 
-	
+/*	
 	//returns a DOM document after checking validity as a RelaxNGCC grammar
 	public static Document readGrammar(Options o, String location) throws NGCCException
 	{
@@ -152,7 +133,7 @@ public class RelaxNGCC
 			}
 		}
 	}
-	
+*/	
     /**
      * Checks the existance of libraries that are necessary to run RelaxNGCC.
      */
@@ -183,7 +164,7 @@ public class RelaxNGCC
         if(msg==null)       s.println(msg);
         
         s.println("RELAX NG Compiler Compiler 0.8");
-        s.println("   Copyright(c) Daisuke Okajima, RelaxNGCC SourceForge Project 2001-2002");
+        s.println("   Copyright(c) Daisuke Okajima and Kohsuke Kawaguchi 2001-2002");
         s.println();
         s.println("[Usage]");
         s.println("relaxngcc.jar [options] <grammarfile>");

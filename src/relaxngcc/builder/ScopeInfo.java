@@ -30,6 +30,8 @@ import relaxngcc.Options;
 import relaxngcc.automaton.Alphabet;
 import relaxngcc.automaton.State;
 import relaxngcc.automaton.Transition;
+import relaxngcc.grammar.NGCCDefineParam;
+import relaxngcc.grammar.Scope;
 import relaxngcc.javabody.JavaBodyParser;
 import relaxngcc.util.SelectiveIterator;
 
@@ -38,11 +40,13 @@ import relaxngcc.util.SelectiveIterator;
  */
 public final class ScopeInfo
 {
-	private NGCCGrammar _Grammar;
-	public NGCCGrammar getGrammar() { return _Grammar; }
+	public final NGCCGrammar grammar;
 	
+    /** Scope object to which this object is attached. */
+    public final Scope scope;
+    
 	private Set _AllStates;
-    private Set _ChildScopes; //child lambda scopes
+//    private Set _ChildScopes; //child lambda scopes
     
 	private boolean _Root; //true if this ScopeInfo represents the content of <start> tag
 	private Map _NSURItoStringConstant;
@@ -53,8 +57,6 @@ public final class ScopeInfo
      */
     // TODO: initial action is not used!
 	private Action _InitialAction;
-    private boolean _IsLambda; //lambda scope or not
-	private boolean _IsInline;
 	private int _ThreadCount;
 
     /**
@@ -64,8 +66,6 @@ public final class ScopeInfo
 
 	public State getInitialState() { return _InitialState; }
 	public boolean isNullable() { return _Nullable; }	
-	public boolean isLambda() { return _IsLambda; }
-	public boolean isInline() { return _IsInline; }
     
     public void setNullable(boolean v) { _Nullable = v; }
 	public void setInitialState(State s, Action initAction) {
@@ -74,50 +74,16 @@ public final class ScopeInfo
     }
 	public void setThreadCount(int n) { _ThreadCount = n; } 
 	
-    //simple attributes
-	private String _Location;
-	private String _NameForTargetLang; //java class name
-	private String _PackageName; //java package name
-    private String _Access; //java access identifier i.e. "private final"
-	private String _Name; //scope name
-    
-	public String getNameForTargetLang() { return _NameForTargetLang; }
-	public String getName() { return _Name; }
-	public String getPackageName() { return _PackageName; }
-	public String getLocation() { return _Location; }
 	public int getStateCount() { return _AllStates.size(); }
 	
+    public String getClassName() {
+        return scope.getParam().className;
+    }
     
     /**
      * Parameters to the constructor. Array of Aliases.
      */
     private Alias[] constructorParams;
-    
-    /**
-     * The name of the variable that will be "returned" to the
-     * parent scope.
-     * 
-     * The parent scope will access this variable via the alias.
-     * Defaults to "this", meaning that the class itself will be
-     * returned.
-     */
-    private String returnVariable = "this";
-    public String getReturnVariable() { return returnVariable; }
-    
-    /**
-     * The type of the <code>returnVariable</code> field.
-     * Ideally, one could figure this out by parsing the Java code.
-     * For now, we will ask the user to specify this value.
-     * 
-     * If null, the type of this class will be used as the default value.
-     */
-    private String returnType = null;
-    public String getReturnType() {
-        if(returnType!=null)    return returnType;
-        
-        if(_PackageName==null)  return _NameForTargetLang;
-        else    return _PackageName+'.'+_NameForTargetLang;
-    }
     
     
     private class AlphabetIterator extends SelectiveIterator {
@@ -132,7 +98,7 @@ public final class ScopeInfo
     }
     
     
-    public Iterator iterateChildScopes() { return _ChildScopes.iterator(); }
+//    public Iterator iterateChildScopes() { return _ChildScopes.iterator(); }
     
 
 
@@ -192,7 +158,7 @@ public final class ScopeInfo
                 this,
                 orig.getThreadIndex(),
                 getStateCount(),
-                orig.getLocationHint());
+                orig.locationHint);
             addState(st);
             m.put(orig,st);
             
@@ -239,31 +205,14 @@ public final class ScopeInfo
 	private String _HeaderSection = "";
 	public void appendHeaderSection(String c) { _HeaderSection += c; }
     
-    private String _Body = "";
-
     /** Name of fields defined in &lt;cc:java-body>. */
     private final Set userDefinedFields = new HashSet();
     
-    /** Appends new &lt;java-body>. */
-    public void appendBody(String c) {
-        _Body += c;
-        
-        JavaBodyParser p = new JavaBodyParser(new StringReader(c));
-        
-        try {
-            p.JavaBody();       // parse the text
-        } catch( relaxngcc.javabody.ParseException e ) {
-            // TODO: report error location and such.
-            System.err.println("[Warning] unable to parse <java-body>");
-        }
-        
-        userDefinedFields.addAll(p.fields);
-    }
-	
-	//type usage information. these flags affect the output of import statements
-	private boolean _UsingBigInteger;
-	private boolean _UsingCalendar;
+    //type usage information. these flags affect the output of import statements
+    private boolean _UsingBigInteger;
+    private boolean _UsingCalendar;
     
+	
     /** All actions in this scope. */
     private final Vector actions = new Vector();
     
@@ -319,42 +268,16 @@ public final class ScopeInfo
     /** All the aliases indexed by their names. */
 	private final Map aliases = new Hashtable();
 	
-	public ScopeInfo(NGCCGrammar g, int type, String location, boolean inline)
-	{
-		_Grammar = g;
-		_IsLambda = (type==ScopeBuilder.TYPE_LAMBDA);
-		_Root = (type==ScopeBuilder.TYPE_ROOT);
-		_IsInline = inline;
-		_Location = location;
-		_UsingBigInteger = false;
-		_UsingCalendar = false;
-	
+	public ScopeInfo(NGCCGrammar g,Scope scope) {
+		grammar = g;
+        this.scope = scope;
 		_AllStates = new HashSet();
-        _ChildScopes = new HashSet();
-        
 		_NSURItoStringConstant = new HashMap();
-	}
-    
-    /**
-     * Sets various information about this scope.
-     */
-	public void setParameters(
-        String name, String nameForTargetLang, String packageName, String access,
-        String returnType, String returnValue,
-        String params)
-	{
-		_Name = name;
-		_NameForTargetLang = nameForTargetLang;
-		_PackageName = packageName;
-		_Access = access;
-        
-        this.returnType = returnType;
-        this.returnVariable = returnValue;
-        
+
         Vector vec = new Vector();
         // parse constructor parameters
-        if(params!=null) {
-            StringTokenizer tokens = new StringTokenizer(params,",");
+        if(scope.getParam().params!=null) {
+            StringTokenizer tokens = new StringTokenizer(scope.getParam().params,",");
             while(tokens.hasMoreTokens()) {
                 // (type,name) pair.
                 String pair = tokens.nextToken().trim();
@@ -367,7 +290,22 @@ public final class ScopeInfo
             }
         }
         constructorParams = (Alias[])vec.toArray(new Alias[vec.size()]);
+        
+        
+        if(scope.getBody()!=null) {
+	        JavaBodyParser p = new JavaBodyParser(new StringReader(scope.getBody()));
+	        
+	        try {
+	            p.JavaBody();       // parse the text
+	        } catch( relaxngcc.javabody.ParseException e ) {
+	            // TODO: report error location and such.
+	            System.err.println("[Warning] unable to parse <java-body>");
+	        }
+	        
+	        userDefinedFields.addAll(p.fields);
+        }
 	}
+    
 	
 	public void addNSURI(String nsuri)
 	{
@@ -395,7 +333,7 @@ public final class ScopeInfo
 		return (String)o;
 	}
 	
-    public void addChildScope(ScopeInfo info) { _ChildScopes.add(info); }
+//    public void addChildScope(ScopeInfo info) { _ChildScopes.add(info); }
     
     
     /**
@@ -430,10 +368,10 @@ public final class ScopeInfo
 	public Alias addAlias(String name, String xsdtype)
 	{
         String javatype = NGCCUtil.XSDTypeToJavaType(xsdtype);
-		if(!_UsingBigInteger && javatype.equals("BigInteger"))
-			_UsingBigInteger = true;
-		else if(!_UsingCalendar && javatype.equals("GregorianCalendar"))
-			_UsingCalendar = true;
+        if(!_UsingBigInteger && javatype.equals("BigInteger"))
+            _UsingBigInteger = true;
+        else if(!_UsingCalendar && javatype.equals("GregorianCalendar"))
+            _UsingCalendar = true;
 
         Alias a = new Alias(name, javatype, false);
         aliases.put(name,a);
@@ -453,40 +391,39 @@ public final class ScopeInfo
      */
 	public void printHeaderSection(PrintStream output, Options options, String globalimport)
 	{
-        if(!_IsLambda)
+        //notice
+        output.println("/* this file is generated by RelaxNGCC */");
+        //package
+        if(grammar.packageName.length()>0)
+            output.println("package " + grammar.packageName + ";");
+        //imports
+        if(_UsingBigInteger)
+            output.println("import java.math.BigInteger;");
+        if(_UsingCalendar)
+            output.println("import java.util.GregorianCalendar;");
+
+        output.println("import org.xml.sax.SAXException;");
+        output.println("import org.xml.sax.XMLReader;");
+        
+        if(!options.usePrivateRuntime)
+            output.println("import relaxngcc.runtime.NGCCHandler;");
+        output.println("import "+grammar.getRuntimeTypeFullName()+";");
+        
+        if(_Root)
         {
-            //notice
-            output.println("/* this file is generated by RelaxNGCC */");
-            //package
-            if(_PackageName.length()>0)
-                output.println("package " + _PackageName + ";");
-            //imports
-            if(_UsingBigInteger)
-                output.println("import java.math.BigInteger;");
-            if(_UsingCalendar)
-                output.println("import java.util.GregorianCalendar;");
-
-            output.println("import org.xml.sax.SAXException;");
-            output.println("import org.xml.sax.XMLReader;");
-            
-            if(!options.usePrivateRuntime)
-                output.println("import relaxngcc.runtime.NGCCHandler;");
-            output.println("import "+_Grammar.getRuntimeTypeFullName()+";");
-            
-            if(_Root)
-            {
-                output.println("import javax.xml.parsers.SAXParserFactory;");
-                output.println("import javax.xml.parsers.ParserConfigurationException;");
-            }
-
-            output.println(globalimport);
-
-            if(_HeaderSection.length()>0)
-                output.println(_HeaderSection);
+            output.println("import javax.xml.parsers.SAXParserFactory;");
+            output.println("import javax.xml.parsers.ParserConfigurationException;");
         }
+
+        output.println(globalimport);
+
+        if(_HeaderSection.length()>0)
+            output.println(_HeaderSection);
+        
 		//class name
-		if(_Access.length()>0) _Access += " ";
-		output.println(_Access + "class " + _NameForTargetLang + " extends NGCCHandler {");
+        NGCCDefineParam param = scope.getParam();
+        
+		output.println(param.access + " class " + param.className + " extends NGCCHandler {");
 		//NSURI constants
 		Iterator uris = _NSURItoStringConstant.entrySet().iterator();
 		while(uris.hasNext())
@@ -509,7 +446,7 @@ public final class ScopeInfo
             if(userDefinedFields.contains(a.name))
                 continue;
                 
-			if(options.style==Options.STYLE_PLAIN_SAX && !a.isUserObject)
+			if(/*options.style==Options.STYLE_PLAIN_SAX &&*/ !a.isUserObject)
 				output.println("private String " + a.name + ";");
 			else
 				output.println("private " + a.javatype + " " + a.name + ";");
@@ -549,8 +486,8 @@ public final class ScopeInfo
             "    this.runtime = _runtime;\n"+
             "    {3}",
             new Object[]{
-                getNameForTargetLang(),
-                _Grammar.getRuntimeTypeShortName(),
+                param.className,
+                grammar.getRuntimeTypeShortName(),
                 argList, argAssign }
         ));
         
@@ -564,8 +501,8 @@ public final class ScopeInfo
             "    this(null,_runtime,-1{3});\n"+
             "'}'",
             new Object[]{
-                getNameForTargetLang(),
-                _Grammar.getRuntimeTypeShortName(),
+                param.className,
+                grammar.getRuntimeTypeShortName(),
                 argList, argParam }
         ));
 
@@ -576,7 +513,7 @@ public final class ScopeInfo
             "    protected final {0} runtime;\n"+
             "    public final {1} getRuntime() '{' return runtime; '}'",
             new Object[]{
-                _Grammar.getRuntimeTypeShortName(),
+                grammar.getRuntimeTypeShortName(),
                 runtimeBaseName }
         ));
 		
@@ -587,27 +524,27 @@ public final class ScopeInfo
 		//simple entry point
 		if(_Root)
 		{
-            if(options.style==Options.STYLE_MSV)
-            {
-                output.println("public static XMLReader getPreparedReader(SAXParserFactory f, DocumentDeclaration g) throws ParserConfigurationException, SAXException {");
-                output.println("\tXMLReader r = f.newSAXParser().getXMLReader();");
-                output.println("\tTypeDetector v = new TypeDetector(g, new ErrorHandlerImpl());");
-                output.println("\tr.setContentHandler(v);");
-                output.println("\tv.setContentHandler(new " + _NameForTargetLang + "(null));");
-                output.println("\treturn r;");
-                output.println("}");
-                output.println("public static void main(String[] args) throws Exception {");
-                output.println("\tif(args.length!=2) { System.err.println(\"usage: " + _NameForTargetLang + " <grammarfile> <instancefile>\"); return; }");
-                output.println("\tSAXParserFactory f = SAXParserFactory.newInstance();");
-                output.println("\tf.setNamespaceAware(true);");
-                output.println("\tGrammarLoader loader = new GrammarLoader();");
-                output.println("\tloader.setController( new DebugController(false,false) );");
-                output.println("\tDocumentDeclaration g = loader.loadVGM( args[0] );");
-                output.println("\tif(g==null) { System.err.println(\"Failed to load grammar.\"); return; }");
-                output.println("\tXMLReader r = getPreparedReader(f,g);");
-                output.println("\tr.parse(args[1]);");
-                output.println("}");
-            }
+//            if(options.style==Options.STYLE_MSV)
+//            {
+//                output.println("public static XMLReader getPreparedReader(SAXParserFactory f, DocumentDeclaration g) throws ParserConfigurationException, SAXException {");
+//                output.println("\tXMLReader r = f.newSAXParser().getXMLReader();");
+//                output.println("\tTypeDetector v = new TypeDetector(g, new ErrorHandlerImpl());");
+//                output.println("\tr.setContentHandler(v);");
+//                output.println("\tv.setContentHandler(new " + _NameForTargetLang + "(null));");
+//                output.println("\treturn r;");
+//                output.println("}");
+//                output.println("public static void main(String[] args) throws Exception {");
+//                output.println("\tif(args.length!=2) { System.err.println(\"usage: " + _NameForTargetLang + " <grammarfile> <instancefile>\"); return; }");
+//                output.println("\tSAXParserFactory f = SAXParserFactory.newInstance();");
+//                output.println("\tf.setNamespaceAware(true);");
+//                output.println("\tGrammarLoader loader = new GrammarLoader();");
+//                output.println("\tloader.setController( new DebugController(false,false) );");
+//                output.println("\tDocumentDeclaration g = loader.loadVGM( args[0] );");
+//                output.println("\tif(g==null) { System.err.println(\"Failed to load grammar.\"); return; }");
+//                output.println("\tXMLReader r = getPreparedReader(f,g);");
+//                output.println("\tr.parse(args[1]);");
+//                output.println("}");
+//            }
             // removed because this won't work well with
             // custom NGCCRuntime, which we don't know how to instanciate
 		}
@@ -616,18 +553,15 @@ public final class ScopeInfo
 
 	public void printTailSection(String globalbody, PrintStream output)
 	{
-        if(!_IsLambda)
-        {
-            if(_Body.length()>0)
-                output.println(_Body);
-            output.println(globalbody);
-        }
+        if(scope.getBody()!=null)
+            output.println(scope.getBody());
+        output.println(globalbody);
 		output.println("}"); //end of class
 	}
 	
 	public void dump(PrintStream strm)
 	{
-		strm.println("Scope " + _Name);
+		strm.println("Scope " + scope.name);
         strm.print("HEAD: ");
         for (Iterator itr = head().iterator(); itr.hasNext();) {
 			Alphabet a = (Alphabet) itr.next();

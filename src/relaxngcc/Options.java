@@ -14,6 +14,7 @@ import java.text.ParseException;
  */
 public class Options
 {
+/*
 	public static final int STYLE_MSV = 0;
 	public static final int STYLE_TYPED_SAX = 1;
 	public static final int STYLE_PLAIN_SAX = 2;
@@ -23,7 +24,7 @@ public class Options
 	public static final int NONXML = 1;
     public static final int NEWPARSER = 2;
     public int input;
-	
+*/	
 	public String sourcefile;
 	public String targetdir;
 	public boolean msv_available;
@@ -49,9 +50,9 @@ public class Options
     
 	public Options(String[] args) throws CommandLineException {
         
-		input = NORMAL;
+//		input = NORMAL;
 		newline = System.getProperty("line.separator");
-		style = STYLE_PLAIN_SAX;
+//		style = STYLE_PLAIN_SAX;
 		from_include = false;
 		
 		for(int i=0; i<args.length; i++)
@@ -59,16 +60,16 @@ public class Options
             if(args[i].charAt(0)=='-') {
     			if(args[i].equals("--target"))
     				targetdir = args[++i];
-    			else if(args[i].equals("--msv"))
-    				style = STYLE_MSV;
-    			else if(args[i].equals("--typedsax"))
-    				style = STYLE_TYPED_SAX;
-    			else if(args[i].equals("--plainsax"))
-    				style = STYLE_PLAIN_SAX;
-    			else if(args[i].equals("--nonxml"))
-    				input = NONXML;
-                else if(args[i].equals("--newparser"))
-                    input = NEWPARSER;
+//    			else if(args[i].equals("--msv"))
+//    				style = STYLE_MSV;
+//    			else if(args[i].equals("--typedsax"))
+//    				style = STYLE_TYPED_SAX;
+//    			else if(args[i].equals("--plainsax"))
+//    				style = STYLE_PLAIN_SAX;
+//    			else if(args[i].equals("--nonxml"))
+//    				input = NONXML;
+//                else if(args[i].equals("--newparser"))
+//                    input = NEWPARSER;
     			else if(args[i].equals("-d"))
     				debug = true;
                 else if(args[i].equals("--print-automata"))

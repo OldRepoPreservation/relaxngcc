@@ -39,9 +39,9 @@ public class NullableChecker {
         
         
         // start by all initial states
-        Iterator itr = gram.iterateAllScopeBuilder();
+        Iterator itr = gram.iterateScopeInfos();
         while(itr.hasNext()) {
-            State s = ((ScopeBuilder)itr.next()).getScopeInfo().getInitialState();
+            State s = ((ScopeInfo)itr.next()).getInitialState();
             erStates.add(s);
             if(s.isAcceptable())
                 nullableScopes.add(s.getContainer());

@@ -18,4 +18,9 @@ public class NsNameClass extends NameClass {
     public Object apply(NameClassFunction f) {
         return f.nsName(uri,except);
     }
+    
+    public String toString() {
+        return '{'+uri+'}'+(except!=null?'-'+except.toString():"");
+    }
+    
 }

@@ -9,8 +9,8 @@ import java.util.Comparator;
 
 import relaxngcc.MetaDataType;
 import relaxngcc.NGCCGrammar;
-import relaxngcc.builder.NameClass;
 import relaxngcc.builder.ScopeInfo;
+import relaxngcc.grammar.NameClass;
 
 /**
  * An alphabet in RelaxNGCC is one of following types:
@@ -195,7 +195,7 @@ public abstract class Alphabet
         private final String _Alias;
         public String getAlias() { return _Alias; }
 
-        public String toString() { return "ref '"+_Target.getNameForTargetLang()+"'"; }
+        public String toString() { return "ref '"+_Target.getClassName()+"'"; }
         
         public int hashCode() {
             return h(_Target)^h(_Alias)^h(_Params);
@@ -264,7 +264,7 @@ public abstract class Alphabet
         private final MetaDataType _DataType;
         public MetaDataType getMetaDataType() { return _DataType; }
         
-        public String toString() { return "data '"+_DataType.getXSTypeName()+"'"; }
+        public String toString() { return "data '"+_DataType.name+"'"; }
         public int hashCode() { return _DataType.hashCode(); }
         public boolean equals( Object o ) {
             if(!super.equals(o)) return false;

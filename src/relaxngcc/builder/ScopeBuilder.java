@@ -15,16 +15,14 @@ import relaxngcc.NGCCGrammar;
 import relaxngcc.MetaDataType;
 import relaxngcc.NGCCUtil;
 import relaxngcc.NGCCException;
-import relaxngcc.dom.NGCCElement;
-import relaxngcc.dom.TemporaryElement;
-import relaxngcc.dom.NGCCNodeList;
+import relaxngcc.grammar.*;
 
 /**
  * A ScopeBuilder constructs an automaton from a given root Element of scope in target grammar. 
  */
-public class ScopeBuilder
+public class ScopeBuilder implements PatternFunction
 {
-	public static final int TYPE_ROOT = 0;
+/*	public static final int TYPE_ROOT = 0;
 	public static final int TYPE_NORMAL = 1;
 	public static final int TYPE_LAMBDA = 2;
 	public static final int TYPE_COMBINED_CHOICE = 3;
@@ -36,6 +34,8 @@ public class ScopeBuilder
 	private NGCCGrammar _Grammar;
 	private Stack _Namespaces;
 	private boolean _ExpandInline;
+*/
+
 	private int _ThreadCount;
 
     /**
@@ -45,7 +45,8 @@ public class ScopeBuilder
     
     /** actions are added to this buffer until it is processed */
     private StringBuffer preservedAction = new StringBuffer();
-	
+
+/*	
 	//constructor must be called from following static methods
 	private ScopeBuilder(int type, NGCCGrammar grm, String location, NGCCElement root)
 	{
@@ -63,10 +64,10 @@ public class ScopeBuilder
         
 		_ScopeInfo = new ScopeInfo(grm, _Type, location, _ExpandInline);
 		_ScopeInfo.addNSURI(ns);
-	} 
+	}*/ 
 	
 	/** Creates new ScopeBuilder */
-    public static ScopeBuilder create(NGCCGrammar grm, String location, NGCCElement root)
+/*    public static ScopeBuilder create(NGCCGrammar grm, String location, NGCCElement root)
 	{
 		ScopeBuilder inst = new ScopeBuilder(TYPE_NORMAL, grm, location, root);
 		
@@ -89,9 +90,9 @@ public class ScopeBuilder
             root.attributeNGCC("return-value","this"),
             root.attributeNGCC("params",null));
     }
-	
+*/	
 	/** Creates new ScopeBuilder */
-    public static ScopeBuilder createAsRoot(NGCCGrammar grm, String location, NGCCElement root)
+/*    public static ScopeBuilder createAsRoot(NGCCGrammar grm, String location, NGCCElement root)
 	{
 		ScopeBuilder inst = new ScopeBuilder(TYPE_ROOT, grm, location, root);
 		
@@ -110,8 +111,9 @@ public class ScopeBuilder
             null, "", null, "this",null);
 		return inst;
     }
+*/
 
-	
+/*
 	public void extend(NGCCElement otherDefine) throws NGCCException
 	{
 		String combineType = otherDefine.getAttribute("combine");
@@ -139,21 +141,35 @@ public class ScopeBuilder
 	
 	public String getName() { return _ScopeInfo.getName(); }
 	public ScopeInfo getScopeInfo() { return _ScopeInfo; }
+*/	
 	
-	
-	public void buildAutomaton()
-	{
-		ScopeBuildingContext ctx = new ScopeBuildingContext();
+    /** Builds ScopeInfo. */
+    public static void build( NGCCGrammar grammar, ScopeInfo scope ) {
+        new ScopeBuilder(grammar,scope).build();
+    }
+    
+    private ScopeBuilder( NGCCGrammar grammar, ScopeInfo scope ) {
+        this.grammar = grammar;
+        this._ScopeInfo = scope;
+    }
+    
+    private final NGCCGrammar grammar;
+    private final ScopeInfo _ScopeInfo;
+    
+	public void build() {
+		ctx = new ScopeBuildingContext();
 		//starts from final state
-		State finalstate = createState(null, ctx);
-		finalstate.setAcceptable(true);
+	    destination = createState(null);
+		destination.setAcceptable(true);
+
+        State initial = (State)_ScopeInfo.scope.getPattern().apply(this);		
+//		State initial = null;
+//        if(_Type==TYPE_NORMAL || _Type==TYPE_ROOT)
+//    		initial = traverseNodeList(_Root.getChildNodes(), ctx, finalstate);
+//		else
+//			initial = processRelaxNGNode(_Root, ctx, finalstate);
 		
-		State initial = null;
-		if(_Type==TYPE_NORMAL || _Type==TYPE_ROOT)
-			initial = traverseNodeList(_Root.getChildNodes(), ctx, finalstate);
-		else
-			initial = processRelaxNGNode(_Root, ctx, finalstate);
-		_ScopeInfo.setThreadCount(_ThreadCount);
+        _ScopeInfo.setThreadCount(_ThreadCount);
         // TODO: don't we need to reset the preservedAction variable? - Kohsuke
 		_ScopeInfo.setInitialState(initial,
             (preservedAction.length()!=0)?
@@ -165,6 +181,7 @@ public class ScopeBuilder
         _ScopeInfo.minimizeStates();
 	}
 	
+/*    
 	private State traverseNodeList(NGCCNodeList nl, ScopeBuildingContext ctx, State destination)
 	{
 		int len = nl.getLength();
@@ -267,7 +284,9 @@ public class ScopeBuilder
 			System.err.println("[Warning] Unsupported RELAX NG element '" + name + "' is found in " + _ScopeInfo.getLocation() + ".");
 		return destination;
 	}
-	
+*/
+
+/*	
 	private State processElement(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
 		String ns = exp.hasAttribute("ns")? exp.getAttribute("ns") : null;
@@ -299,7 +318,41 @@ public class ScopeBuilder
 		
 		return head;
 	}
+*/
+    private ScopeBuildingContext ctx;
+    private State destination;
     
+    public Object element( ElementPattern pattern ) {
+        NameClass nc = pattern.name;
+        
+        State tail = createState(pattern);
+        Transition te = createTransition(new Alphabet.LeaveElement(nc), destination);
+        addAction(te,true);
+        if(ctx.getInterleaveBranchRoot()!=null) te.setEnableState(ctx.getInterleaveBranchRoot());
+        tail.addTransition(te);
+        
+        // start a new context
+        ScopeBuildingContext oldContext = ctx;
+        ctx = new ScopeBuildingContext(ctx);
+        
+        ctx.setInterleaveBranchRoot(null);
+
+        // process descendants
+        destination = tail;
+        State middle = (State)pattern.body.apply(this);
+        
+        oldContext = ctx;
+        
+        State head = createState(pattern);
+        Transition ts = createTransition(new Alphabet.EnterElement(nc), middle);
+        addAction(ts,true);
+        if(ctx.getInterleaveBranchRoot()!=null) ts.setDisableState(ctx.getInterleaveBranchRoot());
+        head.addTransition(ts);
+        
+        return head;
+    }
+
+/*    
 	private State processAttribute(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
 		String attr_name = exp.getAttribute("name");
@@ -316,11 +369,11 @@ public class ScopeBuilder
         
         State tail = createState(exp, ctx);
         Transition te = createTransition(new Alphabet.LeaveAttribute(nc),
-            destination /*createState(exp,ctx)*/);
+            destination /*createState(exp,ctx)*//*);
         addAction(te,true);
         tail.addTransition(te);
         
-        State middle = traverseNodeList(exp.getChildNodes(), ctx/*newctx*/, tail);
+        State middle = traverseNodeList(exp.getChildNodes(), ctx/*newctx*//*, tail);
         
         State head = createState(exp, ctx);
         Transition ts = createTransition(
@@ -342,8 +395,38 @@ public class ScopeBuilder
 /*
         head.addTransition(ts);
 		return head;
-*/
+*//*
 	}
+*/
+    public Object attribute( AttributePattern pattern ) {
+        NameClass nc = pattern.name;
+        State orgdest = destination;
+
+        // I think I broke the code related to interleave handling.
+        // I just don't know how to fix them.  - Kohsuke
+        
+        State tail = createState(pattern);
+        Transition te = createTransition(new Alphabet.LeaveAttribute(nc),
+            destination /*createState(exp,ctx)*/);
+        addAction(te,true);
+        tail.addTransition(te);
+  
+        destination = tail;
+        State middle = (State)pattern.body.apply(this);      
+//        State middle = traverseNodeList(exp.getChildNodes(), ctx/*newctx*/, tail);
+        
+        State head = createState(pattern);
+        Transition ts = createTransition(
+            new Alphabet.EnterAttribute(nc,_OrderCounter++),
+            middle);
+        addAction(ts,true);
+//??        if(ctx.getInterleaveBranchRoot()!=null) ts.setDisableState(ctx.getInterleaveBranchRoot());
+
+        // always treat attributes as optional,
+        orgdest.addTransition(ts);
+        return orgdest;
+    }
+/*
 	private State processData(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
 		MetaDataType mdt = _Grammar.addDataType(exp);
@@ -353,7 +436,29 @@ public class ScopeBuilder
 	{
 		return processData(exp, ctx, destination, MetaDataType.STRING);
 	}
-	private State processEmpty(NGCCElement exp, ScopeBuildingContext ctx, State destination)
+    private State processData(NGCCElement exp, ScopeBuildingContext ctx, State destination, MetaDataType mdt)
+    {
+        String alias = exp.attributeNGCC("alias",null);
+        if(alias!=null)   _ScopeInfo.addAlias(alias, mdt.getXSTypeName());
+        
+        State result = createState(exp, ctx);
+        Transition t = createTransition(new Alphabet.DataText(mdt, alias), destination);
+        addAction(t,false);
+        result.addTransition(t);
+        return result;
+    }
+*/
+    public Object data( DataPattern pattern ) {
+        State result = createState(pattern);
+        if(pattern.alias!=null) _ScopeInfo.addUserDefinedAlias(pattern.alias,"String");
+        Transition t = createTransition(
+            new Alphabet.DataText(pattern.type,pattern.alias), destination);
+        addAction(t,false);
+        result.addTransition(t);
+        return result;
+    }
+    
+/*	private State processEmpty(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
 		return destination;
 	}
@@ -361,17 +466,16 @@ public class ScopeBuilder
 	{
 		return createState(exp, ctx); //this returning State is not reachable
 	}
-	private State processData(NGCCElement exp, ScopeBuildingContext ctx, State destination, MetaDataType mdt)
-	{
-        String alias = exp.attributeNGCC("alias",null);
-		if(alias!=null)   _ScopeInfo.addAlias(alias, mdt.getXSTypeName());
-        
-		State result = createState(exp, ctx);
-		Transition t = createTransition(new Alphabet.DataText(mdt, alias), destination);
-		addAction(t,false);
-		result.addTransition(t);
-		return result;
-	}
+*/
+    public Object empty( EmptyPattern pattern ) {
+        return destination;
+    }
+    public Object notAllowed( NotAllowedPattern pattern ) {
+        // return a non-reachable state
+        return createState(pattern);
+    }
+
+/*
 	private State processValue(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
         String alias = exp.attributeNGCC("alias",null);
@@ -384,6 +488,19 @@ public class ScopeBuilder
 		result.addTransition(t);
 		return result;
 	}
+*/
+    public Object value( ValuePattern pattern ) {
+        if(pattern.alias!=null) _ScopeInfo.addUserDefinedAlias(pattern.alias,"String");
+        
+        State result = createState(pattern);
+        Transition t = createTransition(
+            new Alphabet.ValueText(pattern.value, pattern.alias), destination);
+        addAction(t,false);
+        result.addTransition(t);
+        return result;
+    }
+
+/*
 	private State processList(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
         String alias = exp.attributeNGCC("alias",null);
@@ -403,6 +520,29 @@ public class ScopeBuilder
 			return head;
 		}
 	}
+*/
+    public Object list( ListPattern pattern ) {
+        if(pattern.alias!=null) {
+            // don't treat this list as a structured text.
+	        _ScopeInfo.addUserDefinedAlias(pattern.alias,"String");
+	        
+            State result = createState(pattern);
+	        Transition t = createTransition(
+                new Alphabet.DataText(
+                    new MetaDataType("string"),
+                    pattern.alias), destination);
+	        addAction(t,false);
+	        result.addTransition(t);
+	        return result;
+        } else {
+            // treat this list as a structured text
+            destination.setListMode(State.LISTMODE_OFF);
+            State head = (State)pattern.p.apply(this);
+            head.setListMode(State.LISTMODE_ON);
+            return head;
+        }
+    }
+/*    
 	private State processChoice(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
 		NGCCNodeList nl = exp.getChildNodes();
@@ -441,7 +581,56 @@ public class ScopeBuilder
 		}
 		return head;
 	}
+*/
+    public Object javaBlock( JavaBlock block ) {
+        preservedAction.append(block.code);
+        return destination;
+    }
+    
+    public Object group( GroupPattern pattern ) {
+        // build automaton in a reverse order.
+        // TODO: how about actions?
+        destination = (State)pattern.p2.apply(this);
+        return               pattern.p1.apply(this);
+    }
+    
+    public Object choice( ChoicePattern pattern ) {
+        
+        State dest = destination;
+        addAction(destination,true);
+        
+        State head = (State)pattern.p1.apply(this);
+        
+        destination = dest;
+        State member = (State)pattern.p2.apply(this);
+        
+        head.mergeTransitions(member);
+        
+        if(member.isAcceptable()) {
+            // TODO: we need to copy exit actions from the member state
+            // to the head state, but what if there already are some exit
+            // actions?
+            // this would happen for cases like
+            // <choice>
+            //   <group>
+            //     <optional>...</optoinal>
+            //     <cc:java> AAA </cc:java>
+            //   </group>
+            //   <group>
+            //     <optional>...</optoinal>
+            //     <cc:java> BBB </cc:java>
+            //   </group>
+            // </choice>
+            //
+            // this is a variation of ambiguity which we need to
+            // detect.
+            head.setAcceptable(true);
+        }
+        
+        return head;
+    }
 	
+/*
 	private State processInterleave(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
 		NGCCNodeList nl = exp.getChildNodes();
@@ -471,6 +660,37 @@ public class ScopeBuilder
 		addAction(head,true);
 		return head;
 	}
+*/
+    public Object interleave( InterleavePattern pattern ) {
+        State tail = destination;
+        ScopeBuildingContext oldContext = ctx;
+        
+        addAction(destination,true);
+        
+        State head = createState(pattern);
+        ctx = new ScopeBuildingContext(ctx);
+        ctx.setInterleaveBranchRoot(head);
+
+        tail.addStateForWait(processInterleaveBranch(pattern.p1,head));
+        tail.addStateForWait(processInterleaveBranch(pattern.p2,head));
+        
+        addAction(head,true);
+        ctx = oldContext;
+        return head;
+    }
+
+    private State processInterleaveBranch( Pattern child, State head ) {
+        ctx.setCurrentThreadIndex(_ThreadCount++);
+        State meetingspot = createState(child);
+        meetingspot.setMeetingDestination(destination);
+        
+        destination = meetingspot;
+        head.mergeTransitions( (State)child.apply(this) );
+        
+        return meetingspot;
+    }
+
+/*
 	private State processOneOrMore(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
 		addAction(destination,true);
@@ -479,6 +699,16 @@ public class ScopeBuilder
 		destination.mergeTransitions(head);
 		return head;
 	}
+*/
+    public Object oneOrMore(OneOrMorePattern pattern) {
+        State tail = destination;
+        addAction(destination,true);
+        State head = (State)pattern.p.apply(this);
+        addAction(head,true); //addAction must be before mergeTransition
+        tail.mergeTransitions(head);
+        return head;
+    }
+/*
 	private State processZeroOrMore(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
         ScopeInfo.Action action_last = null;
@@ -505,6 +735,7 @@ public class ScopeBuilder
         
 		return head;
 	}
+
 	private State processOptional(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
         addAction(destination,true);
@@ -533,7 +764,9 @@ public class ScopeBuilder
         }
         return head;
 	}
-	
+*/
+
+/*
 	private State processRef(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
 		ScopeBuilder target = _Grammar.getScopeBuilderByName(exp.getAttribute("name"));
@@ -575,10 +808,42 @@ public class ScopeBuilder
 			return head;
 		}
 	}
+*/
+    public Object ref( RefPattern pattern ) {
+//      ScopeInfo.Action action = null;
+//        if(preservedAction.length()!=0)
+//            action = _ScopeInfo.createAction(preservedAction);
+        
+        State head = createState(pattern);
+        
+        ScopeInfo targetScope = grammar.getScopeInfo(pattern.target);
+        
+        String alias = pattern.param.alias;
+        if(alias!=null)
+            _ScopeInfo.addUserDefinedAlias(alias,
+                targetScope.scope.getParam().returnType);
+        
+        Transition t = createTransition(new Alphabet.Ref(
+            targetScope, alias, pattern.param.withParams, _OrderCounter++),
+            destination);
+        head.addTransition(t);
+
+        // add action as epilogue because code should be executed
+        // *after* the transition is performed.
+        addAction(t,false);
+        
+        return head;
+    }
+    
+    public Object scope( Scope scope ) {
+        // we don't cross <ref> boundary, so this shouldn't be executed at all.
+        throw new InternalError();
+    }
 	
-	private State createState(NGCCElement corresponding, ScopeBuildingContext ctx)
+    
+	private State createState(Pattern source/*read from field --, ScopeBuildingContext ctx*/)
 	{
-		State s = new State(_ScopeInfo, ctx.getCurrentThreadIndex(), _ScopeInfo.getStateCount(), corresponding);
+		State s = new State(_ScopeInfo, ctx.getCurrentThreadIndex(), _ScopeInfo.getStateCount(), source);
 		_ScopeInfo.addState(s);
 		return s;
 	}

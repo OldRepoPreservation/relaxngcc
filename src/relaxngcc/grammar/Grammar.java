@@ -1,6 +1,7 @@
 package relaxngcc.grammar;
 
 import java.util.Hashtable;
+import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -28,6 +29,7 @@ public final class Grammar extends Scope {
     
     /** Gets the Scope object or return null. */
     public Scope get( String name ) {
+        if(name==null)  throw new IllegalArgumentException();
         return (Scope)patterns.get(name);
     }
     
@@ -36,5 +38,10 @@ public final class Grammar extends Scope {
         if(s==null)
             patterns.put(name,s=new Scope(name));
         return s;
+    }
+    
+    /** Iterates all the named {@link Scope}s in this grammar. */
+    public Iterator iterateScopes() {
+        return patterns.values().iterator();
     }
 }

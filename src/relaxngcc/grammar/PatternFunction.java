@@ -19,5 +19,7 @@ public interface PatternFunction {
     Object value(ValuePattern p);
     Object list(ListPattern p);
     Object ref(RefPattern p);
+    // special patterns
+    Object scope(Scope s);
     Object javaBlock(JavaBlock p);
 }

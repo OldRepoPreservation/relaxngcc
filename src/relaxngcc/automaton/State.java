@@ -13,7 +13,7 @@ import java.util.TreeSet;
 import java.util.Vector;
 
 import relaxngcc.builder.ScopeInfo;
-import relaxngcc.dom.NGCCElement;
+import relaxngcc.grammar.Pattern;
 import relaxngcc.util.SelectiveIterator;
 
 /**
@@ -69,25 +69,29 @@ public final class State implements Comparable
 	public int getThreadIndex() { return _ThreadIndex; }
 	private int _ThreadIndex;
 
-	private NGCCElement _LocationHint;
-    public NGCCElement getLocationHint() { return _LocationHint; }
-	
 	//about list operation
 	private int _ListMode;
 	public void setListMode(int n) { _ListMode=n; }
 	public int getListMode() { return _ListMode; }
 	
-	//constructor
-    public State(ScopeInfo container, int thread, int index, NGCCElement e)
+    /** Pattern from which this state was created. */
+    public final Pattern locationHint;
+    
+    /**
+     * 
+     * @param location
+     *      Indicates the pattern object from which this state is created.
+     */
+    public State(ScopeInfo container, int thread, int index, Pattern location )
 	{
 		_Container = container;
-		_LocationHint = e;
 		_AllTransitions = new HashSet();
         
 		_Acceptable = false;
 		_Index = index;
 		_ThreadIndex = thread;
 		_ListMode = LISTMODE_PRESERVE;
+        this.locationHint = location;
     }
 
 	public void addTransition(Transition t) {
@@ -245,24 +249,14 @@ public final class State implements Comparable
 	}
 	private void printStateWarningHeader(PrintStream s) {
 		s.print("[Warning] ");
-		String path = null;
-		try {
-			if (_LocationHint != null)
-				path = _LocationHint.getPath();
-		} catch (UnsupportedOperationException e) {
-		}
 
 		s.print("The state <");
 		s.print(_Index);
-		if (path != null) {
-			s.print("> generated at or near ");
-			s.print(path);
-		} else {
-			s.print("> whose path information is not available");
-		}
+		s.print("> whose path information is not available");
 
 		s.print(" in ");
-		s.print(_Container.getLocation());
+        // TODO: location
+//		s.print(_Container.getLocation());
 	}
 
 

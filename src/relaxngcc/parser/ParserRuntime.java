@@ -1,21 +1,48 @@
 package relaxngcc.parser;
 
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Stack;
+
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParserFactory;
 
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
-
+import org.xml.sax.XMLReader;
 import relaxngcc.grammar.Grammar;
 import relaxngcc.grammar.NameClass;
 import relaxngcc.grammar.SimpleNameClass;
-import relaxngcc.parser.state.*;
+import relaxngcc.parser.state.NGCCRuntime;
 
 /**
  * 
  * 
  * @author Kohsuke Kawaguchi (kk@kohsuke.org)
  */
-public class ParserRuntime extends NGCCRuntime {
+public abstract class ParserRuntime extends NGCCRuntime {
+    
+    /** Parses a document with this runtime. */
+    public void parse(String source) throws SAXException {
+        try {
+	        XMLReader reader = _SAXFactory.newSAXParser().getXMLReader();
+	        reader.setContentHandler(this);
+	        reader.parse(source);
+        } catch( ParserConfigurationException e ) {
+            throw new SAXException(e);
+        } catch( IOException e ) {
+            throw new SAXException(e);
+        }
+    }
+
+    /** static SAX parser factory. */
+    static private final SAXParserFactory _SAXFactory;
+    static {
+        _SAXFactory = SAXParserFactory.newInstance();
+        _SAXFactory.setNamespaceAware(true);
+        _SAXFactory.setValidating(false);
+    }
     
     /** Parses a QName into a SimpleNameClass. */
     public NameClass parseSimpleName( String qname, boolean attributeMode ) {
@@ -24,11 +51,11 @@ public class ParserRuntime extends NGCCRuntime {
         int idx = qname.indexOf(':');
         
         if(idx<0) {
-            if(attributeMode) {
+            if(attributeMode && !nsPresent) {
                 uri="";
                 local=qname;
             } else {
-                uri=resolveNamespacePrefix("");
+                uri=getTargetNamespace();
                 local=qname;
             }
         } else {
@@ -49,20 +76,31 @@ public class ParserRuntime extends NGCCRuntime {
     public Grammar grammar;
     
     /** Processes the &lt;include> element. */
-    public void processInclude( String href ) {
-        throw new UnsupportedOperationException();
+    public void processInclude( String href ) throws SAXException {
+        // TODO: support entity resolver
+        
+        // resolve relative href.
+        // TODO: we need a fully-fledged URI class.
+        try {
+            href = new URL( new URL(getLocator().getSystemId()), href ).toExternalForm();
+        } catch( MalformedURLException e ) {
+            // TODO: error handling?
+            throw new SAXException(e);
+        }
+        
+        new IncludeParserRuntime(this).parse(href);
     }
     
     /** Any global-scope &lt;cc:java-import> will be reported here. */
-    public void appendGlobalImports( String code ) {
-        System.out.println("\nglobal import:\n"+code+"\n");
-        // TODO
-    }
+    public abstract void appendGlobalImport( String code );
+    
+    /** Any global-scope &lt;cc:java-body> will be reported here. */
+    public abstract void appendGlobalBody( String code );
     
     
     
     /** Keeps track of values of the ns attribute. */
-    private final Stack nsStack = new Stack();
+    protected final Stack nsStack = new Stack();
     {// register the default binding
         nsStack.push("");
     }
@@ -72,6 +110,8 @@ public class ParserRuntime extends NGCCRuntime {
         return (String)nsStack.peek();
     }
     
+    /** set to true if the ns attribute is present. */
+    private boolean nsPresent;
     
     // override start/endElement to handle the ns attribute
     // TODO: handle datatypeLibrary attribute
@@ -79,6 +119,7 @@ public class ParserRuntime extends NGCCRuntime {
         throws SAXException {
             
         String ns = atts.getValue("ns");
+        nsPresent = (ns!=null);
         if(ns==null)    ns = getTargetNamespace();
         nsStack.push(ns);
         

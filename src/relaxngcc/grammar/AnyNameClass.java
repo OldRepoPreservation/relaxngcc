@@ -16,4 +16,8 @@ public class AnyNameClass extends NameClass {
     public Object apply(NameClassFunction f) {
         return f.anyName(except);
     }
+    
+    public String toString() {
+        return '*'+(except!=null?'-'+except.toString():"");
+    }
 }

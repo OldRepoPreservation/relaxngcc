@@ -20,6 +20,8 @@ import relaxngcc.automaton.Alphabet;
 import relaxngcc.automaton.Head;
 import relaxngcc.automaton.State;
 import relaxngcc.automaton.Transition;
+import relaxngcc.grammar.NameClass;
+import relaxngcc.grammar.SimpleNameClass;
 
 /**
  * generates Java code that parses XML data via NGCCHandler interface
@@ -262,7 +264,7 @@ public class CodeWriter
 	public void output(PrintStream out)
 	{
 		_output = out;
-		_Info.printHeaderSection(out, _Options, _Grammar.getGlobalImport());
+		_Info.printHeaderSection(out, _Options, _Grammar.globalImportDecls);
         
         out.println("private String uri,localName,qname;");
         
@@ -302,14 +304,16 @@ public class CodeWriter
 		writeTextHandler(table);
 		writeAttributeHandler();
         writeChildCompletedHandler();
-        
+
+/*        
         Iterator lambda_scopes = _Info.iterateChildScopes();
         while(lambda_scopes.hasNext())
         {
             CodeWriter wr = new CodeWriter(_Grammar, (ScopeInfo)lambda_scopes.next(), _Options);
             wr.output(out);
         }
-		_Info.printTailSection(_Grammar.getGlobalBody(), out);
+*/
+		_Info.printTailSection(_Grammar.globalBody, out);
 	}
 	
     private void writeAcceptableStates()
@@ -380,7 +384,8 @@ public class CodeWriter
                     continue;   // we are not interested in this attribute now.
                 
 				bi.addConditionalCode(st,
-                    a.asMarkup().getKey().createJudgementClause(_Info, "uri", "localName"),
+//                    a.asMarkup().getKey().createJudgementClause(_Info, "uri", "localName"),
+                    (String)a.asMarkup().getKey().apply(new NameTestBuilder("uri","localName")),
 					buildTransitionCode(st,tr,eventName,"uri,localName,qname"));
 			}
 
@@ -415,7 +420,7 @@ public class CodeWriter
 		            "runtime.revertToParentFrom{0}({1},cookie, {2});",
 		            new Object[]{
 		                capitalize(eventName),
-		                _Info.getReturnVariable(),
+		                _Info.scope.getParam().returnValue,
 	                    params,
 		            });
         }
@@ -461,7 +466,7 @@ public class CodeWriter
         
         code.append(MessageFormat.format(
             "NGCCHandler h = new {0}(this,runtime,{1}{2});{3}", new Object[]{
-                ref_block.getNameForTargetLang(),
+                ref_block.getClassName(),
                 new Integer(ref_tr.getUniqueId()).toString()/*to avoid ,*/,
                 alpha.getParams(),
                 _Options.newline}));
@@ -471,7 +476,7 @@ public class CodeWriter
                 "runtime.traceln(\"\");\n"+
                 "runtime.traceln(\"Change Handler to {0} (will back to:#{1})\");" + _Options.newline,
                 new Object[]{
-                    ref_block.getNameForTargetLang(),
+                    ref_block.getClassName(),
                     new Integer(ref_tr.nextState().getIndex())
                 }));
         }
@@ -518,14 +523,14 @@ public class CodeWriter
         State result = appendStateTransition(buf, nextstate);
         buf.append(_Options.newline);
         
-        if(_Options.style!=Options.STYLE_MSV)
-        {
+//        if(_Options.style!=Options.STYLE_MSV)
+//        {
             if(result.getListMode()==State.LISTMODE_ON)
                 buf.append("runtime.setListMode();"); // _tokenizeText=true;");
 //  TODO: why do we need this?
 //          else if(result.getListMode()==State.LISTMODE_OFF)
 //              buf.append("_tokenizeText=false;");
-        }
+//        }
         
         boolean in_if_block = false;
                                 
@@ -601,7 +606,7 @@ public class CodeWriter
             _output.println(MessageFormat.format(
                 "runtime.trace(\"onChildCompleted(\"+cookie+\") back to {0}\");",
                 new Object[]{
-                    _Info.getNameForTargetLang()
+                    _Info.getClassName()
                 }));
         }
         _output.println("switch(cookie) {");
@@ -628,7 +633,7 @@ public class CodeWriter
         
                         _output.println(MessageFormat.format(
                             "this.{0}=({1})result;",
-                            new Object[]{ alias, childBlock.getReturnType() }));
+                            new Object[]{ alias, childBlock.scope.getParam().returnType }));
                     }
                     
                     StringBuffer buf= new StringBuffer();
@@ -691,14 +696,21 @@ public class CodeWriter
 
     private void writeAttributeHandlerBlock( SwitchBlockInfo bi, State st, 
         Alphabet.EnterAttribute a ) {
+        
+        NameClass nc = a.getKey();
+        if(nc instanceof SimpleNameClass) {
+            SimpleNameClass snc = (SimpleNameClass)nc;
             
-        bi.addConditionalCode(st,
-            MessageFormat.format(
-            "(ai = runtime.getAttributeIndex({0},\"{1}\"))>=0",
-                new Object[]{
-                    _Info.getNSStringConstant(a.getKey().getNSURI()),
-                    a.getKey().getName()}),
-            "runtime.consumeAttribute(ai);" + _Options.newline);
+	        bi.addConditionalCode(st,
+	            MessageFormat.format(
+	            "(ai = runtime.getAttributeIndex(\"{0}\",\"{1}\"))>=0",
+	                new Object[]{
+	                    snc.nsUri, snc.localName}),
+	            "runtime.consumeAttribute(ai);" + _Options.newline);
+        } else {
+            // if the name class is complex
+            throw new UnsupportedOperationException();
+        }
     }
     
     private State appendStateTransition(StringBuffer buf, State deststate ) {

@@ -18,4 +18,8 @@ public class SimpleNameClass extends NameClass {
     public Object apply(NameClassFunction f) {
         return f.name(nsUri,localName);
     }
+    
+    public String toString() {
+        return localName;
+    }
 }

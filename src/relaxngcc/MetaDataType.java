@@ -10,8 +10,6 @@ import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Map;
 
-import relaxngcc.dom.NGCCElement;
-import relaxngcc.dom.NGCCNodeList;
 
 /**
  * MetaDataType has the ability to generate a code that verifies data types described in original grammar.
@@ -19,7 +17,13 @@ import relaxngcc.dom.NGCCNodeList;
  */
 public class MetaDataType
 {
-	private String _BaseName;
+    public MetaDataType( String _name ) { this.name = _name; }
+    
+    /** Type name. */
+    public final String name;
+    
+    
+/*	private String _BaseName;
 	private Map _Facets;
 	private int _Index;
 	
@@ -69,5 +73,5 @@ public class MetaDataType
 	{
 		return "DatatypeFactory.getTypeByName(\"" + base + "\")";
 	}
-
+*/
 }

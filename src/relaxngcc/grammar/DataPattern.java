@@ -1,5 +1,7 @@
 package relaxngcc.grammar;
 
+import relaxngcc.MetaDataType;
+
 /**
  *
  *
@@ -8,11 +10,13 @@ package relaxngcc.grammar;
  */
 public class DataPattern extends Pattern {
     
-    public DataPattern( NGCCCallParam _param ) {
-        this.param = _param;
+    public DataPattern( MetaDataType _type, String _alias ) {
+        this.alias = _alias;
+        this.type = _type;
     }
     
-    public final NGCCCallParam param;
+    public final MetaDataType type;
+    public final String alias;
     
     public Object apply( PatternFunction f ) {
         return f.data(this);

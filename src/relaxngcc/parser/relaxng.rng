@@ -1,5 +1,9 @@
 <?xml version="1.0"?>
 <!--
+	Note:
+		attributes that are only applicable to the root element (cc:package
+		and cc:runtime-type) are handled by the ParserRuntime class.
+	
 	TODO:
 		due to a bug in the classic parser wrt  handling QName, we don't use
 		QNames for now. Once the new parser becomes stable, modify this grammar
@@ -17,6 +21,7 @@
          cc:package="relaxngcc.parser.state">
   
   <cc:java-import>
+    import relaxngcc.MetaDataType;
     import relaxngcc.grammar.*;
   </cc:java-import>
   
@@ -26,6 +31,13 @@
     </cc:java-body>
     <ref name="pattern" cc:alias="result"/>
   </start>
+  
+  <!-- used to parse included grammars -->
+  <define name="IncludedGrammarState" cc:access="public">
+    <element name="grammar">
+      <ref name="grammar-content" />
+    </element>
+  </define>
   
   <!-- name for an attribute/element -->
   <define name="name" cc:params="boolean attributeMode"
@@ -57,7 +69,7 @@
         </optional>
         <cc:java>
           // if there is no child pattern, assume &lt;text>.
-          if(p==null)  p = new DataPattern(null);
+          if(p==null)  p = new DataPattern(new MetaDataType("string"),null);
           p = new AttributePattern(name,p);
         </cc:java>
       </element>
@@ -85,14 +97,14 @@
       <element name="optional">
         <ref name="patterns" cc:alias="p" />
         <cc:java>
-          p = new ChoicePattern( p, EmptyPattern.theInstance );
+          p = new ChoicePattern( p, new EmptyPattern() );
         </cc:java>
       </element>
       <element name="zeroOrMore">
         <ref name="patterns" cc:alias="p" />
         <cc:java>
           p = new ChoicePattern( new OneOrMorePattern(p),
-              EmptyPattern.theInstance );
+              new EmptyPattern() );
         </cc:java>
       </element>
       <element name="oneOrMore">
@@ -102,15 +114,16 @@
         </cc:java>
       </element>
       <element name="list">
+        <ref name="NGCC-alias" cc:alias="alias"/>
         <ref name="patterns" cc:alias="p" />
         <cc:java>
-          p = new ListPattern( p );
+          p = new ListPattern( p, alias );
         </cc:java>
       </element>
       <element name="mixed">
         <ref name="patterns" cc:alias="p" />
         <cc:java>
-          p = new InterleavePattern( new DataPattern(null), p );
+          p = new InterleavePattern( new DataPattern(new MetaDataType("string"),null), p );
         </cc:java>
       </element>
       <element name="ref">
@@ -137,14 +150,14 @@
       <element name="empty">
         <empty/>
         <cc:java>
-          p = EmptyPattern.theInstance;
+          p = new EmptyPattern();
         </cc:java>
       </element>
       <element name="text">
         <empty/>
-        <ref name="NGCC-call" cc:alias="params" />
+        <ref name="NGCC-alias" cc:alias="alias" />
         <cc:java>
-          p = new DataPattern(params);
+          p = new DataPattern(new MetaDataType("string"),alias);
         </cc:java>
       </element>
       <element name="value">
@@ -153,15 +166,15 @@
             <value>token</value>
           </attribute>
         </optional>
-        <ref name="NGCC-call" cc:alias="params" />
+        <ref name="NGCC-alias" cc:alias="alias" />
         <text cc:alias="value"/>
         <cc:java>
-          p = new ValuePattern(value,params);
+          p = new ValuePattern(value,alias);
         </cc:java>
       </element>
       <element name="data">
         <attribute name="type">
-          <data type="NCName"/>
+          <data type="NCName" cc:alias="typeName"/>
         </attribute>
         <zeroOrMore>
           <element name="param">
@@ -174,15 +187,15 @@
             <ref name="patterns"/>
           </element>
         </optional-->
-        <ref name="NGCC-call" cc:alias="params" />
+        <ref name="NGCC-alias" cc:alias="alias" />
         <cc:java>
-          p = new DataPattern(params);
+          p = new DataPattern(new MetaDataType(typeName),alias);
         </cc:java>
       </element>
       <element name="notAllowed">
         <empty/>
         <cc:java>
-          p = NotAllowedPattern.theInstance;
+          p = new NotAllowedPattern();
         </cc:java>
       </element>
       <!--element name="externalRef">
@@ -223,7 +236,7 @@
         <element name="java-import" ns="&ccNSURI;">
           <text cc:alias="value"/>
           <cc:java>
-            runtime.appendGlobalImports(value);
+            runtime.appendGlobalImport(value);
           </cc:java>
         </element>
         <element name="include">
@@ -276,6 +289,10 @@
         <text cc:alias="combine" />
       </attribute>
     </optional>
+    <ref name="NGCC-define" cc:alias="param" cc:with-params="scope.name" />
+    <cc:java>
+      scope.setParam(param);
+    </cc:java>
     <optional>
       <element name="java-import" ns="&ccNSURI;">
         <text cc:alias="value"/>
@@ -384,7 +401,7 @@
   
   
   
-  <!-- NGCC attributes -->
+  <!-- attributes for <ref> -->
   <define name="NGCC-call" cc:class="NGCCcall"
     cc:return-type="NGCCCallParam" cc:return-value="param">
     
@@ -392,17 +409,68 @@
       NGCCCallParam param;
     </cc:java-body>
     <optional>
-      <attribute name="cc:with-params">
+      <attribute name="with-params" ns="&ccNSURI;">
         <text cc:alias="withParams"/>
       </attribute>
     </optional>
-    <optional>
-      <attribute name="cc:alias">
-        <text cc:alias="alias"/>
-      </attribute>
-    </optional>
+    <ref name="NGCC-alias" cc:alias="alias"/>
     <cc:java>
       param = new NGCCCallParam(withParams,alias);
     </cc:java>
   </define>
+  
+  
+  <!--
+    attributes for <define>
+    
+    className parameter specifies the default class name.
+  -->
+  <define name="NGCC-define" cc:class="NGCCdefine"
+    cc:params="String className"
+    cc:return-type="NGCCDefineParam" cc:return-value="param">
+    
+    <cc:java-body>
+      NGCCDefineParam param;
+    </cc:java-body>
+    <optional>
+      <attribute name="class" ns="&ccNSURI;">
+        <text cc:alias="className"/>
+      </attribute>
+    </optional>
+    <optional>
+      <attribute name="params" ns="&ccNSURI;">
+        <text cc:alias="params"/>
+      </attribute>
+    </optional>
+    <optional>
+      <attribute name="access" ns="&ccNSURI;">
+        <text cc:alias="access"/>
+      </attribute>
+    </optional>
+    <optional>
+      <attribute name="return-type" ns="&ccNSURI;">
+        <text cc:alias="returnType"/>
+      </attribute>
+    </optional>
+    <optional>
+      <attribute name="return-value" ns="&ccNSURI;">
+        <text cc:alias="returnValue"/>
+      </attribute>
+    </optional>
+    <cc:java>
+      param = new NGCCDefineParam(className,access,returnType,returnValue,params);
+    </cc:java>
+  </define>
+  
+  
+  <!-- optional cc:alias -->
+  <define name="NGCC-alias" cc:class="NGCCalias"
+    cc:return-type="String" cc:return-value="alias">
+    <optional>
+      <attribute name="alias" ns="&ccNSURI;">
+        <text cc:alias="alias"/>
+      </attribute>
+    </optional>
+  </define>
+
 </grammar>
