@@ -24,28 +24,7 @@ import relaxngcc.automaton.Transition;
 import relaxngcc.grammar.NameClass;
 import relaxngcc.grammar.SimpleNameClass;
 
-import relaxngcc.codedom.ClassDefinition;
-import relaxngcc.codedom.StatementVector;
-import relaxngcc.codedom.Statement;
-import relaxngcc.codedom.IfStatement;
-import relaxngcc.codedom.SwitchStatement;
-import relaxngcc.codedom.AssignStatement;
-import relaxngcc.codedom.ReturnStatement;
-import relaxngcc.codedom.LanguageSpecificStatement;
-import relaxngcc.codedom.VariableDeclaration;
-import relaxngcc.codedom.Expression;
-import relaxngcc.codedom.VariableExpression;
-import relaxngcc.codedom.ConstantExpression;
-import relaxngcc.codedom.ArrayElementReferenceExpression;
-import relaxngcc.codedom.PropertyReferenceExpression;
-import relaxngcc.codedom.MethodInvokeExpression;
-import relaxngcc.codedom.ObjectCreateExpression;
-import relaxngcc.codedom.CastExpression;
-import relaxngcc.codedom.BinaryOperatorExpression;
-import relaxngcc.codedom.LanguageSpecificExpression;
-import relaxngcc.codedom.TypeDescriptor;
-import relaxngcc.codedom.MethodDefinition;
-import relaxngcc.codedom.LanguageSpecificString;
+import relaxngcc.codedom.*;
 
 /**
  * generates Java code that parses XML data via NGCCHandler interface
@@ -185,7 +164,9 @@ public class CodeWriter
                 if(st.getThreadIndex()==-1)
                     condition = BinaryOperatorExpression.EQ(new VariableExpression("_ngcc_current_state"), new ConstantExpression(st.getIndex()));
                 else
-                	condition = BinaryOperatorExpression.EQ(new ArrayElementReferenceExpression(new VariableExpression("_ngcc_threaded_state"), new ConstantExpression(st.getThreadIndex())), new ConstantExpression(st.getIndex()));
+                	condition = BinaryOperatorExpression.EQ(
+                        new VariableExpression("_ngcc_threaded_state").arrayRef(new ConstantExpression(st.getThreadIndex())),
+                        new ConstantExpression(st.getIndex()));
                     
                 StatementVector whentrue = ((CodeAboutState)e.getValue()).output(errorHandleMethod);
                 
@@ -276,9 +257,14 @@ public class CodeWriter
         }
     }
     
-	public ClassDefinition output() throws IOException
-	{
-		ClassDefinition classdef = _Info.createClassCode(_Options, _Grammar.globalImportDecls);
+
+
+
+    
+    
+    
+	public ClassDefinition output() throws IOException {
+		ClassDefinition classdef = _Info.createClassCode(_Options,_Grammar.globalImportDecls);
         
         classdef.addMember(new LanguageSpecificString("private"), TypeDescriptor.STRING, "uri");
         classdef.addMember(new LanguageSpecificString("private"), TypeDescriptor.STRING, "localName");
@@ -345,7 +331,10 @@ public class CodeWriter
 			if(s.getThreadIndex()==-1)
 				temp = BinaryOperatorExpression.EQ(new VariableExpression("_ngcc_current_state"), new ConstantExpression(s.getIndex()));
 			else
-				temp = BinaryOperatorExpression.EQ(new ArrayElementReferenceExpression(new VariableExpression("_ngcc_threaded_state"), new ConstantExpression(s.getThreadIndex())), new ConstantExpression(s.getIndex()));
+				temp = BinaryOperatorExpression.EQ(
+                    new VariableExpression("_ngcc_threaded_state")
+                        .arrayRef( new ConstantExpression(s.getThreadIndex())),
+                    new ConstantExpression(s.getIndex()));
 			
 			statecheckexpression = (statecheckexpression==null)? temp : BinaryOperatorExpression.OR(temp, statecheckexpression);
         }
@@ -577,7 +566,8 @@ public class CodeWriter
             if(tr.getDisableState().getThreadIndex()==-1)
                 dest = new VariableExpression("_ngcc_current_state");
             else
-                dest = new ArrayElementReferenceExpression(new VariableExpression("_ngcc_threaded_state"), new ConstantExpression(tr.getDisableState().getThreadIndex()));
+                dest = new VariableExpression("_ngcc_threaded_state").arrayRef(
+                    new ConstantExpression(tr.getDisableState().getThreadIndex()));
             sv.assign(dest, new ConstantExpression(-1));
         }
         
@@ -586,7 +576,8 @@ public class CodeWriter
             if(tr.getEnableState().getThreadIndex()==-1)
                 dest = new VariableExpression("_ngcc_current_state");
             else
-                dest = new ArrayElementReferenceExpression(new VariableExpression("_ngcc_threaded_state"), new ConstantExpression(tr.getEnableState().getThreadIndex()));
+                dest = new VariableExpression("_ngcc_threaded_state").arrayRef(
+                    new ConstantExpression(tr.getEnableState().getThreadIndex()));
         
             sv.assign(dest, new ConstantExpression(tr.getEnableState().getIndex()));
         }
@@ -847,7 +838,8 @@ public class CodeWriter
 		if(deststate.getThreadIndex()==-1)
 			statevariable = new VariableExpression("_ngcc_current_state");
 		else
-			statevariable = new ArrayElementReferenceExpression(new VariableExpression("_ngcc_threaded_state"), new ConstantExpression(deststate.getThreadIndex()));
+			statevariable = new VariableExpression("_ngcc_threaded_state")
+                .arrayRef( new ConstantExpression(deststate.getThreadIndex()));
 		
 		sv.assign(statevariable, new ConstantExpression(deststate.getIndex()));
 		
@@ -883,7 +875,8 @@ public class CodeWriter
 				if(s==deststate) continue;
 				
 				Expression t = BinaryOperatorExpression.EQ(
-					new ArrayElementReferenceExpression(new VariableExpression("_ngcc_threaded_state"), new ConstantExpression(s.getThreadIndex())),
+					new VariableExpression("_ngcc_threaded_state")
+                        .arrayRef( new ConstantExpression(s.getThreadIndex())),
 					new ConstantExpression(s.getIndex()));
 				
 				condition = condition==null? t : BinaryOperatorExpression.AND(condition, t);

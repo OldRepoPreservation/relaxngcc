@@ -80,10 +80,17 @@ public abstract class Formatter {
     /**
      * Outputs a whitespace if it is necessary to
      * separate the new token from the previous token.
+     * 
+     * <p>
+     * Maybe this method should be moved to the derived class.
      */
     private boolean spaceNeeded( char ch ) throws IOException {
         if(ch==';')                     return false;
+        // keep space on both sides of the assignment.
         if(ch=='=' || lastChar=='=')    return true;
+        
+        // [OUTPUT] abc, def, ghi
+        if(lastChar==',')   return true;
         
         if(Character.isJavaIdentifierPart(ch)
         && Character.isJavaIdentifierPart(lastChar))

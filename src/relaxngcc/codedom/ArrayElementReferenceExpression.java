@@ -4,13 +4,15 @@ import java.io.IOException;
 import java.io.Writer;
 
 /**
+ * x[y]
  */
-public class ArrayElementReferenceExpression extends Expression {
+class ArrayElementReferenceExpression extends Expression {
 
 	private Expression _Array;
 	private Expression _Index;
 	
-	public ArrayElementReferenceExpression(Expression array, Expression index) {
+    // use Expression.arrayRef()
+	ArrayElementReferenceExpression(Expression array, Expression index) {
 		_Array = array;
 		_Index = index;
 	}

@@ -34,21 +34,7 @@ import relaxngcc.grammar.NGCCDefineParam;
 import relaxngcc.grammar.Scope;
 import relaxngcc.javabody.JavaBodyParser;
 import relaxngcc.util.SelectiveIterator;
-import relaxngcc.codedom.ClassDefinition;
-import relaxngcc.codedom.StatementVector;
-import relaxngcc.codedom.Statement;
-import relaxngcc.codedom.AssignStatement;
-import relaxngcc.codedom.ReturnStatement;
-import relaxngcc.codedom.LanguageSpecificStatement;
-import relaxngcc.codedom.Expression;
-import relaxngcc.codedom.VariableDeclaration;
-import relaxngcc.codedom.VariableExpression;
-import relaxngcc.codedom.ConstantExpression;
-import relaxngcc.codedom.MethodInvokeExpression;
-import relaxngcc.codedom.LanguageSpecificExpression;
-import relaxngcc.codedom.TypeDescriptor;
-import relaxngcc.codedom.MethodDefinition;
-import relaxngcc.codedom.LanguageSpecificString;
+import relaxngcc.codedom.*;
 
 /**
  * information about a scope
@@ -400,7 +386,7 @@ public final class ScopeInfo
 
 	
     /**
-     * Writes the beginning of the class to the specified output.
+     * Builds the code.
      */
 	public ClassDefinition createClassCode(Options options, String globalimport)
 	{
