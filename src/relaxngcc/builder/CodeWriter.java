@@ -44,6 +44,41 @@ public class CodeWriter
 			if(conditionalCodes==null) conditionalCodes = new Vector();
 			conditionalCodes.add(new ConditionalCode(cond, code));
 		}
+        
+        public void output(String errorHandleMethod) {
+            if(prologue!=null) _output.println(prologue);
+            
+            boolean flag = false;
+            if(conditionalCodes!=null)
+            {
+                Iterator ccs = conditionalCodes.iterator();
+                while(ccs.hasNext())
+                {
+                    ConditionalCode cc = (ConditionalCode)ccs.next();
+                    _output.print(flag? "else if(" : "if(");
+                    _output.print(cc.condition);
+                    _output.println(") {");
+                    //_output.println(_Options.newline);
+                    _output.println(cc.code);
+                    //_output.println(_Options.newline);
+                    _output.println("}");
+                    flag = true;
+                }
+            }
+            
+            if(elsecode!=null)
+            {
+                if(flag) _output.println("else {"); else _output.println("{");
+                //_output.println(_Options.newline);
+                _output.println(elsecode);
+                //_output.println(_Options.newline);
+                _output.println("}");
+            } else
+            if(errorHandleMethod!=null) {
+                if(flag) _output.print("else ");
+                _output.println(errorHandleMethod+"(qname);");
+            }
+        }
 	}
 	private class SwitchBlockInfo
 	{
@@ -56,53 +91,62 @@ public class CodeWriter
 			_Type=type;
 			state2CodeFragment = new TreeMap();
 		}
+        
+        private CodeAboutState getCAS( State state ) {
+            CodeAboutState cas = (CodeAboutState)state2CodeFragment.get(state);
+            if(cas==null) {
+                cas = new CodeAboutState();
+                state2CodeFragment.put(state, cas);
+            }
+            return cas;
+        }
+        
 		//if "cond" is "", "code" is put with no if-else clause. this behavior is not smart...
-		public void addConditionalCode(State state, String cond, String code)
-		{
-			Object o = state2CodeFragment.get(state);
-			if(o==null)
-			{
-				CodeAboutState cas = new CodeAboutState();
-				cas.addConditionalCode(cond, code);
-				state2CodeFragment.put(state, cas);
-			}
-			else
-				((CodeAboutState)o).addConditionalCode(cond, code);
+		public void addConditionalCode(State state, String cond, String code) {
+			getCAS(state).addConditionalCode(cond,code);
 		}
-		public void addElseCode(State state, String code)
-		{
-			CodeAboutState cas = (CodeAboutState)state2CodeFragment.get(state);
-			if(cas==null)
-			{
-				cas = new CodeAboutState();
+        
+		public void addElseCode(State state, String code) {
+			CodeAboutState cas = getCAS(state);
+            
+			if(cas.elsecode==null)
 				cas.elsecode = code;
-				state2CodeFragment.put(state, cas);
-			}
 			else
-			{
-				if(cas.elsecode==null)
-					cas.elsecode = code;
-				else
-					cas.elsecode.concat(code);
-			}
+				cas.elsecode += code;
 		}
-		public void addPrologue(State state, String code)
-		{
-			CodeAboutState cas = (CodeAboutState)state2CodeFragment.get(state);
-			if(cas==null)
-			{
-				cas = new CodeAboutState();
+		public void addPrologue(State state, String code) {
+			CodeAboutState cas = getCAS(state);
+			if(cas.prologue==null)
 				cas.prologue = code;
-				state2CodeFragment.put(state, cas);
-			}
 			else
-			{
-				if(cas.prologue==null)
-					cas.prologue = code;
-				else
-					cas.prologue.concat(code);
-			}
+				cas.prologue += code;
 		}
+
+        private void output(String errorHandleMethod) {
+            boolean first = true;
+            Iterator i = state2CodeFragment.entrySet().iterator();
+            while(i.hasNext())
+            {
+                Map.Entry e = (Map.Entry)i.next();
+                State st = (State)e.getKey();
+                if(!first) _output.print("else ");
+                if(st.getThreadIndex()==-1)
+                    _output.println("if(_ngcc_current_state==" + st.getIndex()+") {");
+                else
+                    _output.println("if(_ngcc_threaded_state[" + st.getThreadIndex() + "]=="+ st.getIndex()+") {");
+                    
+                ((CodeAboutState)e.getValue()).output(errorHandleMethod);
+                
+                _output.println("}");
+                _output.println();
+                first = false;
+            }
+            
+            if(errorHandleMethod!=null) {
+                if(!first)    _output.print("else ");
+                _output.println(errorHandleMethod+"(qname);");
+            }
+        }
 	}
 	
 	private ScopeInfo _Info;
@@ -166,7 +210,9 @@ public class CodeWriter
         _output.println("}"); //end of method
     }
 	
-    
+    /**
+     * Writes event handlers for (enter|leave)(Attribute|Element) methods.
+     */
     private void writeEventHandler( int type, String eventName ) {
         
 		Iterator states = _Info.iterateStatesHaving(type|Alphabet.REF_BLOCK);// /*HavingStartElementOrRef*/(type);
@@ -175,6 +221,8 @@ public class CodeWriter
 		_output.println(MessageFormat.format(
             "public void {0}(String uri,String localName,String qname) throws SAXException '{'",
             new Object[]{eventName}));
+            
+        // QUICK HACK
         // copy them to the instance variables so that they can be 
         // accessed from action functions.
         // we should better not keep them at Runtime, because
@@ -231,6 +279,20 @@ public class CodeWriter
 		while(states.hasNext())
 		{
 			State st = (State)states.next();
+            
+            // We don't need to check the validity of this transition.
+            // because it will be checked by the parent anyway.
+            String action = MessageFormat.format(
+                "runtime.revertToParentFrom{0}({1},cookie, uri,localName,qname);",
+                new Object[]{
+                    capitalize(eventName),
+                    _Info.getReturnVariable(),
+                });
+            
+            bi.addElseCode( st,
+                st.invokeActionsOnExit()+action );
+
+/*
 			Iterator follows = _Info.iterateFollowAlphabets(type);
 			while(follows.hasNext())
 			{
@@ -249,9 +311,10 @@ public class CodeWriter
                     f.getKey().createJudgementClause(_Info, "uri", "localName"),
                     action);
 			}
+*/
 		}
 		
-		outputSwitchBlock(bi,"unexpected"+capitalize(eventName));
+		bi.output("unexpected"+capitalize(eventName));
 		
 		_output.println("}");   //end of method
 	}
@@ -354,7 +417,7 @@ public class CodeWriter
                 }
             }
 		}
-		outputSwitchBlock(bi,null);
+		bi.output(null);
 		_output.println("}");   //end of function
 	}
     
@@ -465,7 +528,7 @@ public class CodeWriter
 		
         // TODO: end of scope handling.
         
-		outputSwitchBlock(bi,null);
+		bi.output(null);
 		
 		_output.println("}");   //end of function
 	}
@@ -576,66 +639,6 @@ public class CodeWriter
 			return deststate;
 	}
 	
-	private void outputSwitchBlock(SwitchBlockInfo bi, String errorHandleMethod)
-	{
-		boolean first = true;
-		Iterator i = bi.state2CodeFragment.entrySet().iterator();
-		while(i.hasNext())
-		{
-			Map.Entry e = (Map.Entry)i.next();
-			State st = (State)e.getKey();
-			if(!first) _output.print("else ");
-			if(st.getThreadIndex()==-1)
-				_output.println("if(_ngcc_current_state==" + st.getIndex()+") {");
-			else
-				_output.println("if(_ngcc_threaded_state[" + st.getThreadIndex() + "]=="+ st.getIndex()+") {");
-				
-			CodeAboutState cas = (CodeAboutState)e.getValue();
-			if(cas.prologue!=null) _output.println(cas.prologue);
-			
-			boolean flag = false;
-			if(cas.conditionalCodes!=null)
-			{
-				Iterator ccs = cas.conditionalCodes.iterator();
-				while(ccs.hasNext())
-				{
-					ConditionalCode cc = (ConditionalCode)ccs.next();
-					_output.print(flag? "else if(" : "if(");
-					_output.print(cc.condition);
-					_output.println(") {");
-					//_output.println(_Options.newline);
-					_output.println(cc.code);
-					//_output.println(_Options.newline);
-					_output.println("}");
-					flag = true;
-				}
-			}
-			
-			if(cas.elsecode!=null)
-			{
-				if(flag) _output.println("else {"); else _output.println("{");
-				//_output.println(_Options.newline);
-				_output.println(cas.elsecode);
-				//_output.println(_Options.newline);
-				_output.println("}");
-                flag=true;
-			}
-			
-            if(flag && errorHandleMethod!=null) {
-                 _output.print("else ");
-                _output.println(errorHandleMethod+"(qname);");
-            }
-            
-			_output.println("}");
-			_output.println();
-			first = false;
-		}
-		
-        if(errorHandleMethod!=null) {
-    		if(!first)    _output.print("else ");
-    		_output.println(errorHandleMethod+"(qname);");
-        }
-	}
 	
 	private static void writeHavingAttributeCheckCode(ScopeInfo sci, Iterator alphabets, StringBuffer code)
 	{
