@@ -5,11 +5,23 @@ import java.util.Map;
 
 /**
  * Set of {@link Scope}s.
- *
+ * 
+ * <p>
+ * Grammar as {@link Scope} holds information about the start pattern.
+ * This allows us to easily recognize Grammar in the parsed tree.
+ * 
  * @author
  *      Kohsuke Kawaguchi (kk@kohsuke.org)
  */
-public final class Grammar {
+public final class Grammar extends Scope {
+    
+    public Grammar( Grammar _parent ) {
+        super(null);
+        this.parent = _parent;
+    }
+    
+    /** Parent {@link Grammar} object, if any. Otherwise null. */
+    public final Grammar parent;
     
     /** from pattern name to Scope. */
     private final Map patterns = new Hashtable();
@@ -25,6 +37,4 @@ public final class Grammar {
             patterns.put(name,s=new Scope(name));
         return s;
     }
-    
-    public final Scope start = new Scope(null);
 }

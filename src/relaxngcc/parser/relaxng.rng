@@ -1,10 +1,17 @@
 <?xml version="1.0"?>
-<!-- RELAX NG for RELAX NG -->
-<!-- $Id: relaxng.rng,v 1.1 2002/06/14 22:22:41 kkawa Exp $ -->
+<!--
+	TODO:
+		due to a bug in the classic parser wrt  handling QName, we don't use
+		QNames for now. Once the new parser becomes stable, modify this grammar
+		to use QName (such as <element name="cc:java-import">)
+-->
+<!DOCTYPE grammar [
+	<!ENTITY ccNSURI "http://www.xml.gr.jp/xmlns/relaxngcc">
+]>
 <grammar datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes"
          ns="http://relaxng.org/ns/structure/1.0"
          xmlns="http://relaxng.org/ns/structure/1.0"
-         xmlns:cc="http://www.xml.gr.jp/xmlns/relaxngcc"
+         xmlns:cc="&ccNSURI;"
          
          cc:runtime-type="relaxngcc.parser.ParserRuntime"
          cc:package="relaxngcc.parser.state">
@@ -13,11 +20,11 @@
     import relaxngcc.grammar.*;
   </cc:java-import>
   
-  <start cc:class="Start">
-    <!-- the root element must be always <grammar> -->
-    <element name="grammar">
-      <ref name="grammar-content"/>
-    </element>
+  <start cc:class="Start" cc:access="public">
+    <cc:java-body>
+      public Pattern getResult() { return result; }
+    </cc:java-body>
+    <ref name="pattern" cc:alias="result"/>
   </start>
   
   <!-- name for an attribute/element -->
@@ -45,8 +52,12 @@
       </element>
       <element name="attribute">
         <ref name="name" cc:alias="name" cc:with-params="true" />
-        <ref name="patterns" cc:alias="p"/>
+        <optional>
+          <ref name="patterns" cc:alias="p"/>
+        </optional>
         <cc:java>
+          // if there is no child pattern, assume &lt;text>.
+          if(p==null)  p = new DataPattern(null);
           p = new AttributePattern(name,p);
         </cc:java>
       </element>
@@ -111,6 +122,18 @@
           p = new RefPattern(runtime.grammar.getOrCreate(target),params);
         </cc:java>
       </element>
+      <element name="parentRef">
+        <ref name="NGCC-call" cc:alias="params" />
+        <attribute name="name">
+          <text cc:alias="target" />
+        </attribute>
+        <cc:java>
+          // refers to the parent grammar,
+          // instead of the current grammar
+          p = new RefPattern(
+              runtime.grammar.parent.getOrCreate(target),params);
+        </cc:java>
+      </element>
       <element name="empty">
         <empty/>
         <cc:java>
@@ -137,9 +160,9 @@
         </cc:java>
       </element>
       <element name="data">
-        <!--attribute name="type">
+        <attribute name="type">
           <data type="NCName"/>
-        </attribute-->
+        </attribute>
         <zeroOrMore>
           <element name="param">
             <attribute name="name" />
@@ -169,17 +192,20 @@
         <ref name="common-atts"/>
         <ref name="other"/>
       </element-->
-      <!--element name="grammar">
-        <ref name="grammar-content"/>
-      </element-->
-      <!--element name="parentRef">
-        <ref name="NGCC-call" cc:alias="params" />
-        <attribute name="name" cc:alias="target" />
+      <element name="grammar">
         <cc:java>
-          p = new RefPattern(params,runtime.grammar.parent.getOrCreate(target));
+          runtime.grammar = new Grammar( runtime.grammar );
         </cc:java>
-      </element-->
-      <element name="cc:java">
+        <ref name="grammar-content" />
+        <cc:java>
+          // behave as if there is an implicit ref
+          // between &lt;grammar> and its  parent.
+          p = new RefPattern( runtime.grammar, null );
+          // get back to the parent context
+          runtime.grammar = runtime.grammar.parent;
+        </cc:java>
+      </element>
+      <element name="java" ns="&ccNSURI;">
         <text cc:alias="value"/>
         <cc:java> p = new JavaBlock(value); </cc:java>
       </element>
@@ -193,6 +219,12 @@
         <ref name="define-element"/>
         <element name="div">
           <ref name="grammar-content"/>
+        </element>
+        <element name="java-import" ns="&ccNSURI;">
+          <text cc:alias="value"/>
+          <cc:java>
+            runtime.appendGlobalImports(value);
+          </cc:java>
         </element>
         <element name="include">
           <attribute name="href">
@@ -223,7 +255,7 @@
   <define name="start-element" cc:class="StartElement">
     <element name="start">
       <ref name="pattern-definition"
-        cc:with-params="runtime.grammar.start"/>
+        cc:with-params="runtime.grammar"/>
     </element>
   </define>
   
@@ -244,10 +276,36 @@
         <text cc:alias="combine" />
       </attribute>
     </optional>
-    <ref name="pattern" cc:alias="p"/>
+    <optional>
+      <element name="java-import" ns="&ccNSURI;">
+        <text cc:alias="value"/>
+        <cc:java>
+          scope.appendImport(value);
+        </cc:java>
+      </element>
+    </optional>
+    
+    <!-- TODO: interleave -->
+    <zeroOrMore>
+      <element name="java-body" ns="&ccNSURI;">
+        <text cc:alias="value"/>
+        <cc:java>
+          scope.appendBody(value);
+        </cc:java>
+      </element>
+    </zeroOrMore>
+    <ref name="patterns" cc:alias="p"/>
     <cc:java>
       scope.append(p,combine);
     </cc:java>
+    <zeroOrMore>
+      <element name="java-body" ns="&ccNSURI;">
+        <text cc:alias="value"/>
+        <cc:java>
+          scope.appendBody(value);
+        </cc:java>
+      </element>
+    </zeroOrMore>
   </define>
   
   
@@ -280,7 +338,7 @@
         </cc:java>
       </element>
       <element name="anyName">
-        <ref name="except-name-class" cc:alias="child"/>;
+        <ref name="except-name-class" cc:alias="child"/>
         <cc:java>
           nc = new AnyNameClass(child);
         </cc:java>

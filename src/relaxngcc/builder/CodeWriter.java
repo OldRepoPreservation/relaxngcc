@@ -381,14 +381,14 @@ public class CodeWriter
                 
 				bi.addConditionalCode(st,
                     a.asMarkup().getKey().createJudgementClause(_Info, "uri", "localName"),
-					buildTransitionCode(tr,eventName,"uri,localName,qname"));
+					buildTransitionCode(st,tr,eventName,"uri,localName,qname"));
 			}
 
             // if there is EVERYTHING_ELSE transition, add an else clause.
             Transition tr = table.getEverythingElse(st);
             if(tr!=null)
                 bi.addElseCode(st,
-                    buildTransitionCode(tr,eventName,"uri,localName,qname"));
+                    buildTransitionCode(st,tr,eventName,"uri,localName,qname"));
 		}
         
         
@@ -408,15 +408,17 @@ public class CodeWriter
      *      the revertToParentFromXXX method or the
      *      spawnChildFromXXX method.
      */
-    private String buildTransitionCode( Transition tr, String eventName, String params ) {
-	    if(tr==REVERT_TO_PARENT)
-	        return MessageFormat.format(
-	            "runtime.revertToParentFrom{0}({1},cookie, {2});",
-	            new Object[]{
-	                capitalize(eventName),
-	                _Info.getReturnVariable(),
-                    params,
-	            });
+    private String buildTransitionCode( State current, Transition tr, String eventName, String params ) {
+	    if(tr==REVERT_TO_PARENT) {
+	        return current.invokeActionsOnExit()+
+                MessageFormat.format(
+		            "runtime.revertToParentFrom{0}({1},cookie, {2});",
+		            new Object[]{
+		                capitalize(eventName),
+		                _Info.getReturnVariable(),
+	                    params,
+		            });
+        }
         if(tr.getAlphabet().isText()) {
             Alphabet.Text ta = tr.getAlphabet().asText();
             StringBuffer buf = new StringBuffer();
@@ -566,7 +568,7 @@ public class CodeWriter
                 if(!a.isText())
                     continue;   // we are not interested in this attribute now.
                 
-                String code = buildTransitionCode(tr,"text","___$value");
+                String code = buildTransitionCode(st,tr,"text","___$value");
                 if(a.isValueText())
                     bi.addConditionalCode(st, "___$value.equals(\""
                         + a.asValueText().getValue() + "\")", code );
@@ -580,7 +582,7 @@ public class CodeWriter
             Transition tr = table.getEverythingElse(st);
             if(tr!=null && !dataPresent)
                 bi.addElseCode(st,
-                    buildTransitionCode(tr,"text","___$value"));
+                    buildTransitionCode(st,tr,"text","___$value"));
         }
         
         String errorHandler = null;
@@ -593,10 +595,14 @@ public class CodeWriter
     
     private void writeChildCompletedHandler() {
         printSection("child completed");
-        _output.println("public void onChildCompleted(Object result, int cookie) throws SAXException {");
+        _output.println("public void onChildCompleted(Object result, int cookie,boolean needAttCheck) throws SAXException {");
         if(_Options.debug) {
             _output.println("runtime.traceln(\"\");");
-            _output.println("runtime.trace(\"onChildCompleted(\"+cookie+\")\");");
+            _output.println(MessageFormat.format(
+                "runtime.trace(\"onChildCompleted(\"+cookie+\") back to {0}\");",
+                new Object[]{
+                    _Info.getNameForTargetLang()
+                }));
         }
         _output.println("switch(cookie) {");
         
@@ -629,7 +635,7 @@ public class CodeWriter
 
                     buf.append(tr.invokeEpilogueActions());
 
-                    appendStateTransition(buf, tr.nextState());
+                    appendStateTransition(buf, tr.nextState(), "needAttCheck");
                         
                     _output.println(buf);
                     _output.println("return;");
@@ -695,8 +701,17 @@ public class CodeWriter
             "runtime.consumeAttribute(ai);" + _Options.newline);
     }
     
+    private State appendStateTransition(StringBuffer buf, State deststate ) {
+        return appendStateTransition(buf,deststate,null);
+    }
+    
+    /**
+     * @param flagVarName
+     *      If this parameter is non-null, the processAttribute method
+     *      should be called if and only if this variable is true.
+     */
 	// What's the difference of this method and "buildMoveToStateCode"? - Kohsuke
-	private State appendStateTransition(StringBuffer buf, State deststate)
+	private State appendStateTransition(StringBuffer buf, State deststate, String flagVarName)
 	{
 		if(deststate.getThreadIndex()==-1)
 			buf.append("_ngcc_current_state=" + deststate.getIndex());
@@ -712,8 +727,11 @@ public class CodeWriter
             buf.append(_Options.newline);
         }
 
-        if(!deststate.attHead().isEmpty())
+        if(!deststate.attHead().isEmpty()) {
+            if(flagVarName!=null)
+                buf.append("if("+flagVarName+")");
             buf.append("processAttribute();");
+        }
 		
 		if(deststate.getMeetingDestination()!=null)
 		{

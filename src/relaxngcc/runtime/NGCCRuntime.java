@@ -76,9 +76,73 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
         currentHandler = (NGCCHandler)handlerStack.peek();
     }
     
-    private void processPendingText() throws SAXException {
-        if(text.length()==0)    return;
-        consumeText(text.toString());
+    /**
+     * Processes buffered text.
+     * 
+     * This method will be called by the start/endElement event to process
+     * buffered text as a text event.
+     * 
+     * <p>
+     * Whitespace handling is a tricky business. Consider the following
+     * schema fragment:
+     * 
+     * <xmp>
+     * <element name="foo">
+     *   <choice>
+     *     <element name="bar"><empty/></element>
+     *     <text/>
+     *   </choice>
+     * </element>
+     * </xmp>
+     * 
+     * Assume we hit the following instance:
+     * <xmp>
+     * <foo> <bar/></foo>
+     * </xmp>
+     * 
+     * Then this first space needs to be ignored (for otherwise, we will
+     * end up treating this space as the match to &lt;text/> and won't
+     * be able to process &lt;bar>.)
+     * 
+     * Now assume the following instance:
+     * <xmp>
+     * <foo/>
+     * </xmp>
+     * 
+     * This time, we need to treat this empty string as a text, for
+     * otherwise we won't be able to accept this instance.
+     * 
+     * <p>
+     * This is very difficult to solve in general, but one seemingly
+     * easy solution is to use the type of next event. If a text is
+     * followed by a start tag, it follows from the constraint on
+     * RELAX NG that that text must be either whitespaces or a match
+     * to &lt;text/>.
+     * 
+     * <p>
+     * On the contrary, if a text is followed by a end tag, then it
+     * cannot be whitespace unless the content model can accept empty,
+     * in which case sending a text event will be harmlessly ignored
+     * by the NGCCHandler.
+     * 
+     * <p>
+     * Thus this method take one parameter, which controls the
+     * behavior of this method.
+     * 
+     * <p>
+     * TODO: according to the constraint of RELAX NG, if characters
+     * follow an end tag, then they must be either whitespaces or
+     * must match to &lt;text/>.
+     * 
+     * @param   possiblyWhitespace
+     *      True if the buffered character can be ignorabale. False if
+     *      it needs to be consumed.
+     */
+    private void processPendingText(boolean ignorable) throws SAXException {
+        if(ignorable && text.toString().trim().length()==0)
+            ; // ignore. See the above javadoc comment for the description
+        else
+            consumeText(text.toString());   // otherwise consume this token.
         
         // truncate StringBuffer, but avoid excessive allocation.
         if(text.length()>1024)  text = new StringBuffer();
@@ -105,7 +169,7 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
             redirect.startElement(uri,localname,qname,atts);
             redirectionDepth++;
         } else {
-	        processPendingText();
+	        processPendingText(true);
 	        attStack.push(currentAtts=new AttributesImpl(atts));
 	//        System.out.println("startElement:"+localname+"->"+_attrStack.size());
 	        currentHandler.enterElement(uri, localname, qname);
@@ -118,28 +182,29 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
         if(redirect!=null) {
             redirect.endElement(uri,localname,qname);
             redirectionDepth--;
-            if(redirectionDepth==0) {
-                // finished redirection.
-		        for( int i=0; i<namespaces.size(); i+=2 )
-		            redirect.endPrefixMapping((String)namespaces.get(i));
-		        redirect.endDocument();
+            
+            if(redirectionDepth!=0)
+                return;
                 
-                redirect = null;
-                // call myself to process this endElement normally.
-                endElement(uri,localname,qname);
-            }
-        } else {
-	        processPendingText();
-	        
-	        currentHandler.leaveElement(uri, localname, qname);
-	//        System.out.println("endElement:"+localname);
-	        Attributes a = (Attributes)attStack.pop();
-	        if(a.getLength()!=0) {
-	            // when debugging, it's useful to set a breakpoint here.
-	            ;
-	        }
-	        currentAtts = (AttributesImpl)attStack.peek();
+            // finished redirection.
+	        for( int i=0; i<namespaces.size(); i+=2 )
+	            redirect.endPrefixMapping((String)namespaces.get(i));
+	        redirect.endDocument();
+            
+            redirect = null;
+            // then process this element normally
         }
+        
+        processPendingText(false);
+        
+        currentHandler.leaveElement(uri, localname, qname);
+//        System.out.println("endElement:"+localname);
+        Attributes a = (Attributes)attStack.pop();
+        if(a.getLength()!=0) {
+            // when debugging, it's useful to set a breakpoint here.
+            ;
+        }
+        currentAtts = (AttributesImpl)attStack.peek();
     }
     
     public void characters(char[] ch, int start, int length) throws SAXException {
@@ -199,7 +264,26 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
             redirect.processingInstruction(target,data);
     }
     
-    public void endDocument() {}
+    /** Impossible token. This value can never be a valid XML name. */
+    private static final String IMPOSSIBLE = "\u0000";
+    
+    public void endDocument() throws SAXException {
+        // consume the special "end document" token so that all the handlers
+        // currently at the stack will revert to their respective parents.
+        //
+        // this is necessary to handle a grammar like
+        // <start><ref name="X"/></start>
+        // <define name="X">
+        //   <element name="root"><empty/></element>
+        // </define>
+        //
+        // With this grammar, when the endElement event is consumed, two handlers
+        // are on the stack (because a child object won't revert to its parent
+        // unless it sees a next event.)
+        
+        // pass around an "impossible" token.
+        currentHandler.leaveElement(IMPOSSIBLE,IMPOSSIBLE,IMPOSSIBLE);
+    }
     public void startDocument() {}
 
 //
@@ -329,35 +413,42 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
         String uri,String local,String qname ) throws SAXException {
             
         popHandler();
-        currentHandler.onChildCompleted(result,cookie);
+        currentHandler.onChildCompleted(result,cookie,true);
         currentHandler.enterElement(uri,local,qname);
     }
     public void revertToParentFromLeaveElement( Object result, int cookie,
         String uri,String local,String qname ) throws SAXException {
-            
+        
+        if(uri==IMPOSSIBLE && local==IMPOSSIBLE && qname==IMPOSSIBLE
+        && handlerStack.size()==1)
+            // all the handlers are properly finalized.
+            // quit now, because we don't have any more NGCCHandler.
+            // see the endDocument handler for detail
+            return;
+        
         popHandler();
-        currentHandler.onChildCompleted(result,cookie);
+        currentHandler.onChildCompleted(result,cookie,true);
         currentHandler.leaveElement(uri,local,qname);
     }
     public void revertToParentFromEnterAttribute( Object result, int cookie,
         String uri,String local,String qname ) throws SAXException {
             
         popHandler();
-        currentHandler.onChildCompleted(result,cookie);
+        currentHandler.onChildCompleted(result,cookie,false);
         currentHandler.enterAttribute(uri,local,qname);
     }
     public void revertToParentFromLeaveAttribute( Object result, int cookie,
         String uri,String local,String qname ) throws SAXException {
             
         popHandler();
-        currentHandler.onChildCompleted(result,cookie);
+        currentHandler.onChildCompleted(result,cookie,false);
         currentHandler.leaveAttribute(uri,local,qname);
     }
     public void revertToParentFromText( Object result, int cookie,
         String text ) throws SAXException {
             
         popHandler();
-        currentHandler.onChildCompleted(result,cookie);
+        currentHandler.onChildCompleted(result,cookie,true);
         currentHandler.text(text);
     }
 

@@ -15,15 +15,24 @@ import java.text.ParseException;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.xml.sax.SAXException;
+import org.xml.sax.XMLReader;
+
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.SAXParserFactory;
 
+import com.sun.corba.se.internal.core.OSFCodeSetRegistry;
 import com.thaiopensource.relaxng.nonxml.SchemaBuilderImpl;
 import com.thaiopensource.relaxng.nonxml.NonXmlSyntax;
 import relaxngcc.dom.NGCCElement;
 import relaxngcc.dom.W3CDOMElement;
 import relaxngcc.dom.NonXmlElement;
+import relaxngcc.grammar.Grammar;
+import relaxngcc.grammar.Pattern;
+import relaxngcc.grammar.RefPattern;
+import relaxngcc.parser.ParserRuntime;
+import relaxngcc.parser.state.Start;
 import relaxngcc.builder.ScopeBuilder;
 import relaxngcc.builder.CodeWriter;
 
@@ -56,6 +65,35 @@ public class RelaxNGCC
 		_SAXFactory.setNamespaceAware(true);
 		_SAXFactory.setValidating(false);
         
+        if(o.input==o.NEWPARSER) {
+            // TODO: this code should be moved to somewhere else.
+            try {// debug
+	            ParserRuntime runtime = new ParserRuntime();
+	            Start s = new Start(runtime);
+	            runtime.pushHandler(s);
+	            
+	            XMLReader reader = _SAXFactory.newSAXParser().getXMLReader();
+	            reader.setContentHandler(runtime);
+	            reader.parse(o.sourcefile);
+                
+                Grammar grammar;
+                Pattern p = s.getResult();
+                if(p instanceof RefPattern) {
+                    grammar = (Grammar)((RefPattern)p).target;
+                } else {
+                    // if the parsed tree doesn't have the enclosing &lt;grammar>, add one.
+                    grammar = new Grammar(null);
+                    grammar.append(p,null);
+                }
+                
+                // set breakpoint here and debug
+                return;
+            } catch( SAXException e ) {
+                if(e.getException()!=null)
+                    throw e.getException();
+                throw e;
+            }
+        }
 		NGCCGrammar grm = new NGCCGrammar(o);
         
 		grm.buildAutomaton();
@@ -162,7 +200,7 @@ public class RelaxNGCC
         s.println(" --target <dir>");
         s.println("   specifies the source code output location.");
         s.println();
-        s.println(" For more information, see http://homepage2.nifty.com/okajima/relaxngcc/ ");
+        s.println(" For more information, see http://www.relaxngcc.sourceforge.net/ ");
         s.println();
     }
 }

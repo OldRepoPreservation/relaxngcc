@@ -42,8 +42,13 @@ public abstract class NGCCHandler {
      * @param cookie
      *      The cookie value passed to the child object
      *      when it is created.
+     * @param needAttCheck
+     *      This flag is true when the callee needs to call the
+     *      processAttribute method to check attribute transitions.
+     *      This flag is set to false when this method is triggered by
+     *      attribute transition.
      */
-    protected abstract void onChildCompleted( Object result, int cookie ) throws SAXException;
+    protected abstract void onChildCompleted( Object result, int cookie, boolean needAttCheck ) throws SAXException;
     
     /**
      * Checks if it can perform transitions by attributes.
@@ -80,5 +85,16 @@ public abstract class NGCCHandler {
     public void unexpectedLeaveAttribute(String qname) throws SAXException {
         unexpectedXXX("/@"+qname);
     }
-
+    
+    /** NGCCHandler that will be pushed to the runtime initially. */
+/*    protected static final NGCCHandler terminator = new NGCCHandler() {
+        protected void enterElement(String uri, String localName, String qname) {}
+        protected void leaveElement(String uri, String localName, String qname) {}
+        protected void text(String value) {}
+        protected void enterAttribute(String uri, String localName, String qname) {}
+        protected void leaveAttribute(String uri, String localName, String qname) {}
+        protected void onChildCompleted( Object result, int cookie, boolean needAttCheck ) {}
+        protected void processAttribute() {}
+    };
+*/
 }

@@ -17,14 +17,15 @@ public class Options
 	public static final int STYLE_MSV = 0;
 	public static final int STYLE_TYPED_SAX = 1;
 	public static final int STYLE_PLAIN_SAX = 2;
+    public int style;
 	
 	public static final int NORMAL = 0;
 	public static final int NONXML = 1;
+    public static final int NEWPARSER = 2;
+    public int input;
 	
 	public String sourcefile;
 	public String targetdir;
-	public int style;
-	public int input;
 	public boolean msv_available;
 	public boolean from_include;
 	public boolean debug;
@@ -66,6 +67,8 @@ public class Options
     				style = STYLE_PLAIN_SAX;
     			else if(args[i].equals("--nonxml"))
     				input = NONXML;
+                else if(args[i].equals("--newparser"))
+                    input = NEWPARSER;
     			else if(args[i].equals("-d"))
     				debug = true;
                 else if(args[i].equals("--print-automata"))
