@@ -386,9 +386,9 @@ public class CodeWriter
         // accessed from action functions.
         // we should better not keep them at Runtime, because
         // this makes it impossible to emulate events.
-        sv.add(new AssignStatement(new PropertyReferenceExpression(new VariableExpression("this"), "uri"), new VariableExpression("uri")));
-        sv.add(new AssignStatement(new PropertyReferenceExpression(new VariableExpression("this"), "localName"), new VariableExpression("localName")));
-        sv.add(new AssignStatement(new PropertyReferenceExpression(new VariableExpression("this"), "qname"), new VariableExpression("qname")));
+        sv.assign(new PropertyReferenceExpression(new VariableExpression("this"), "uri"), new VariableExpression("uri"));
+        sv.assign(new PropertyReferenceExpression(new VariableExpression("this"), "localName"), new VariableExpression("localName"));
+        sv.assign(new PropertyReferenceExpression(new VariableExpression("this"), "qname"), new VariableExpression("qname"));
             
 		if(_Options.debug) {
 			sv.invoke(
@@ -491,7 +491,7 @@ public class CodeWriter
             Alphabet.Text ta = tr.getAlphabet().asText();
             String alias = ta.getAlias();
             if(alias!=null)
-                sv.add(new AssignStatement(new VariableExpression(alias), new VariableExpression("___$value")));
+                sv.assign(new VariableExpression(alias), new VariableExpression("___$value"));
             sv.add(buildMoveToStateCode(tr));
             
             return sv;
@@ -578,7 +578,7 @@ public class CodeWriter
                 dest = new VariableExpression("_ngcc_current_state");
             else
                 dest = new ArrayElementReferenceExpression(new VariableExpression("_ngcc_threaded_state"), new ConstantExpression(tr.getDisableState().getThreadIndex()));
-            sv.add(new AssignStatement(dest, new ConstantExpression(-1)));
+            sv.assign(dest, new ConstantExpression(-1));
         }
         
         if(tr.getEnableState()!=null) {
@@ -588,7 +588,7 @@ public class CodeWriter
             else
                 dest = new ArrayElementReferenceExpression(new VariableExpression("_ngcc_threaded_state"), new ConstantExpression(tr.getEnableState().getThreadIndex()));
         
-            sv.add(new AssignStatement(dest, new ConstantExpression(tr.getEnableState().getIndex())));
+            sv.assign(dest, new ConstantExpression(tr.getEnableState().getIndex()));
         }
         
         State result = appendStateTransition(sv, nextstate);
@@ -738,9 +738,9 @@ public class CodeWriter
                             rhs = new CastExpression( new TypeDescriptor(boxType),
                                 new VariableExpression("result")).invoke(returnType+"Value");
                             
-                        block.add(new AssignStatement(
+                        block.assign(
                         	new PropertyReferenceExpression(new VariableExpression("this"), alias),
-                        	rhs));
+                        	rhs);
                                 
                     }
                     
@@ -849,7 +849,7 @@ public class CodeWriter
 		else
 			statevariable = new ArrayElementReferenceExpression(new VariableExpression("_ngcc_threaded_state"), new ConstantExpression(deststate.getThreadIndex()));
 		
-		sv.add(new AssignStatement(statevariable, new ConstantExpression(deststate.getIndex())));
+		sv.assign(statevariable, new ConstantExpression(deststate.getIndex()));
 		
 		if(_Options.debug)
         {
@@ -899,11 +899,5 @@ public class CodeWriter
 		}
 		else
 			return deststate;
-	}
-	
-	private void printSection(String title) {
-		//_output.println();
-		//_output.print("/* ------------ " + title + " ------------ */");
-		//_output.println();
 	}
 }

@@ -10,7 +10,8 @@ public class AssignStatement extends CodeDOMRoot implements Statement {
 	private Expression _Destination;
 	private Expression _Source;
 
-	public AssignStatement(Expression destination, Expression source) {
+    // use StatementVector to create one
+	AssignStatement(Expression destination, Expression source) {
 		_Destination = destination;
 		_Source = source;
 	}
