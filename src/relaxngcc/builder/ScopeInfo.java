@@ -394,7 +394,7 @@ public final class ScopeInfo
             StringTokenizer tokens = new StringTokenizer(params,",");
             while(tokens.hasMoreTokens()) {
                 // (type,name) pair.
-                String pair = tokens.nextToken();
+                String pair = tokens.nextToken().trim();
                 int idx = pair.indexOf(' ');
                 String vartype = pair.substring(0,idx).trim();
                 String varname = pair.substring(idx+1).trim();
