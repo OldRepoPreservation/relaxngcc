@@ -174,16 +174,17 @@ public abstract class Alphabet
     }
     
     /** Alphabet that "forks" a state into a set of sub-automata. */
-    public static final class Fork extends Alphabet {
+    public static final class Fork extends Alphabet implements WithOrder {
         public Fork( State[] subAutomata,
             NameClass[] elementNC, NameClass[] attNC, boolean[] text,
-            Locator loc ) {
+            Locator loc, int order ) {
             
             super( FORK, loc );
             this._subAutomata = subAutomata;
             this.elementNameClasses = elementNC;
             this.attributeNameClasses = attNC;
             this.canConsumeText = text;
+            this._order = order;
         }
         
         /** Initial states of sub-automata. */
@@ -196,6 +197,10 @@ public abstract class Alphabet
         /** for texts. */
         public final boolean[] canConsumeText;
         
+        /** order relationship between attributes and refs. */
+        private final int _order;
+        public final int getOrder() { return _order; }
+
         public String toString() {
             StringBuffer buf = new StringBuffer("fork&join ");
             for( int i=0; i<_subAutomata.length; i++ ) {
@@ -235,6 +240,15 @@ public abstract class Alphabet
                 id.append(_subAutomata[i].getIndex());
             }
             return id.toString();
+        }
+        
+        /** Returns true if this fork&amp;join is nullable. */
+        public boolean isNullable() {
+            for( int i=0; i<_subAutomata.length; i++ ) {
+                if(!_subAutomata[i].isAcceptable())
+                    return false;
+            }
+            return true;
         }
     }
     

@@ -66,6 +66,10 @@ public final class Transition
     public void insertEpilogueAction(ScopeInfo.Action newAction) {
         epilogueActions.add(0,newAction);
     }
+    public void insertEpilogueActions(ScopeInfo.Action[] newActions) {
+        for( int i=newActions.length-1; i>=0; i-- )
+            insertEpilogueAction(newActions[i]);
+    }
     
     /** Gets all prologue actions. */
     public ScopeInfo.Action[] getPrologueActions() {
@@ -140,14 +144,10 @@ public final class Transition
     void head( Set result, boolean includeEE ) {
         Alphabet a = getAlphabet();
         if(a.isFork()) {
-            boolean addNextState = true;
             Alphabet.Fork fork = a.asFork();
-            for( int i=0; i<fork._subAutomata.length; i++ ) {
-                State s = fork._subAutomata[i];
-                addNextState &= s.isJoinState();
-                s.head(result,false);
-            }
-            if( addNextState )
+            for( int i=0; i<fork._subAutomata.length; i++ )
+                fork._subAutomata[i].head( result, false );
+            if(fork.isNullable())
                 nextState().head( result, includeEE );
         } else
         if(!a.isRef()) {

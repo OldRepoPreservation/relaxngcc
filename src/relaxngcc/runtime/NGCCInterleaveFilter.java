@@ -178,7 +178,9 @@ public abstract class NGCCInterleaveFilter implements NGCCEventSource, NGCCEvent
     public void joinByEnterElement( NGCCEventReceiver source,
         String uri, String local, String qname, Attributes atts ) throws SAXException {
         
+        if(isJoining)   return; // we are already in the process of joining. ignore.
         isJoining = true;
+
         // send special token to the rest of the branches.
         // these branches don't understand this token, so they will
         // try to move to a final state and send the token back to us,
@@ -198,7 +200,9 @@ public abstract class NGCCInterleaveFilter implements NGCCEventSource, NGCCEvent
     public void joinByLeaveElement( NGCCEventReceiver source,
         String uri, String local, String qname ) throws SAXException {
         
+        if(isJoining)   return; // we are already in the process of joining. ignore.
         isJoining = true;
+
         // send special token to the rest of the branches.
         // these branches don't understand this token, so they will
         // try to move to a final state and send the token back to us,
@@ -218,7 +222,9 @@ public abstract class NGCCInterleaveFilter implements NGCCEventSource, NGCCEvent
     public void joinByEnterAttribute( NGCCEventReceiver source,
         String uri, String local, String qname ) throws SAXException {
         
+        if(isJoining)   return; // we are already in the process of joining. ignore.
         isJoining = true;
+
         // send special token to the rest of the branches.
         // these branches don't understand this token, so they will
         // try to move to a final state and send the token back to us,
@@ -238,7 +244,9 @@ public abstract class NGCCInterleaveFilter implements NGCCEventSource, NGCCEvent
     public void joinByLeaveAttribute( NGCCEventReceiver source,
         String uri, String local, String qname ) throws SAXException {
         
+        if(isJoining)   return; // we are already in the process of joining. ignore.
         isJoining = true;
+
         // send special token to the rest of the branches.
         // these branches don't understand this token, so they will
         // try to move to a final state and send the token back to us,
@@ -259,8 +267,8 @@ public abstract class NGCCInterleaveFilter implements NGCCEventSource, NGCCEvent
         String value ) throws SAXException {
 
         if(isJoining)   return; // we are already in the process of joining. ignore.
-        
         isJoining = true;
+        
         // send special token to the rest of the branches.
         // these branches don't understand this token, so they will
         // try to move to a final state and send the token back to us,

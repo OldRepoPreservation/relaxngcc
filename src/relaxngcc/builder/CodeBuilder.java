@@ -562,10 +562,12 @@ public class CodeBuilder
             for( int i=0; i<states.length; i++ ) {
                 State s = states[i];
                 
-                if(s.isAcceptable())
-                    table.addEverythingElse( s, REVERT_TO_PARENT );
-                if(s.isJoinState())
-                    table.addEverythingElse( s, JOIN );
+                if(s.isAcceptable()) {
+                    if( outerClass==classdef )
+                        table.addEverythingElse( s, REVERT_TO_PARENT );
+                    else
+                        table.addEverythingElse( s, JOIN );
+                }
                 
                 Iterator jtr = s.iterateTransitions();
                 while(jtr.hasNext()) {
@@ -934,6 +936,7 @@ public class CodeBuilder
             new CDType(ref_block.getClassName())._new()
                 .arg($this)
                 .arg($runtime)
+                .arg($runtime)
                 .arg(new CDConstant(ref_tr.getUniqueId()));
         if(extraarg.length()>0)
             oe.arg(new CDLanguageSpecificString(extraarg.substring(1)));
@@ -1213,6 +1216,11 @@ public class CodeBuilder
             
             if(a.isRef()) {
                 writeAttributeHandler( bi, source, a.asRef().getTargetScope().getInitialState(), $ai );
+            } else
+            if(a.isFork()) {
+                Alphabet.Fork fork = a.asFork();
+                for( int i=0; i<fork._subAutomata.length; i++ )
+                    writeAttributeHandler( bi, source, fork._subAutomata[i], $ai );
             } else {
                 writeAttributeHandlerBlock( bi, source, a.asEnterAttribute(), $ai );
             }

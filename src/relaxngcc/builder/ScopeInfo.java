@@ -269,7 +269,7 @@ public final class ScopeInfo
                 "action"+uniqueId,
                 new CDLanguageSpecificString("throws SAXException") );
             
-            method.body().add(new CDLanguageSpecificString(codeFragment));
+            method.body().add(new CDLanguageSpecificString(codeFragment+'\n'));
             
         	classdef.addMethod(method);
         }
@@ -468,8 +468,6 @@ public final class ScopeInfo
             State s = (State)itr.next();
             if(s.isAcceptable())
                 out.println(getStateName(s)+" [shape=\"doublecircle\"];");
-            if(s.isJoinState())
-                out.println(getStateName(s)+" [shape=\"box\"];");
             
             Iterator jtr = s.iterateTransitions();
             while(jtr.hasNext() ) {

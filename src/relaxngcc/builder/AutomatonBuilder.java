@@ -289,7 +289,14 @@ public class AutomatonBuilder implements PatternFunction
 	
 
     public Object interleave( InterleavePattern pattern ) {
-        State join = addAction(destination,true);
+        
+        State join = destination;
+        
+        // add pending actions to a dummy transition so that
+        // we can add these actions later as the epilogue action
+        // of the join.
+        Transition dummy = new Transition(null,null);
+        addAction(dummy,false);
         
         Pattern[] children = pattern.getChildPatterns();
         State[] subAutomata = new State[children.length];
@@ -300,7 +307,7 @@ public class AutomatonBuilder implements PatternFunction
         for( int i=children.length-1; i>=0; i-- ) {
             // create sub-automaton for each branch
             destination = createState(pattern); 
-            destination.markAsJoin();
+            destination.setAcceptable(true); // mark as the join state
             State member = (State)children[i].apply(this);
             member = addAction(member,true);
             
@@ -311,10 +318,14 @@ public class AutomatonBuilder implements PatternFunction
         }
         
         State head = createState(pattern);
-        head.addTransition(new Transition(
-            new Alphabet.Fork(subAutomata,elemNC,attNC,text,null/*TODO:locator*/),
-            join ));
-            
+        Transition forkTr = new Transition(
+            new Alphabet.Fork(subAutomata,elemNC,attNC,text,
+                null/*TODO:locator*/,_OrderCounter++),
+            join );
+        head.addTransition(forkTr);
+        
+        forkTr.insertEpilogueActions(dummy.getEpilogueActions());
+        
         return head;
     }
 

@@ -32,11 +32,11 @@ public final class State implements Comparable
 	public void setAcceptable(boolean newvalue) { _Acceptable=newvalue; }
 	public boolean isAcceptable() { return _Acceptable; }
 	
-    // joinable or not.
-    // TODO: probably we don't need to distinguish final states and join states.
-    private boolean _join=false;
-    public void markAsJoin() { _join=true; }
-    public boolean isJoinState() { return _join; }
+//    // joinable or not.
+//    // TODO: probably we don't need to distinguish final states and join states.
+//    private boolean _join=false;
+//    public void markAsJoin() { _join=true; }
+//    public boolean isJoinState() { return _join; }
     
     /** Actions that get executed when the execution leaves this state. */
 	private final Vector actionsOnExit = new Vector();
@@ -305,6 +305,12 @@ public final class State implements Comparable
                 // ref[X] itself will be included in ATTHEAD
                 result.add(a);
                 if(a.asRef().getTargetScope().isNullable())
+                    t.nextState().attHead(result);
+            }
+            else
+            if(a.isFork()) {
+                result.add(a);
+                if(a.asFork().isNullable())
                     t.nextState().attHead(result);
             }
         }
