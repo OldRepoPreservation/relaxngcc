@@ -27,6 +27,7 @@ public abstract class ParserRuntime extends NGCCRuntime {
     public void parse(String source) throws SAXException {
         try {
 	        XMLReader reader = _SAXFactory.newSAXParser().getXMLReader();
+            reader = new ForeignElementFilter(reader);
 	        reader.setContentHandler(this);
 	        reader.parse(source);
         } catch( ParserConfigurationException e ) {
