@@ -417,6 +417,9 @@ public final class ScopeInfo
         }
 
         output.println(globalimport);
+        
+        if(scope.getImport()!=null)
+            output.println(scope.getImport());
 
         if(_HeaderSection.length()>0)
             output.println(_HeaderSection);

@@ -721,7 +721,8 @@ public class CodeWriter
 	            "runtime.consumeAttribute(ai);" + _Options.newline);
         } else {
             // if the name class is complex
-            throw new UnsupportedOperationException();
+            throw new UnsupportedOperationException(
+                "attribute with a complex name class is not supported yet  name class:"+nc.toString());
         }
     }
     
