@@ -268,8 +268,7 @@ public final class ScopeInfo
 	{
         public final TypeDescriptor type;
 		public final String name;
-		public final boolean isUserObject;
-		public Alias(TypeDescriptor t, String n, boolean user) { name=n; type=t; isUserObject=user; }
+		public Alias(TypeDescriptor t, String n) { name=n; type=t; }
         
         /**
          * Once a variable is declared, this field will hold a reference to it.
@@ -378,7 +377,7 @@ public final class ScopeInfo
 	}
 	
 	public Alias addAlias(TypeDescriptor type, String name) {
-        Alias a = new Alias(type, name, true);
+        Alias a = new Alias(type, name);
 		aliases.put(name,a);
         return a;
 	}
@@ -455,13 +454,7 @@ public final class ScopeInfo
             if(userDefinedFields.contains(a.name))
                 continue;
             
-            TypeDescriptor type;
-			if(/*options.style==Options.STYLE_PLAIN_SAX &&*/ !a.isUserObject)
-                type = TypeDescriptor.STRING;
-			else
-                type = a.type;
-                
-            classdef.addMember( new LanguageSpecificString("private"), type, a.name);
+            classdef.addMember( new LanguageSpecificString("private"), a.type, a.name);
 		}
 
         Variable $runtime;
