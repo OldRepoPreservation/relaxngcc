@@ -11,7 +11,17 @@ import relaxngcc.parser.ParserRuntime;
  */
 public class Scope extends Pattern {
     public Scope(ParserRuntime rt, String name_) {
-        this.name = name_;
+        Grammar g = rt.grammar;
+        int i = 0;
+        while(g!=null) {
+            i++;
+            g = g.parent;
+        }
+        
+        if(i>1)
+            this.name = name_ + Integer.toString(i); 
+        else
+            this.name = name_;
     }
     
     /**
@@ -69,5 +79,11 @@ public class Scope extends Pattern {
             if(s.charAt(i)==',') c++;
         return c;
     }
-        
+
+    public void clear() {
+        p = null;
+        param = null;
+        body = null;
+        imports = null;
+    }        
 }

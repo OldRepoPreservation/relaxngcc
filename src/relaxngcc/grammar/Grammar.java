@@ -27,23 +27,31 @@ public final class Grammar extends Scope {
     public final Grammar parent;
     
     /** from pattern name to Scope. */
-    private final Map patterns = new Hashtable();
+    private final Map _patterns = new Hashtable();
     
     /** Gets the Scope object or return null. */
     public Scope get( String name ) {
         if(name==null)  throw new IllegalArgumentException();
-        return (Scope)patterns.get(name);
+        return (Scope)_patterns.get(name);
     }
     
     public Scope getOrCreate(ParserRuntime rt, String name) {
         Scope s = get(name);
         if(s==null)
-            patterns.put(name, s = new Scope(rt, name));
+            _patterns.put(name, s = new Scope(rt, name));
+        return s;
+    }
+    public Scope redefine(ParserRuntime rt, String name) {
+        Scope s = get(name);
+        if(s==null)
+            _patterns.put(name, s = new Scope(rt, name));
+        else
+            s.clear();
         return s;
     }
     
     /** Iterates all the named {@link Scope}s in this grammar. */
     public Iterator iterateScopes() {
-        return patterns.values().iterator();
+        return _patterns.values().iterator();
     }
 }

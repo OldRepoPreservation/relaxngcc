@@ -25,7 +25,19 @@ public class NGCCDefineParam {
         if(_returnType==null)   _returnType=_className;
         if(_returnValue==null)  _returnValue="this";
         if(_access==null)       _access="";
-        if(_className==null)    _className = "RelaxNGCC_Result";
+        if(_className==null) {
+            Grammar g = rt.grammar;
+            int i = 0;
+            while(g!=null) {
+                i++;
+                g = g.parent;
+            }
+        
+            if(i>1)
+                _className = "RelaxNGCC_Result" + Integer.toString(i);
+            else
+                _className = "RelaxNGCC_Result";
+        }
         
         this.className = _className;
         this.access = _access;

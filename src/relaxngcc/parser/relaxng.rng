@@ -247,7 +247,7 @@
         <cc:java>
           // behave as if there is an implicit ref
           // between &lt;grammar> and its  parent.
-          p = new RefPattern($runtime, loc, $runtime.grammar, null );
+          p = new RefPattern($runtime, loc, $runtime.grammar, new NGCCCallParam($runtime, null, null) );
           // get back to the parent context
           $runtime.grammar = $runtime.grammar.parent;
         </cc:java>
@@ -285,24 +285,33 @@
           <cc:java>
             $runtime.processInclude(href);
           </cc:java>
-          <!-- TODO: support redefinition -->
-          <!--ref name="include-content"/-->
+          <ref name="include-content"/>
         </element>
       </choice>
     </zeroOrMore>
   </define>
 
-  <!--define name="include-content">
+  <define name="include-content" cc:class="IncludeContent">
     <zeroOrMore>
       <choice>
+        <!-- start-element and define-element in include-content must be distinguished for redefinition
         <ref name="start-element"/>
-        <ref name="define-element"/>
+        <ref name="define-element"/>-->
+        <element name="start">
+          <ref name="pattern-definition"
+            cc:with-params="$runtime.grammar"/>
+        </element>
+        <element name="define">
+          <attribute name="name" cc:alias="name" />
+          <ref name="pattern-definition"
+            cc:with-params="$runtime.grammar.redefine($runtime, name)"/>
+        </element>
         <element name="div">
           <ref name="include-content"/>
         </element>
       </choice>
     </zeroOrMore>
-  </define-->
+  </define>
 
   <define name="start-element" cc:class="StartElement">
     <element name="start">

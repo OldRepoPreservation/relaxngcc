@@ -25,8 +25,10 @@ public class RefPattern extends Pattern {
     }
     
     public int getParamCount() {
+        if(param==null) return 0;
         String s = param.getWithParams();
         if(s==null || s.length()==0) return 0;
+        
         //count the number of comma
         int c = 1;
         int bracket = 0;

@@ -1,6 +1,7 @@
 package relaxngcc.parser;
 
 import relaxngcc.parser.state.IncludedGrammarState;
+import relaxngcc.grammar.Grammar;
 
 /**
  * Used to parse grammar included by &lt;include> elements.
