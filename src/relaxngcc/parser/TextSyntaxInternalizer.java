@@ -19,8 +19,8 @@ import relaxngcc.runtime.AttributesImpl;
  * 
  * @author Kohsuke Kawaguchi (kk@kohsuke.org)
  */
-public class TextSytanxInternalizer extends XMLFilterImpl {
-    public TextSytanxInternalizer( XMLReader parent ) {
+public class TextSyntaxInternalizer extends XMLFilterImpl {
+    public TextSyntaxInternalizer( XMLReader parent ) {
         setParent(parent);
     }
     
@@ -98,8 +98,7 @@ public class TextSytanxInternalizer extends XMLFilterImpl {
                                     // the fragment is properly terminated.
                 text = text.substring(cutString(text,parser.token).length());
 
-                
-                System.out.println("\nreporting "+args);
+// DBG                System.out.println("\nreporting "+args);
                 // emulate this arguments as a SAX event
                 
                 // TODO error check. This can be added only after certain elements.
