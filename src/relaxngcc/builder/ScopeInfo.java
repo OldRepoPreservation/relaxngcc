@@ -114,8 +114,11 @@ public final class ScopeInfo
             
             Vector transitions = new Vector();
             Iterator itr = st.iterateTransitions(Alphabet.ENTER_ATTRIBUTE);
-            while(itr.hasNext())
-                transitions.add(itr.next());
+            while(itr.hasNext()) {
+                Transition t = (Transition)itr.next();
+                if(!t.getAlphabet().asEnterAttribute().workaroundSignificant)
+                    transitions.add(t);
+            }
                 
             for( int j=0; j<transitions.size(); j++ ) {
                 // replace this transition by a cloned transition.

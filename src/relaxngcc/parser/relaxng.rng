@@ -35,7 +35,7 @@
   <define name="name" cc:params="boolean attributeMode"
     cc:return-type="NameClass" cc:return-value="nc">
     <choice>
-      <attribute name="name">
+      <attribute name="name" cc:workaround-significant="true">
         <data type="QName" cc:alias="name" />
         <cc:java>nc = runtime.parseSimpleName(name,attributeMode);
         </cc:java>
@@ -46,6 +46,11 @@
   
   <define name="pattern" cc:class="PatternState"
     cc:return-type="Pattern" cc:return-value="p">
+    
+    <cc:java-body>
+		private boolean workaroundSignificant=false;
+    </cc:java-body>
+    
     <choice>
       <element name="element">
         <ref name="name" cc:alias="name" cc:with-params="false" />
@@ -55,6 +60,10 @@
         </cc:java>
       </element>
       <element name="attribute">
+        <optional>
+          <attribute name="cc:workaround-significant" />
+          workaroundSignificant = true;
+        </optional>
         <ref name="name" cc:alias="name" cc:with-params="true" />
         <choice>
           <ref name="patterns" cc:alias="p"/>
@@ -64,7 +73,7 @@
         <cc:java>
           // if there is no child pattern, assume &lt;text>.
           if(p==null)  p = new DataPattern(new MetaDataType("string"),alias);
-          p = new AttributePattern(name,p);
+          p = new AttributePattern(name,p,workaroundSignificant);
         </cc:java>
       </element>
       <element name="group">

@@ -162,16 +162,26 @@ public class AutomatonBuilder implements PatternFunction
         State middle = (State)pattern.body.apply(this);      
 //        State middle = traverseNodeList(exp.getChildNodes(), ctx/*newctx*/, tail);
         
-        State head = createState(pattern);
+        Alphabet.EnterAttribute ea = new Alphabet.EnterAttribute(nc,_OrderCounter++);
+        ea.workaroundSignificant = pattern.workaroundSignificant;
+        
         Transition ts = createTransition(
-            new Alphabet.EnterAttribute(nc,_OrderCounter++),
+            ea,
             middle);
         addAction(ts,true);
 //??        if(ctx.getInterleaveBranchRoot()!=null) ts.setDisableState(ctx.getInterleaveBranchRoot());
-
-        // always treat attributes as optional,
-        orgdest.addTransition(ts);
-        return orgdest;
+        
+        if(!pattern.workaroundSignificant) {
+            // always treat attributes as optional,
+            orgdest.addTransition(ts);
+            return orgdest;
+        } else {
+            // if a special flag is specified by the user,
+            // do NOT treat it as an optional attribute
+            State head = createState(pattern);
+            head.addTransition(ts);
+            return head;
+        }
     }
 
     public Object data( DataPattern pattern ) {

@@ -128,6 +128,13 @@ public abstract class Alphabet
         public EnterAttribute asEnterAttribute() { return this; }
         public String toString() { return "@"+getKey(); }
         
+        /**
+         * See AttributePattern for detail.
+         * With this flag set to true, this attribute transition
+         * will not be cloned. 
+         */
+        public boolean workaroundSignificant;
+        
         private final int _Order;
         /**
          * Gets the number that introduces order
