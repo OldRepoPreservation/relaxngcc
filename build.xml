@@ -55,6 +55,7 @@ Version: ${DSTAMP}
 </echo>
 		<jar jarfile="xsom.jar" compress="false" manifest="bin/METAINF.MF">
 			<fileset dir="src" includes="**/*.properties"/>
+			<fileset dir="src" includes="relaxngcc/runtime/*.java"/>
 			<fileset dir="bin" includes="**/*.class"/>
 		</jar>
 		<delete file="bin/METAINF.MF"/>
