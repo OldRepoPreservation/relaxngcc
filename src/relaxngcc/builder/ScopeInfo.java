@@ -26,16 +26,18 @@ import java.util.StringTokenizer;
 import java.util.Vector;
 
 import relaxngcc.NGCCGrammar;
-import relaxngcc.NGCCUtil;
-import relaxngcc.Options;
 import relaxngcc.automaton.Alphabet;
 import relaxngcc.automaton.State;
 import relaxngcc.automaton.Transition;
-import relaxngcc.grammar.NGCCDefineParam;
+import relaxngcc.codedom.CDClass;
+import relaxngcc.codedom.CDLanguageSpecificString;
+import relaxngcc.codedom.CDMethod;
+import relaxngcc.codedom.CDMethodInvokeExpression;
+import relaxngcc.codedom.CDStatement;
+import relaxngcc.codedom.CDType;
 import relaxngcc.grammar.Scope;
 import relaxngcc.javabody.JavaBodyParser;
 import relaxngcc.util.SelectiveIterator;
-import relaxngcc.codedom.*;
 
 /**
  * information about a scope

@@ -1,11 +1,8 @@
 package relaxngcc.builder;
 
-import java.text.MessageFormat;
-
-import relaxngcc.codedom.CDOp;
 import relaxngcc.codedom.CDConstant;
 import relaxngcc.codedom.CDExpression;
-import relaxngcc.codedom.CDVariable;
+import relaxngcc.codedom.CDOp;
 import relaxngcc.grammar.NameClass;
 import relaxngcc.grammar.NameClassFunction;
 

@@ -5,28 +5,25 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.Writer;
-import java.io.OutputStreamWriter;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.io.Writer;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
+import relaxngcc.builder.AutomatonBuilder;
 import relaxngcc.builder.CodeBuilder;
 import relaxngcc.builder.NullableChecker;
-import relaxngcc.builder.AutomatonBuilder;
 import relaxngcc.builder.ScopeCollector;
 import relaxngcc.builder.ScopeInfo;
+import relaxngcc.codedom.CDJavaFormatter;
 import relaxngcc.grammar.Grammar;
-import relaxngcc.grammar.PatternFunction;
 import relaxngcc.grammar.Scope;
 import relaxngcc.runtime.NGCCRuntime;
-import relaxngcc.codedom.CDJavaFormatter;
-import relaxngcc.codedom.CDLanguage;
 
 /**
  * Keeps information about the global setting effective

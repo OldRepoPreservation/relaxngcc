@@ -6,8 +6,6 @@
 
 package relaxngcc;
 import java.io.File;
-import java.io.PrintStream;
-import java.text.ParseException;
 
 /**
  * RelaxNGCC behavior options

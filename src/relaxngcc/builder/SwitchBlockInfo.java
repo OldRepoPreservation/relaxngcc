@@ -1,10 +1,17 @@
 package relaxngcc.builder;
-import java.util.Map;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 
 import relaxngcc.automaton.State;
-import relaxngcc.codedom.*;
+import relaxngcc.codedom.CDBlock;
+import relaxngcc.codedom.CDConstant;
+import relaxngcc.codedom.CDExpression;
+import relaxngcc.codedom.CDIfStatement;
+import relaxngcc.codedom.CDOp;
+import relaxngcc.codedom.CDStatement;
+import relaxngcc.codedom.CDSwitchStatement;
+import relaxngcc.codedom.CDVariable;
 
 /**
  * Generates code in the following format:

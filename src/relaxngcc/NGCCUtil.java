@@ -5,7 +5,6 @@
  */
 
 package relaxngcc;
-import java.io.File;
 
 public class NGCCUtil
 {

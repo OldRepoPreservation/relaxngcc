@@ -1,6 +1,12 @@
 package relaxngcc.builder;
 
-import relaxngcc.grammar.*;
+import relaxngcc.grammar.AttributePattern;
+import relaxngcc.grammar.DataPattern;
+import relaxngcc.grammar.ElementPattern;
+import relaxngcc.grammar.ListPattern;
+import relaxngcc.grammar.Pattern;
+import relaxngcc.grammar.PatternWalker;
+import relaxngcc.grammar.ValuePattern;
 
 /**
  * Returns true if the given pattern can consume text.

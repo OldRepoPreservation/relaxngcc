@@ -19,11 +19,23 @@ import relaxngcc.automaton.Alphabet;
 import relaxngcc.automaton.Head;
 import relaxngcc.automaton.State;
 import relaxngcc.automaton.Transition;
+import relaxngcc.codedom.CDBlock;
+import relaxngcc.codedom.CDCastExpression;
+import relaxngcc.codedom.CDClass;
+import relaxngcc.codedom.CDConstant;
+import relaxngcc.codedom.CDExpression;
+import relaxngcc.codedom.CDLanguageSpecificString;
+import relaxngcc.codedom.CDMethod;
+import relaxngcc.codedom.CDMethodInvokeExpression;
+import relaxngcc.codedom.CDObjectCreateExpression;
+import relaxngcc.codedom.CDOp;
+import relaxngcc.codedom.CDStatement;
+import relaxngcc.codedom.CDSwitchStatement;
+import relaxngcc.codedom.CDType;
+import relaxngcc.codedom.CDVariable;
 import relaxngcc.grammar.NGCCDefineParam;
 import relaxngcc.grammar.NameClass;
 import relaxngcc.grammar.SimpleNameClass;
-
-import relaxngcc.codedom.*;
 
 /**
  * generates Java code that parses XML data via NGCCHandler interface
@@ -93,7 +105,6 @@ public class CodeBuilder
         */
 
         println(buf, "import org.xml.sax.SAXException;");
-        println(buf, "import org.xml.sax.XMLReader;");
         println(buf, "import org.xml.sax.Attributes;");
         
         if(!_options.usePrivateRuntime)
@@ -101,11 +112,6 @@ public class CodeBuilder
         if(!_grammar.getRuntimeTypeFullName().equals(_grammar.getRuntimeTypeShortName()))
             println(buf, "import "+_grammar.getRuntimeTypeFullName()+";");
         
-        if(_info.isRoot()) {
-            println(buf, "import javax.xml.parsers.SAXParserFactory;");
-            println(buf, "import org.xml.sax.XMLReader;");
-        }
-
         println(buf, globalimport);
         
         if(_info._scope.getImport()!=null)
@@ -252,13 +258,14 @@ public class CodeBuilder
             String rt = _grammar.packageName;
             if(rt.length()!=0)  rt+='.';
             rt+="NGCCRuntime";
+
             
             if(_grammar.getRuntimeTypeFullName().equals(rt)) {
                 StringBuffer main = new StringBuffer();
                 main.append("    public static void main( String[] args ) throws Exception {");                              main.append(_options.newline);
-                main.append("        SAXParserFactory factory = SAXParserFactory.newInstance();");                           main.append(_options.newline);
+                main.append("        javax.xml.parsers.SAXParserFactory factory = javax.xml.parsers.SAXParserFactory.newInstance();");                           main.append(_options.newline);
                 main.append("        factory.setNamespaceAware(true);");                                                     main.append(_options.newline);
-                main.append("        XMLReader reader = factory.newSAXParser().getXMLReader();");                            main.append(_options.newline);
+                main.append("        org.xml.sax.XMLReader reader = factory.newSAXParser().getXMLReader();");                            main.append(_options.newline);
                 main.append("        NGCCRuntime runtime = new NGCCRuntime();");                                             main.append(_options.newline);
                 main.append("        reader.setContentHandler(runtime);");                                                   main.append(_options.newline);
                 main.append("        for( int i=0; i<args.length; i++ ) {");                                                 main.append(_options.newline);

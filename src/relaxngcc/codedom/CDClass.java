@@ -1,7 +1,6 @@
 package relaxngcc.codedom;
 
 import java.io.IOException;
-import java.io.Writer;
 import java.util.ArrayList;
 
 /**

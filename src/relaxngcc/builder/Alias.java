@@ -1,7 +1,6 @@
 package relaxngcc.builder;
 
 import relaxngcc.codedom.CDType;
-import relaxngcc.codedom.CDVariable;
 
 /**
  * Alias that will be generated as a field.

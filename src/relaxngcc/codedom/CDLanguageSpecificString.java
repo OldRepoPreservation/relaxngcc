@@ -1,7 +1,6 @@
 package relaxngcc.codedom;
 
 import java.io.IOException;
-import java.io.Writer;
 
 /**
  * Unstructured text whose composition we don't care.

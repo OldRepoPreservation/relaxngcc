@@ -3,10 +3,10 @@ package relaxngcc.parser;
 import java.io.StringReader;
 
 import org.xml.sax.Attributes;
-import org.xml.sax.Locator;
 import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.XMLFilterImpl;
+
 import relaxngcc.javabody.JavaBodyParser;
 import relaxngcc.javabody.ParseException;
 import relaxngcc.javabody.Token;

@@ -6,12 +6,10 @@
 
 package relaxngcc.automaton;
 import java.io.PrintStream;
-import java.util.Comparator;
 
 import org.xml.sax.Locator;
 
 import relaxngcc.MetaDataType;
-import relaxngcc.NGCCGrammar;
 import relaxngcc.builder.ScopeInfo;
 import relaxngcc.grammar.NameClass;
 

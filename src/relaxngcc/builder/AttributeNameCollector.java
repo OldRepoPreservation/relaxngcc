@@ -1,6 +1,11 @@
 package relaxngcc.builder;
 
-import relaxngcc.grammar.*;
+import relaxngcc.grammar.AttributePattern;
+import relaxngcc.grammar.ChoiceNameClass;
+import relaxngcc.grammar.ElementPattern;
+import relaxngcc.grammar.NameClass;
+import relaxngcc.grammar.Pattern;
+import relaxngcc.grammar.PatternWalker;
 
 /**
  * Visits a pattern tree and

@@ -1,14 +1,13 @@
 package relaxngcc.builder;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Arrays;
-import java.util.Vector;
-import java.util.Comparator;
 import java.text.MessageFormat;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Vector;
 
-import relaxngcc.automaton.State;
 import relaxngcc.automaton.Alphabet;
+import relaxngcc.automaton.State;
 import relaxngcc.automaton.Transition;
 import relaxngcc.automaton.WithOrder;
 

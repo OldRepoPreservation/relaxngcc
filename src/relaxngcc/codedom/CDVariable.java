@@ -1,7 +1,6 @@
 package relaxngcc.codedom;
 
 import java.io.IOException;
-import java.io.Writer;
 
 /**
  * CDVariable. Can be used as an CDExpression to refer to this variable.

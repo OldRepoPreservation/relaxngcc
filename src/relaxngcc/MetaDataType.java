@@ -5,10 +5,6 @@
  */
 
 package relaxngcc;
-import java.io.PrintStream;
-import java.util.Hashtable;
-import java.util.Iterator;
-import java.util.Map;
 
 
 /**

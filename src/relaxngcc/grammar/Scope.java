@@ -1,6 +1,5 @@
 package relaxngcc.grammar;
 
-import org.xml.sax.Locator;
 
 /**
  * A pattern defined by a &lt;define> and &lt;start>.

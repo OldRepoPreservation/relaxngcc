@@ -6,9 +6,10 @@
 
 package relaxngcc;
 import javax.xml.parsers.SAXParserFactory;
+
+import com.sun.msv.driver.textui.DebugController;
 import com.sun.msv.grammar.Grammar;
 import com.sun.msv.reader.util.GrammarLoader;
-import com.sun.msv.driver.textui.DebugController;
 
 public class GrammarChecker
 {

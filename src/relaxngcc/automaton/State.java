@@ -8,19 +8,14 @@ package relaxngcc.automaton;
 import java.io.PrintStream;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.Vector;
-import java.util.Map;
-import java.util.HashMap;
-
-import org.xml.sax.Locator;
 
 import relaxngcc.builder.ScopeInfo;
+import relaxngcc.codedom.CDBlock;
 import relaxngcc.grammar.Pattern;
 import relaxngcc.util.SelectiveIterator;
-import relaxngcc.codedom.CDBlock;
 
 /**
  * A State object has zero or more Transition objects

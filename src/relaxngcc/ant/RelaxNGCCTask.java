@@ -3,7 +3,6 @@ package relaxngcc.ant;
 import java.io.File;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.Iterator;
 
 import org.apache.tools.ant.BuildException;
@@ -12,6 +11,7 @@ import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
 import org.apache.tools.ant.taskdefs.LogOutputStream;
 import org.apache.tools.ant.types.FileSet;
+
 import relaxngcc.Options;
 import relaxngcc.RelaxNGCC;
 
