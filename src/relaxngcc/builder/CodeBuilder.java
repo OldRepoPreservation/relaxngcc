@@ -566,9 +566,9 @@ public class CodeBuilder
             new CDLanguageSpecificString(" throws SAXException") );
         
         EventHandlerParameters $params = new EventHandlerParameters();
-        $params.$uri = method.param( CDType.STRING, GENERATED_VARIABLE_PREFIX+"uri" );
-        $params.$localName = method.param( CDType.STRING, GENERATED_VARIABLE_PREFIX+"local" );
-        $params.$qname = method.param( CDType.STRING, GENERATED_VARIABLE_PREFIX+"qname" );
+        $params.$uri = method.param( CDType.STRING, GENERATED_VARIABLE_PREFIX+"__uri" );
+        $params.$localName = method.param( CDType.STRING, GENERATED_VARIABLE_PREFIX+"__local" );
+        $params.$qname = method.param( CDType.STRING, GENERATED_VARIABLE_PREFIX+"__qname" );
         if(type==Alphabet.ENTER_ELEMENT)
             $params.$attrs = method.param(new CDType("Attributes"), GENERATED_VARIABLE_PREFIX+"attrs");
         
