@@ -1,17 +1,8 @@
 <?xml version="1.0"?>
-<project name="XSOM" basedir="." default="jar">
+<project name="RELAXNGCC" basedir="." default="jar">
 
-	<!-- run javacc -->
-	<target name="javacc">
-		<javacc
-			target="src/relaxngcc/javabody/JavaBodyParser.jj"
-			outputdirectory="src/relaxngcc/javabody"
-			javacchome="lib/javacc" static="false" />
-	</target>
-	
-	
 	<!-- compile Java source files -->
-	<target name="compile" depends="javacc">
+	<target name="compile">
 		<mkdir dir="bin"/>
 		<javac
 			srcdir="src"
@@ -32,13 +23,11 @@
 		<javadoc	locale="en_US"
 					sourcepath="src"
 					destdir="javadoc"
-					windowtitle="XML Schema Object Model (XSOM)"
+					windowtitle="RelaxNGCC"
 					public="yes"
-					author="yes"
 					>
 				
-			<package name="com.sun.xml.xsom"/>
-			<package name="com.sun.xml.xsom.impl"/>
+			<package name="relaxngcc.*"/>
 			<classpath>
 				<fileset dir="lib" includes="*.jar"/>
 			</classpath>
@@ -50,12 +39,11 @@
 		<tstamp/>
 		
 <echo file="bin/METAINF.MF"
->Class-path: dom4j.jar
-Version: ${DSTAMP}
+>Version: ${DSTAMP}
+Main-Class: relaxngcc.RelaxNGCC
 </echo>
-		<jar jarfile="xsom.jar" compress="false" manifest="bin/METAINF.MF">
+		<jar jarfile="relaxngcc.jar" compress="false" manifest="bin/METAINF.MF">
 			<fileset dir="src" includes="**/*.properties"/>
-			<fileset dir="src" includes="relaxngcc/runtime/*.java"/>
 			<fileset dir="bin" includes="**/*.class"/>
 		</jar>
 		<delete file="bin/METAINF.MF"/>
@@ -64,15 +52,14 @@ Version: ${DSTAMP}
 	<!-- create a distribution package -->
 	<target name="release" depends="jar,javadoc">
 		<tstamp />
-		<property name="stage" value="xsom-${DSTAMP}"/>
+		<property name="stage" value="relaxngcc-${DSTAMP}"/>
 		
 		<!-- creates distribution package -->
 		<mkdir dir="package" />
 		<zip	zipfile="package/${stage}.zip">
-			<zipfileset dir="." includes="xsom.jar" fullpath="${stage}/xsom.jar"/>
-			<zipfileset dir="javadoc" includes="**/*.*" prefix="${stage}/javadoc"/>
-			<zipfileset dir="src" includes="**/*.*" prefix="${stage}/src"/>
-			<zipfileset dir="doc" includes="**/*.*"/>
+			<zipfileset dir="." includes="relaxngcc.jar" fullpath="${stage}/relaxngcc.jar" />
+			<zipfileset dir="src" includes="**/*.*" prefix="${stage}/src" />
+			<zipfileset dir="doc" includes="**/*.*" prefix="${stage}" />
 		</zip>
 	</target>
 	
