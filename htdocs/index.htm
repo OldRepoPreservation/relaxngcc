@@ -13,10 +13,11 @@
 
 <h1>RelaxNGCC ( RELAX NG Compiler Compiler)</h1>
 <div align="right">
-	$Id: index.htm,v 1.4 2002/06/20 01:28:07 kkawa Exp $
+	$Revision: 1.5 $
+	By RelaxNGCC SourceForge Project /
 	<a href="mailto:daisuke.okajima@nifty.ne.jp">
 		<?ja?>岡嶋 大介<?/ja?>
-		<?en?>By Daisuke OKAJIMA<?/en?>
+		<?en?>Daisuke OKAJIMA<?/en?>
 	</a>
 </div>
 <p>
@@ -28,8 +29,9 @@
 <li><a href="manual.htm">マニュアル</a></li>
 <li>初歩的な使い方を示す<a href="tutorial1.htm">チュートリアル１</a></li>
 <li>もうちょっと高度な使い方を示す<a href="tutorial2.htm">チュートリアル２</a></li>
-<li>略記法とASTに関する<a href="tutorial3.htm">チュートリアル３</a></li>
-<li>ASTに関して更に解説した<a href="tutorial4.htm">チュートリアル４</a></li>
+<li>略記法とASTに関する<a href="tutorial3.htm">チュートリアル３</a>(英語)</li>
+<li>ASTに関して更に解説した<a href="tutorial4.htm">チュートリアル４</a>(英語)</li>
+<li>ランタイムを活用する<a href="tutorial5.htm">チュートリアル５</a>(英語)</li>
 <li>どのような原理で動いているかの<a href="method.htm">内部的な説明</a>(これを読むにはRELAX NGとオートマトンについての予備知識が必要です。)</li>
 <li><a href="../relaxngcc.zip"><img border="0" src="dl.gif" alt="">ダウンロード</a>(約200KB, ソースもついています)</li>
 </ul>
@@ -40,6 +42,7 @@
 <li><a href="tutorial2.htm">Tutorial 2</a>(basic usage)</li>
 <li><a href="tutorial3.htm">Tutorial 3</a>(text-based syntax and AST)</li>
 <li><a href="tutorial4.htm">Tutorial 4</a>(more about AST)</li>
+<li><a href="tutorial5.htm">Tutorial 5</a>(making the most out of runtime)</li>
 <li><a href="manual.htm">Manual</a></li>
 <li><a href="method.htm">Document about the internal algorithm</a></li>
 <li><a href="../relaxngcc.zip"><img border="0" src="dl.gif" alt="">Download</a>(approximately 200KB, including source code)</li>
@@ -55,7 +58,7 @@
 </p>
 
 <h2><?ja?>主な特徴<?/ja?><?en?>Feature Highlights<?/en?></h2>
-<p>
+<ol>
 <?ja?>　スキーマからソースコードを生成するツールとしては<a href="http://www.asahi-net.or.jp/~dp8t-asm/java/tools/Relaxer/index_ja.html">Relaxer</a>が有名ですが、RelaxNGCCは次のような違いがあります。<?/ja?>
 <?en?> <a href="http://www.asahi-net.or.jp/~dp8t-asm/java/tools/Relaxer/index.html">Relaxer</a> is another famous tool for generating Java source code from a given grammar, but RelaxNGCC is different from Relaxer at following points.<?/en?></p>
 <ul>
