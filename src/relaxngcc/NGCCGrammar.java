@@ -11,16 +11,29 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.Iterator;
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileWriter;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.IOException;
 import java.io.FileOutputStream;
+import java.io.PrintWriter;
+
 import relaxngcc.dom.NGCCElement;
 import relaxngcc.dom.NGCCNodeList;
+import relaxngcc.runtime.NGCCRuntime;
+import relaxngcc.util.ConcatIterator;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.Node;
+
+import relaxngcc.builder.FirstFollow;
 import relaxngcc.builder.ScopeBuilder;
 import relaxngcc.builder.ScopeInfo;
 import relaxngcc.builder.CodeWriter;
@@ -45,6 +58,26 @@ public class NGCCGrammar
 	private String _GlobalImport;
 	private String _DefaultNSURI;
 	private Options _Options;
+    
+    /**
+     * Type name of the runtime.
+     * By default it is relaxngcc.runtime.NGCCRuntime,
+     * but the application can implement a derived class
+     * and use it instead of the default one.
+     */
+    private String runtimeType;
+    /**
+     * Gets the class name of the runtime type
+     * alone without the package name.
+     */
+    public String getRuntimeTypeShortName() {
+        int idx = runtimeType.lastIndexOf('.');
+        if(idx<0)   return runtimeType;
+        else        return runtimeType.substring(idx+1);
+    }
+    public String getRuntimeTypeFullName() {
+        return runtimeType;
+    }
 	
 	private class GrammarLoadingContext
 	{
@@ -60,7 +93,18 @@ public class NGCCGrammar
 		_Scopes = new TreeMap();
 		_LambdaScopes = new TreeMap();
 		_DataTypes = new Vector();
-		_Package = e.getAttributeNS(NGCC_NSURI, "package");
+		_Package = e.attributeNGCC("package","");
+        runtimeType = e.attributeNGCC("runtime-type",null);
+        if(runtimeType==null) {
+            if(o.usePrivateRuntime) {
+                if(_Package.length()!=0)
+                    runtimeType = _Package + ".NGCCRuntime";
+                else
+                    runtimeType = "NGCCRuntime";
+            } else {
+                runtimeType = "relaxngcc.runtime.NGCCRuntime";
+            }
+        }
 		_DefaultNSURI = e.getAttribute("ns");
 		_GlobalBody = "";
 		_GlobalImport = "";
@@ -150,6 +194,12 @@ public class NGCCGrammar
 		_DataTypes.add(mdt);
 		return mdt;
 	}
+    /** Iterates all ScopeInfos, including lambda scopes. */
+    public Iterator iterateAllScopeBuilder() {
+        return new ConcatIterator(
+            _Scopes.values().iterator(), _LambdaScopes.values().iterator() );
+    }
+    
 	public ScopeBuilder getScopeBuilderByName(String name) { return (ScopeBuilder)_Scopes.get(name); }
 	public ScopeInfo getScopeInfoByName(String name) { return getScopeBuilderByName(name).getScopeInfo(); }
 	
@@ -159,26 +209,66 @@ public class NGCCGrammar
         _LambdaScopes.put(b.getName(), b);
     }
     
-	public void output(String targetdir) throws IOException
+	public void output() throws IOException
 	{
 		//step1 datatypes
 		if(_Options.style==Options.STYLE_TYPED_SAX && _DataTypes.size() > 0)
 		{
-			PrintStream s = new PrintStream(new FileOutputStream(new File(targetdir, "DataTypes.java")));
+			PrintStream s = new PrintStream(new FileOutputStream(
+                new File(_Options.targetdir, "DataTypes.java")));
 			printDataTypes(s);
 		}
 		//step2 scopes
 		Iterator it = _Scopes.values().iterator();
-		while(it.hasNext())
-		{
+		while(it.hasNext()) {
 			ScopeInfo si = ((ScopeBuilder)it.next()).getScopeInfo();
-			if(!si.isLambda() && !si.isInline())
-			{
+			if(!si.isLambda() && !si.isInline()) {
 				CodeWriter w = new CodeWriter(this, si, _Options);
-				w.output(new PrintStream(new FileOutputStream(new File(targetdir, si.getNameForTargetLang() + ".java"))));
+                File f = new File(_Options.targetdir, si.getNameForTargetLang() + ".java");
+                f.delete();
+                PrintStream out = new PrintStream(new FileOutputStream(f));
+				w.output(out);
+                out.close();
+                f.setReadOnly();
 			}
 		}
+        // copy runtime code if necessary
+        if(_Options.usePrivateRuntime) {
+            copyResourceAsFile("NGCCHandler.java");
+            copyResourceAsFile("AttributesImpl.java");
+            copyResourceAsFile("NGCCRuntime.java");
+        }
 	}
+    
+    /**
+     * Copies a resource file to the target directory.
+     */
+    private void copyResourceAsFile( String file ) throws IOException {
+        File out = new File(_Options.targetdir,file);
+        
+//        if(!out.exists()) {
+//            System.out.println(file+" doesn't exist. Generating.");
+            BufferedReader in = new BufferedReader(
+                new InputStreamReader(NGCCRuntime.class.getResourceAsStream(file)));
+                
+            PrintWriter os = new PrintWriter(new FileWriter(out));
+            byte[] buf = new byte[256];
+            
+            String s;
+            while((s=in.readLine())!=null) {
+                if(s.startsWith("package ")) {
+                    if(getPackageName().length()!=0)
+                        s = "package "+getPackageName()+";";
+                    else
+                        s="";
+                }
+                os.println(s);
+            }
+            
+            in.close();
+            os.close();
+//        }
+    }
 	
 	public void buildAutomaton() throws NGCCException
 	{
@@ -194,50 +284,16 @@ public class NGCCGrammar
 		}
 		_Scopes.putAll(_LambdaScopes);
 	}
-	
-	public void calcFirst() throws NGCCException
-	{
-		Iterator it = _Scopes.values().iterator();
-		while(it.hasNext())
-		{
-			ScopeInfo sci = ((ScopeBuilder)it.next()).getScopeInfo();
-			sci.calcFirst_Step1();
-		}
-		it = _Scopes.values().iterator();
-		while(it.hasNext())
-		{
-			ScopeInfo sci = ((ScopeBuilder)it.next()).getScopeInfo();
-			sci.calcFirst_Step2();
-		}
-		it = _Scopes.values().iterator();
-		while(it.hasNext())
-		{
-			ScopeInfo sci = ((ScopeBuilder)it.next()).getScopeInfo();
-			sci.checkFirstAlphabetAmbiguousity();
-		}
-	}
-	public void calcFollow() throws NGCCException
-	{
-		Iterator it = _Scopes.values().iterator();
-		while(it.hasNext())
-		{
-			ScopeInfo sci = ((ScopeBuilder)it.next()).getScopeInfo();
-			sci.calcFollow_Step0();
-		}
-		it = _Scopes.values().iterator();
-		while(it.hasNext())
-		{
-			ScopeInfo sci = ((ScopeBuilder)it.next()).getScopeInfo();
-			sci.calcFollow_Step1();
-		}
-		it = _Scopes.values().iterator();
-		while(it.hasNext())
-		{
-			ScopeInfo sci = ((ScopeBuilder)it.next()).getScopeInfo();
-			sci.calcFollow_Step2();
-			sci.checkFollowAlphabetAmbiguousity();
-		}
-	}
+    
+    /** Computes FIRST and FOLLOW and updates ScopeInfo appropriately. */
+    public void calcFirstAndFollow() {
+        FirstFollow ff = new FirstFollow(this);
+        Iterator itr = iterateAllScopeBuilder();
+        while(itr.hasNext()) {
+            ScopeInfo si = ((ScopeBuilder)itr.next()).getScopeInfo();
+            si.setFirstAndFollow( ff.getFirst(si), ff.getFollow(si) );
+        }
+    }
 	
 	//for debug
 	public void dump(PrintStream strm)
@@ -249,6 +305,15 @@ public class NGCCGrammar
 			sci.dump(strm);
 		}
 	}
+    
+    /** generates automaton gif files. */
+    public void dumpAutomata(File outDir) throws IOException, InterruptedException {
+        Iterator it = _Scopes.values().iterator();
+        while(it.hasNext()) {
+            ScopeInfo sci = ((ScopeBuilder)it.next()).getScopeInfo();
+            sci.dumpAutomaton(new File(outDir,sci.getNameForTargetLang()+".gif"));
+        }
+    }
 	
 	//outputs data type definition. This is for only typed-sax mode.
 	private void printDataTypes(PrintStream output)
@@ -274,6 +339,12 @@ public class NGCCGrammar
 		output.println("}");
 	}
 	
+    /**
+     * Gets the package name to store generated classes.
+     * "" is used to denote the root package.
+     * 
+     * @return      non-null vaild string.
+     */
 	public String getPackageName() { return _Package; }
 	public String getGlobalBody() { return _GlobalBody; }
 	public String getGlobalImport() { return _GlobalImport; }

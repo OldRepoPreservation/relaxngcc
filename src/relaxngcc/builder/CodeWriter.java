@@ -6,10 +6,15 @@
 
 package relaxngcc.builder;
 import java.io.PrintStream;
+import java.text.MessageFormat;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.Vector;
+
 import relaxngcc.automaton.Alphabet;
 import relaxngcc.automaton.State;
 import relaxngcc.automaton.Transition;
@@ -32,6 +37,7 @@ public class CodeWriter
 	private class CodeAboutState
 	{
 		public String prologue;
+        public String epilogue;
 		public Vector conditionalCodes;
 		public String elsecode;
 		
@@ -40,7 +46,74 @@ public class CodeWriter
 			if(conditionalCodes==null) conditionalCodes = new Vector();
 			conditionalCodes.add(new ConditionalCode(cond, code));
 		}
+        
+        public void output(String errorHandleMethod) {
+            if(prologue!=null) _output.println(prologue);
+            
+            boolean flag = false;
+            if(conditionalCodes!=null)
+            {
+                Iterator ccs = conditionalCodes.iterator();
+                while(ccs.hasNext())
+                {
+                    ConditionalCode cc = (ConditionalCode)ccs.next();
+                    _output.print(flag? "else if(" : "if(");
+                    _output.print(cc.condition);
+                    _output.println(") {");
+                    //_output.println(_Options.newline);
+                    _output.println(cc.code);
+                    //_output.println(_Options.newline);
+                    _output.println("}");
+                    flag = true;
+                }
+            }
+            
+            if(elsecode!=null)
+            {
+                if(flag) _output.println("else {"); else _output.println("{");
+                //_output.println(_Options.newline);
+                _output.println(elsecode);
+                //_output.println(_Options.newline);
+                _output.println("}");
+            } else
+            if(errorHandleMethod!=null) {
+                if(flag) _output.print("else ");
+                _output.println(errorHandleMethod+"(qname);");
+            }
+            
+            if(epilogue!=null)
+                _output.println(epilogue);
+        }
 	}
+    
+    /**
+     * Generates code in the following format:
+     * 
+     * <pre>
+     * switch(state) {
+     * case state #1:
+     *     === prologue code ===
+     *     
+     *     if( conditional #1 ) {
+     *         statement #1;
+     *     } else
+     *     if( conditional #2 ) {
+     *         statement #2;
+     *     } else {
+     *     if ...
+     *  
+     *     } else {
+     *         === else code ===
+     *     }
+     *     
+     *     === epilogue code ===
+     *     break;
+     * case state #n:
+     *     ...
+     *     break;
+     * }
+     * </pre>
+     */
 	private class SwitchBlockInfo
 	{
 		public Map state2CodeFragment;
@@ -52,53 +125,71 @@ public class CodeWriter
 			_Type=type;
 			state2CodeFragment = new TreeMap();
 		}
+        
+        private CodeAboutState getCAS( State state ) {
+            CodeAboutState cas = (CodeAboutState)state2CodeFragment.get(state);
+            if(cas==null) {
+                cas = new CodeAboutState();
+                state2CodeFragment.put(state, cas);
+            }
+            return cas;
+        }
+        
 		//if "cond" is "", "code" is put with no if-else clause. this behavior is not smart...
-		public void addConditionalCode(State state, String cond, String code)
-		{
-			Object o = state2CodeFragment.get(state);
-			if(o==null)
-			{
-				CodeAboutState cas = new CodeAboutState();
-				cas.addConditionalCode(cond, code);
-				state2CodeFragment.put(state, cas);
-			}
-			else
-				((CodeAboutState)o).addConditionalCode(cond, code);
+		public void addConditionalCode(State state, String cond, String code) {
+			getCAS(state).addConditionalCode(cond,code);
 		}
-		public void addElseCode(State state, String code)
-		{
-			CodeAboutState cas = (CodeAboutState)state2CodeFragment.get(state);
-			if(cas==null)
-			{
-				cas = new CodeAboutState();
+        
+		public void addElseCode(State state, String code) {
+			CodeAboutState cas = getCAS(state);
+            
+			if(cas.elsecode==null)
 				cas.elsecode = code;
-				state2CodeFragment.put(state, cas);
-			}
 			else
-			{
-				if(cas.elsecode==null)
-					cas.elsecode = code;
-				else
-					cas.elsecode.concat(code);
-			}
+				cas.elsecode += code;
 		}
-		public void addPrologue(State state, String code)
-		{
-			CodeAboutState cas = (CodeAboutState)state2CodeFragment.get(state);
-			if(cas==null)
-			{
-				cas = new CodeAboutState();
+        
+		public void addPrologue(State state, String code) {
+			CodeAboutState cas = getCAS(state);
+			if(cas.prologue==null)
 				cas.prologue = code;
-				state2CodeFragment.put(state, cas);
-			}
 			else
-			{
-				if(cas.prologue==null)
-					cas.prologue = code;
-				else
-					cas.prologue.concat(code);
-			}
+				cas.prologue += code;
 		}
+        
+        public void addEpilogue(State state, String code) {
+            CodeAboutState cas = getCAS(state);
+            if(cas.epilogue==null)
+                cas.epilogue = code;
+            else
+                cas.epilogue += code;
+        }
+
+        private void output(String errorHandleMethod) {
+            boolean first = true;
+            Iterator i = state2CodeFragment.entrySet().iterator();
+            while(i.hasNext())
+            {
+                Map.Entry e = (Map.Entry)i.next();
+                State st = (State)e.getKey();
+                if(!first) _output.print("else ");
+                if(st.getThreadIndex()==-1)
+                    _output.println("if(_ngcc_current_state==" + st.getIndex()+") {");
+                else
+                    _output.println("if(_ngcc_threaded_state[" + st.getThreadIndex() + "]=="+ st.getIndex()+") {");
+                    
+                ((CodeAboutState)e.getValue()).output(errorHandleMethod);
+                
+                _output.println("}");
+                _output.println();
+                first = false;
+            }
+            
+            if(errorHandleMethod!=null) {
+                if(!first)    _output.print("else ");
+                _output.println(errorHandleMethod+"(qname);");
+            }
+        }
 	}
 	
 	private ScopeInfo _Info;
@@ -116,11 +207,20 @@ public class CodeWriter
 	{
 		_output = out;
 		_Info.printHeaderSection(out, _Options, _Grammar.getGlobalImport());
+        
+        out.println("private String uri,localName,qname;");
+        
         writeAcceptableStates();
-		writeStartElementHandler();
-		writeEndElementHandler();
+        
+        writeEventHandler(Alphabet.ENTER_ELEMENT,   "enterElement" );
+        writeEventHandler(Alphabet.LEAVE_ELEMENT,     "leaveElement");
+        writeEventHandler(Alphabet.ENTER_ATTRIBUTE, "enterAttribute" );
+        writeEventHandler(Alphabet.LEAVE_ATTRIBUTE,   "leaveAttribute");
+    
 		writeTextHandler();
 		writeAttributeHandler();
+        writeChildCompletedHandler();
+        
         Iterator lambda_scopes = _Info.iterateChildScopes();
         while(lambda_scopes.hasNext())
         {
@@ -146,78 +246,80 @@ public class CodeWriter
 				_output.print("_ngcc_threaded_state[" + s.getThreadIndex() + "]=="+ s.getIndex());
 			first = false;
         }
+        
+        if(first)   _output.print("false");
+        
         _output.println(";");
         _output.println("}"); //end of method
     }
 	
-	private void writeStartElementHandler()
-	{
-		Iterator states = _Info.iterateStatesHavingStartElementOrRef();
-		printSection("enterElement");
-		_output.println("public void enterElement(String uri,String localname,String qname) throws SAXException");
-		_output.println("{");
-		if(_Options.debug)
-			_output.println("System.err.println(\"enterElement " + _Info.getNameForTargetLang() + ":\" + qname + \",state=\" + _ngcc_current_state);");
+    /**
+     * Writes event handlers for (enter|leave)(Attribute|Element) methods.
+     */
+    private void writeEventHandler( int type, String eventName ) {
+        
+		Iterator states = _Info.iterateStatesHaving(type|Alphabet.REF_BLOCK);// /*HavingStartElementOrRef*/(type);
+        
+		printSection(eventName);
+		_output.println(MessageFormat.format(
+            "public void {0}(String uri,String localName,String qname) throws SAXException '{'",
+            new Object[]{eventName}));
+            
+        // QUICK HACK
+        // copy them to the instance variables so that they can be 
+        // accessed from action functions.
+        // we should better not keep them at Runtime, because
+        // this makes it impossible to emulate events.
+        _output.println("this.uri=uri;");
+        _output.println("this.localName=localName;");
+        _output.println("this.qname=qname;");
+            
+		if(_Options.debug) {
+            if((type&(Alphabet.LEAVE_ATTRIBUTE|Alphabet.LEAVE_ELEMENT))!=0)
+                _output.println("runtime.indent--;");
+                
+			_output.println("runtime.trace(\""+eventName+" " + _Info.getNameForTargetLang() + ":\" + qname + \",state=\" + _ngcc_current_state);");
+
+            if((type&(Alphabet.ENTER_ATTRIBUTE|Alphabet.ENTER_ELEMENT))!=0)
+                _output.println("runtime.indent++;");
+        }
+        
+		SwitchBlockInfo bi = new SwitchBlockInfo(type);
 		
-		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.START_ELEMENT);
-		
-		while(states.hasNext())
-		{
+		while(states.hasNext()) {
 			//normal transitions by startElement type alphabets
 			State st = (State)states.next();
-			Iterator transitions = st.iterateStartElementTransitions();
-			while(transitions.hasNext())
-			{
+			Iterator transitions = st.iterateTransitions(type); // iterateStartElementTransitions();
+			
+            while(transitions.hasNext()) {
 				Transition tr = (Transition)transitions.next();
-				Alphabet a = tr.getAlphabet();
+				Alphabet.Markup a = tr.getAlphabet().asMarkup();
 				bi.addConditionalCode(st, 
-					a.getKey().createJudgementClause(_Info, "uri", "localname"),
+					a.getKey().createJudgementClause(_Info, "uri", "localName"),
 					transitionCode(tr));
 			}
 			
 			//ref elements
-			transitions = st.iterateRefTransitions();
+			transitions = st.iterateTransitions(Alphabet.REF_BLOCK);
 			while(transitions.hasNext())
 			{
 				Transition ref_tr = (Transition)transitions.next();
-				ScopeInfo ref_block = _Grammar.getScopeInfoByName(ref_tr.getAlphabet().getValue());
-				Iterator first_alphabets = ref_block.iterateFirstAlphabets();
+				ScopeInfo ref_block = ref_tr.getAlphabet().asRef().getTargetScope();
 				boolean first_clause = true;
 				String clause = "";
+                Iterator first_alphabets = ref_block.iterateFirstAlphabets(type);
 				while(first_alphabets.hasNext())
 				{
-					Alphabet a = (Alphabet)first_alphabets.next();
-					if(a.getType()!=Alphabet.START_ELEMENT) continue;
+					Alphabet.Markup a = (Alphabet.Markup)first_alphabets.next();
 					if(!first_clause) clause += "|| ";
-					clause += "(" +  a.getKey().createJudgementClause(_Info, "uri", "localname") + ") ";
+					clause += "(" +  a.getKey().createJudgementClause(_Info, "uri", "localName") + ") ";
 					first_clause = false;
 				}
 				
 				if(!first_clause)
-				{
-					StringBuffer code = new StringBuffer();
-					if(ref_tr.getAction()!=null) code.append(ref_tr.getAction());
-					appendStateTransition(code, ref_tr.nextState());
-					String handler_name = ref_tr.getAlphabet().getAlias();
-					if(handler_name==null)
-					{
-						String typename = (_Options.style==Options.STYLE_MSV? "NGCCTypedContentHandler" : "NGCCPlainHandler");
-						code.append(typename + " h = new " + ref_block.getNameForTargetLang() + "(_ngcc_reader, this);" + _Options.newline);
-						handler_name = "h";
-					}
-					else
-						code.append(handler_name + " = new " + ref_block.getNameForTargetLang() + "(_ngcc_reader, this);" + _Options.newline);
-						
-					if(_Options.debug)
-						code.append("System.err.println(\"Change Handler " + ref_block.getNameForTargetLang() + "\");" + _Options.newline);
-					
-					code.append("setupNewHandler(" + handler_name + ", uri, localname, qname);" + _Options.newline);
-					code.append(_Options.newline);
-					if(ref_tr.nextState().hasAttributeTransition())
-						code.append("processAttribute();");
-					
-					bi.addConditionalCode(st, clause, code.toString());
-				}
+					bi.addConditionalCode(st, clause, 
+                        buildCodeToSpawnChild(eventName,ref_tr,
+                            "uri,localName,qname"));
 			}
 			
 		}
@@ -227,277 +329,303 @@ public class CodeWriter
 		while(states.hasNext())
 		{
 			State st = (State)states.next();
-			Iterator follows = _Info.iterateFollowAlphabets();
+            
+            // We don't need to check the validity of this transition.
+            // because it will be checked by the parent anyway.
+            String action = MessageFormat.format(
+                "runtime.revertToParentFrom{0}({1},cookie, uri,localName,qname);",
+                new Object[]{
+                    capitalize(eventName),
+                    _Info.getReturnVariable(),
+                });
+            
+            bi.addElseCode( st,
+                st.invokeActionsOnExit()+action );
+
+/*
+			Iterator follows = _Info.iterateFollowAlphabets(type);
 			while(follows.hasNext())
 			{
-				Alphabet f = (Alphabet)follows.next();
-				if(f.getType()==Alphabet.START_ELEMENT)
-				{
-					String action = "resetHandlerByStart(uri,localname,qname);";
-					if(st.getActionOnExit()!=null) action = st.getActionOnExit() + action;
-					bi.addConditionalCode(st, f.getKey().createJudgementClause(_Info, "uri", "localname"), action);
-				}
+				Alphabet.Markup f = (Alphabet.Markup)follows.next();
+                String action = MessageFormat.format(
+                    "runtime.revertToParentFrom{0}({1},cookie, uri,localName,qname);",
+                    new Object[]{
+                        capitalize(eventName),
+                        _Info.getReturnVariable(),
+                    });
+                    
+                action = st.invokeActionsOnExit()+action;
+                
+				bi.addConditionalCode(
+                    st,
+                    f.getKey().createJudgementClause(_Info, "uri", "localName"),
+                    action);
 			}
+*/
 		}
 		
-		outputSwitchBlock(bi);
+		bi.output("unexpected"+capitalize(eventName));
 		
 		_output.println("}");   //end of method
 	}
-	private void writeEndElementHandler()
-	{
-		Iterator states = _Info.iterateStatesHavingEndElement();
-		printSection("leaveElement");
-		_output.println("public void leaveElement(String uri,String localname,String qname) throws SAXException");
-		_output.println("{");
-		if(_Options.debug)
-			_output.println("System.err.println(\"" + _Info.getNameForTargetLang() + ":leaveElement \" + qname + \",state=\" + _ngcc_current_state);"); 
-		
-		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.END_ELEMENT);
-		
-		//normal transitions by endElement type transitions
-		while(states.hasNext())
-		{
-			State st = (State)states.next();
-			Iterator transitions = st.iterateEndElementTransitions();
-			while(transitions.hasNext())
-			{
-				Transition tr = (Transition)transitions.next();
-				Alphabet a = tr.getAlphabet();
-				bi.addConditionalCode(st, a.getKey().createJudgementClause(_Info, "uri", "localname"), transitionCode(tr));
-			}
-		}
-		
-		//end of scope
-		states = _Info.iterateAcceptableStates();
-		while(states.hasNext())
-		{
-			State st = (State)states.next();
-			Iterator follows = _Info.iterateFollowAlphabets();
-			while(follows.hasNext())
-			{
-				Alphabet f = (Alphabet)follows.next();
-				if(f.getType()==Alphabet.END_ELEMENT)
-				{
-					String action = "resetHandlerByEnd(uri,localname,qname);";
-					if(_Options.debug) action = "System.out.println(\"reset handler\"); " + action;
-					if(st.getActionOnExit()!=null) action = st.getActionOnExit() + action;
-					bi.addConditionalCode(st, f.getKey().createJudgementClause(_Info, "uri", "localname"), action);
-				}
-			}
-		}
-		
-		outputSwitchBlock(bi);
-		
-		_output.println("}");   //end of function
-	}
+    
+    /**
+     * Generates a code fragment that creates a new child object
+     * and switches to it.
+     * 
+     * @param eventName
+     *      The event name for which we are writing an event handler.
+     * @param ref_tr
+     *      The transition with REF_BLOCK type alphabet.
+     * @param eventParams
+     *      Additional parameters that will be passed to the
+     *      spawnChildFromXXX method. Usually the parameters
+     *      given to the event handler.
+     * @return
+     *      code fragment.
+     */
+    private String buildCodeToSpawnChild(String eventName,Transition ref_tr,
+        String eventParams) {
+        
+        Alphabet.Ref alpha = ref_tr.getAlphabet().asRef();
+        StringBuffer code = new StringBuffer();
+        ScopeInfo ref_block = alpha.getTargetScope();
+        
+        code.append(ref_tr.invokePrologueActions());
+        
+        code.append(MessageFormat.format(
+            "NGCCHandler h = new {0}(this,runtime,{1}{2});{3}", new Object[]{
+                ref_block.getNameForTargetLang(),
+                new Integer(ref_tr.getUniqueId()).toString()/*to avoid ,*/,
+                alpha.getParams(),
+                _Options.newline}));
+            
+        if(_Options.debug) {
+            code.append(MessageFormat.format(
+                "runtime.trace(\"Change Handler to {0} (will back to:{1})\");" + _Options.newline,
+                new Object[]{
+                    ref_block.getNameForTargetLang(),
+                    new Integer(ref_tr.nextState().getIndex())
+                }));
+            code.append("runtime.indent++;"+_Options.newline);
+        }
+        code.append(MessageFormat.format(
+            "runtime.spawnChildFrom{0}(h,{1});\n",
+            new Object[]{
+                capitalize(eventName),
+                eventParams}));
+                
+        code.append(_Options.newline);
+        
+        return code.toString();
+    }
+    
+    /** Capitalizes the first character. */
+    private String capitalize( String name ) {
+        return Character.toUpperCase(name.charAt(0))+name.substring(1);
+    }
+    
 	
 	//outputs text consumption handler. this handler branches by output method
-	private void writeTextHandler()
-	{
-		switch(_Options.style)
-		{
-			case Options.STYLE_MSV:
-				writeMSVTextHandler();
-				break;
-			case Options.STYLE_TYPED_SAX:
-				writeTypedSAXTextHandler();
-				break;
-			case Options.STYLE_PLAIN_SAX:
-				writePlainSAXTextHandler();
-				break;
-		}
-	}
-	private void writeTypedSAXTextHandler()
-	{
-		Iterator states = _Info.iterateStatesHavingText();
+	private void writeTextHandler() {
+		Iterator states = _Info.iterateStatesHaving(
+            Alphabet.VALUE_TEXT|Alphabet.DATA_TEXT|Alphabet.REF_BLOCK ); //Text();
+            
 		printSection("text");
-		_output.println("public void text(String value) throws SAXException");
+		_output.println("public void text(String ___$value) throws SAXException");
 		_output.println("{");
-		
-		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.TYPED_VALUE);
-		
+		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.VALUE_TEXT);
 		while(states.hasNext())
 		{
 			State st = (State)states.next();
-			Iterator transitions = st.iterateTextTransitions();
+			Iterator transitions = st.iterateTransitions(Alphabet.VALUE_TEXT|Alphabet.DATA_TEXT);
 			while(transitions.hasNext())
 			{
 				Transition tr = (Transition)transitions.next();
-				Alphabet a = tr.getAlphabet();
+				Alphabet.Text a = tr.getAlphabet().asText();
 				StringBuffer buf = new StringBuffer();
-				String alias = tr.getAlphabet().getAlias();
-				if(a.getType()==Alphabet.FIXED_VALUE)
-				{
-					if(alias!=null)
-						buf.append(alias + "=value;");
-					buf.append(transitionCode(tr));
-					bi.addConditionalCode(st, "value.equals(\"" + a.getValue() + "\")", buf.toString());
-				}
-				else	
-				{
-					MetaDataType mdt = tr.getAlphabet().getMetaDataType();
-					if(mdt==MetaDataType.STRING) // case of string type
-					{
-						if(alias!=null)
-							buf.append(alias + "=value;");
-						buf.append(transitionCode(tr));
-						bi.addElseCode(st, buf.toString());
-					}
-					else
-					{
-						int typeindex = mdt.getIndex();
-						if(alias!=null)
-							buf.append(alias + "=(" + mdt.getJavaTypeName() + ")DataTypes.dt[" + typeindex + "].createJavaObject(value,null);");
-						buf.append(transitionCode(tr));
-						bi.addConditionalCode(st, "DataTypes.dt[" + typeindex + "].isValid(value,null)", buf.toString());
-					}
-				}
-			}
-		}
-		outputSwitchBlock(bi);
-		_output.println("}");   //end of function
-	}
-	private void writeMSVTextHandler()
-	{
-		Iterator states = _Info.iterateStatesHavingText();
-		printSection("text");
-		_output.println("public void text(String value, XSDatatype type) throws SAXException");
-		_output.println("{");
-		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.TYPED_VALUE);
-		while(states.hasNext())
-		{
-			State st = (State)states.next();
-			Iterator transitions = st.iterateTextTransitions();
-			while(transitions.hasNext())
-			{
-				Transition tr = (Transition)transitions.next();
-				Alphabet a = tr.getAlphabet();
-				StringBuffer buf = new StringBuffer();
-				String alias = tr.getAlphabet().getAlias();
-				
-				if(a.getType()==Alphabet.FIXED_VALUE)
-				{
-					if(alias!=null)
-						buf.append(alias + "=" + a.getKey() + ";");
-					buf.append(transitionCode(tr));
-					bi.addConditionalCode(st, "value.equals(\"" + a.getValue() + "\")", buf.toString());
-				}
-				else	
-				{
-					MetaDataType mdt = tr.getAlphabet().getMetaDataType();
-					if(alias!=null)
-						buf.append(alias + "=(" + mdt.getJavaTypeName() + ")type.createJavaObject(value,null);");
-					buf.append(transitionCode(tr));
-					bi.addElseCode(st, buf.toString());
-				}
-			}
-		}
-		outputSwitchBlock(bi);
-		_output.println("}");   //end of function
-	}
-	private void writePlainSAXTextHandler()
-	{
-		Iterator states = _Info.iterateStatesHavingText();
-		printSection("text");
-		_output.println("public void text(String value) throws SAXException");
-		_output.println("{");
-		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.TYPED_VALUE);
-		while(states.hasNext())
-		{
-			State st = (State)states.next();
-			Iterator transitions = st.iterateTextTransitions();
-			while(transitions.hasNext())
-			{
-				Transition tr = (Transition)transitions.next();
-				Alphabet a = tr.getAlphabet();
-				StringBuffer buf = new StringBuffer();
-				String alias = tr.getAlphabet().getAlias();
+				String alias = a.getAlias();
 				if(alias!=null)
-					buf.append(alias + "=value;");
+					buf.append(alias + "=___$value;");
 				buf.append(transitionCode(tr));
 				
-				if(a.getType()==Alphabet.FIXED_VALUE)
-					bi.addConditionalCode(st, "value.equals(\"" + a.getValue() + "\")", buf.toString());
+				if(a.isValueText())
+					bi.addConditionalCode(st, "___$value.equals(\""
+                        + a.asValueText().getValue() + "\")", buf.toString());
 				else	
 					bi.addElseCode(st, buf.toString());
-			}
+            }
+            
+            
+            //ref elements
+            transitions = st.iterateTransitions(Alphabet.REF_BLOCK);
+            while(transitions.hasNext())
+            {
+                Transition ref_tr = (Transition)transitions.next();
+                ScopeInfo ref_block = ref_tr.getAlphabet().asRef().getTargetScope();
+                
+                if(ref_block.hasFirstAlphabet(Alphabet.DATA_TEXT)
+                || ref_block.hasFirstAlphabet(Alphabet.VALUE_TEXT)) {
+                    bi.addPrologue(st,
+                        buildCodeToSpawnChild("text",ref_tr,
+                            "___$value"));
+                    break;
+                }
+            }
 		}
-		outputSwitchBlock(bi);
+		bi.output(null);
 		_output.println("}");   //end of function
 	}
+    
+    /**
+     * Returns true if the specified state can be reached by
+     * a Ref transition.
+     */
+    private boolean hasReverseRef( State s ) {
+        Iterator i = s.iterateReversalTransitions();
+        while(i.hasNext()) {
+            Transition t = (Transition)i.next();
+            if(t.getAlphabet().getType()==Alphabet.REF_BLOCK)
+                return true;
+        }
+        return false;
+    }
+    
+    private void writeChildCompletedHandler() {
+        printSection("child completed");
+        _output.println("public void onChildCompleted(Object result, int cookie) throws SAXException {");
+        if(_Options.debug) {
+            _output.println("runtime.indent--;");
+            _output.println("runtime.trace(\"onChildCompleted(\"+cookie+\")\");");
+        }
+        _output.println("switch(cookie) {");
+        
+        
+        Set processedTransitions = new HashSet();
+        
+        Iterator states = _Info.iterateAllStates();
+        while(states.hasNext()) {
+            State st = (State)states.next();
+            
+            Iterator trans =st.iterateTransitions(Alphabet.REF_BLOCK);
+            while(trans.hasNext()) {
+                Transition tr = (Transition)trans.next();
+                Alphabet.Ref a = tr.getAlphabet().asRef();
+                
+                if(processedTransitions.add(tr)) {
+                    _output.println("case "+tr.getUniqueId()+":");
+                    
+                    // if there is an alias, assign to that variable
+                    String alias = a.getAlias();
+                    if(alias!=null) {
+                        ScopeInfo childBlock = a.getTargetScope();
+        
+                        _output.println(MessageFormat.format(
+                            "this.{0}=({1})result;",
+                            new Object[]{ alias, childBlock.getReturnType() }));
+                    }
+                    
+                    StringBuffer buf= new StringBuffer();
+
+                    buf.append(tr.invokeEpilogueActions());
+
+                    appendStateTransition(buf, tr.nextState());
+                        
+                    _output.println(buf);
+                    _output.println("return;");
+                    
+                    _output.println();
+                }
+            }
+        }
+        
+        _output.println("default:");
+        // TODO: assertion failed
+        _output.println("    throw new InternalError();");
+        
+        _output.println("}");   //end of the switch-case
+        _output.println("}");   //end of the function
+    }
+    
 	private void writeAttributeHandler()
 	{
 		Iterator states = _Info.iterateAllStates();
 		printSection("attribute");
 		_output.println("public void processAttribute() throws SAXException");
 		_output.println("{");
-		_output.println("int __attr_index;");
+		_output.println("int ai;");
 		if(_Options.debug)
-			_output.println("System.err.println(\"" + _Info.getNameForTargetLang() + ":processAttribute \" + currentAttrs().getLength() + \",\" + _ngcc_current_state);"); 
+			_output.println("runtime.trace(\"" + _Info.getNameForTargetLang() + ":processAttribute \" + runtime.getCurrentAttributes().getLength() + \",\" + _ngcc_current_state);"); 
 		
-		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.START_ATTRIBUTE);
+		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.ENTER_ATTRIBUTE);
 		
 		while(states.hasNext())
 		{
 			State st = (State)states.next();
 			if(!needToCheckAttribute(st)) continue;
 			
-			Iterator transitions = st.iterateAttributeTransitions();
-			while(transitions.hasNext())
-			{
+			Iterator transitions = st.iterateTransitions(
+                Alphabet.ENTER_ATTRIBUTE|Alphabet.REF_BLOCK);
+                
+            // sort alphabets in the order of the "order" field.
+            TreeSet alphabets = new TreeSet(Alphabet.orderComparator);
+			while(transitions.hasNext()) {
 				Transition tr = (Transition)transitions.next();
-				Alphabet a = tr.getAlphabet();
-				
-				StringBuffer buf = new StringBuffer();
-				bi.addPrologue(st, "__attr_index = getAttributeIndex("+ _Info.getNSStringConstant(a.getKey().getNSURI()) +", \"" + a.getKey().getName() + "\");" + _Options.newline);
-				buf.append(transitionCode(tr));
-				buf.append("consumeAttribute(__attr_index);" + _Options.newline);
-				bi.addConditionalCode(st, "__attr_index>=0", buf.toString());
+                alphabets.add( tr.getAlphabet() );
+            
+            }
+                
+            // then write handlers in that order
+            Iterator itr = alphabets.iterator();
+            while(itr.hasNext()) {
+                Alphabet a = (Alphabet)itr.next();
+                
+                if(a.isEnterAttribute()) {
+                    writeAttributeHandlerBlock( bi, st, a.asEnterAttribute() );
+                } else {
+                    Alphabet.Ref r = a.asRef();
+                    
+                    Iterator jtr = r.getTargetScope().iterateFirstAlphabets(
+                        Alphabet.ENTER_ATTRIBUTE);
+                    while(jtr.hasNext())
+                        writeAttributeHandlerBlock( bi, st,
+                            ((Alphabet)jtr.next()).asEnterAttribute() );
+                }
 			}
-			
-			//ref elements
-			transitions = st.iterateRefTransitions();
-			while(transitions.hasNext())
-			{
-				Transition ref_tr = (Transition)transitions.next();
-				ScopeInfo destscope = _Grammar.getScopeInfoByName(ref_tr.getAlphabet().getValue());
-				if(destscope.containsFirstAttributeAlphabet())
-				{
-					StringBuffer clause = new StringBuffer();
-					StringBuffer action = new StringBuffer();
-					writeHavingAttributeCheckCode(destscope, destscope.iterateFirstAlphabets(), clause);
-					if(_Options.debug)
-						action.append("System.err.println(\"Change Handler " + destscope.getNameForTargetLang() + "\");" + _Options.newline);
-					
-					appendStateTransition(action, ref_tr.nextState());
-					String handler_name = ref_tr.getAlphabet().getAlias();
-					if(handler_name==null)
-					{
-						String typename = (_Options.style==Options.STYLE_MSV? "NGCCTypedContentHandler" : "NGCCPlainHandler");
-						action.append(typename + " h = new " + destscope.getNameForTargetLang() + "(_ngcc_reader, this);" + _Options.newline);
-						handler_name = "h";
-					}
-					else
-						action.append(handler_name + " = new " + destscope.getNameForTargetLang() + "(_ngcc_reader, this);" + _Options.newline);
-						
-					action.append("setupNewHandler(" + handler_name + ");" + _Options.newline);
-					bi.addConditionalCode(st, clause.toString(), action.toString());
-				}
-			}
+/*  dangling attribute handler approach. it doesn't work.            
+            // by default, return
+            bi.addElseCode(st,"return;");
+            
+            StringBuffer buf = new StringBuffer();
+            appendStateTransition(buf,st);
+            bi.addEpilogue(st,buf.toString());
+*/
 		}
 		
-		outputSwitchBlock(bi);
+        // TODO: end of scope handling.
+        
+		bi.output(null);
 		
 		_output.println("}");   //end of function
 	}
+
+    private void writeAttributeHandlerBlock( SwitchBlockInfo bi, State st, 
+        Alphabet.EnterAttribute a ) {
+            
+        bi.addConditionalCode(st,
+            MessageFormat.format(
+            "(ai = runtime.getAttributeIndex({0},\"{1}\"))>=0",
+                new Object[]{
+                    _Info.getNSStringConstant(a.getKey().getNSURI()),
+                    a.getKey().getName()}),
+            "runtime.consumeAttribute(ai);" + _Options.newline);
+    }
 	
 	private String transitionCode(Transition tr/*, boolean output_process_attribute*/)
 	{
 		StringBuffer buf = new StringBuffer();
 		
-		if(tr.getAction()!=null)
-			buf.append(tr.getAction());
+        buf.append(tr.invokePrologueActions());
 		State nextstate = tr.nextState();
 		if(tr.getDisableState()!=null)
 		{
@@ -516,26 +644,28 @@ public class CodeWriter
 			buf.append(";");
 			buf.append(_Options.newline);
 		}
+        buf.append(tr.invokeEpilogueActions());
 		State result = appendStateTransition(buf, nextstate);
 		buf.append(_Options.newline);
 		if(_Options.debug)
 		{
 			if(result.getThreadIndex()==-1)
-				buf.append("System.err.println(\"state " + result.getIndex() + "\");");
+				buf.append("runtime.trace(\"state " + result.getIndex() + "\");");
 			else
-				buf.append("System.err.println(\"state [" + result.getThreadIndex() + "]"+ result.getIndex() + "\");");
+				buf.append("runtime.trace(\"state [" + result.getThreadIndex() + "]"+ result.getIndex() + "\");");
 			buf.append(_Options.newline);
 		}
 		if(_Options.style!=Options.STYLE_MSV)
 		{
 			if(result.getListMode()==State.LISTMODE_ON)
-				buf.append("_tokenizeText=true;");
-			else if(result.getListMode()==State.LISTMODE_OFF)
-				buf.append("_tokenizeText=false;");
+				buf.append("runtime.setListMode();"); // _tokenizeText=true;");
+//  TODO: why do we need this?
+//			else if(result.getListMode()==State.LISTMODE_OFF)
+//				buf.append("_tokenizeText=false;");
 		}
 		
 		boolean in_if_block = false;
-		//in accept state, try unwinding
+/*		//in accept state, try unwinding
 		if(result.isAcceptable() && _Info.containsFollowAttributeAlphabet())
 		{
 			buf.append("if(");
@@ -544,7 +674,7 @@ public class CodeWriter
 			buf.append(_Options.newline);
 			in_if_block = true;
 		}
-		
+*/		
 		if(needToCheckAttribute(nextstate))
 		{
 			if(in_if_block) buf.append("else ");
@@ -553,15 +683,25 @@ public class CodeWriter
 								
 		return buf.toString();
 	}
+    
+    /**
+     * Returns true if we need to check the attribute transitions from
+     * the given state.
+     */
     private boolean needToCheckAttribute(State s)
     {
-    	if(s.hasAttributeTransition()) return true;
-    	Iterator it = s.iterateRefTransitions();
+        // if the state has any transition by enterAttribute,
+        // we sure need to check them.
+    	if(s.hasTransition(Alphabet.ENTER_ATTRIBUTE)) return true;
+    	
+        // the other possibility is that we can spawn a new child,
+        // which in turn starts with the enterAttribute transition.
+        Iterator it = s.iterateTransitions(Alphabet.REF_BLOCK);
     	while(it.hasNext())
     	{
     		Transition tr = (Transition)it.next();
-			ScopeInfo sc = _Grammar.getScopeInfoByName(tr.getAlphabet().getValue());
-			if(sc.containsFirstAttributeAlphabet()) return true;
+			ScopeInfo sc = tr.getAlphabet().asRef().getTargetScope();
+            if(sc.hasFirstAlphabet(Alphabet.ENTER_ATTRIBUTE)) return true;
     	}
     	return false;
     }
@@ -574,6 +714,9 @@ public class CodeWriter
 		else
 			buf.append("_ngcc_threaded_state[" + deststate.getThreadIndex() + "]="+ deststate.getIndex());
 		buf.append(";");
+
+        if(deststate.hasTransition(Alphabet.ENTER_ATTRIBUTE))
+            buf.append("processAttribute();");
 		
 		if(deststate.getMeetingDestination()!=null)
 		{
@@ -596,79 +739,22 @@ public class CodeWriter
 			return deststate;
 	}
 	
-	private void outputSwitchBlock(SwitchBlockInfo bi)
-	{
-		boolean first = true;
-		Iterator i = bi.state2CodeFragment.entrySet().iterator();
-		while(i.hasNext())
-		{
-			Map.Entry e = (Map.Entry)i.next();
-			State st = (State)e.getKey();
-			if(!first) _output.print("else ");
-			if(st.getThreadIndex()==-1)
-				_output.println("if(_ngcc_current_state==" + st.getIndex()+") {");
-			else
-				_output.println("if(_ngcc_threaded_state[" + st.getThreadIndex() + "]=="+ st.getIndex()+") {");
-				
-			CodeAboutState cas = (CodeAboutState)e.getValue();
-			if(cas.prologue!=null) _output.println(cas.prologue);
-			
-			boolean flag = false;
-			if(cas.conditionalCodes!=null)
-			{
-				Iterator ccs = cas.conditionalCodes.iterator();
-				while(ccs.hasNext())
-				{
-					ConditionalCode cc = (ConditionalCode)ccs.next();
-					_output.print(flag? "else if(" : "if(");
-					_output.print(cc.condition);
-					_output.println(") {");
-					//_output.println(_Options.newline);
-					_output.println(cc.code);
-					//_output.println(_Options.newline);
-					_output.println("}");
-					flag = true;
-				}
-			}
-			
-			if(cas.elsecode!=null)
-			{
-				if(flag) _output.println("else {"); else _output.println("{");
-				//_output.println(_Options.newline);
-				_output.println(cas.elsecode);
-				//_output.println(_Options.newline);
-				_output.println("}");
-			}
-			
-			if(flag && (bi.getType()==Alphabet.START_ELEMENT || bi.getType()==Alphabet.END_ELEMENT))
-				_output.println("else this.throwUnexpectedElementException(qname);");
-			_output.println("}");
-			_output.println();
-			first = false;
-		}
-		
-		if(bi.getType()==Alphabet.START_ELEMENT || bi.getType()==Alphabet.END_ELEMENT)
-		{
-			if(first)
-				_output.println("this.throwUnexpectedElementException(qname);");
-			else
-				_output.println("else this.throwUnexpectedElementException(qname);");
-		}
-	}
 	
 	private static void writeHavingAttributeCheckCode(ScopeInfo sci, Iterator alphabets, StringBuffer code)
 	{
 		boolean first = true;
 		while(alphabets.hasNext())
 		{
-			Alphabet a = (Alphabet)alphabets.next();
-			if(a.getType()!=Alphabet.START_ATTRIBUTE) continue;
+			Alphabet _a = (Alphabet)alphabets.next();
+            if(!_a.isEnterAttribute())   continue;
+            
+            NameClass name = _a.asEnterAttribute().getKey();
 			
 			if(!first) code.append(" || ");
-			code.append("getAttributeIndex(");
-			code.append(sci.getNSStringConstant(a.getKey().getNSURI()));
+			code.append("runtime.getAttributeIndex(");
+			code.append(sci.getNSStringConstant(name.getNSURI()));
 			code.append(", \"");
-			code.append(a.getKey().getName());
+			code.append(name.getName());
 			code.append("\")!=-1");
 			first = false;
 		}

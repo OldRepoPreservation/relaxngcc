@@ -73,64 +73,78 @@ public class NameClass implements Comparable
 		return buf.toString();
 	}
 	
-	private void _createJudgementClause(ScopeInfo sci, StringBuffer buf, String nsuri_variable, String localname_variable)
-	{
+	private void _createJudgementClause(
+		ScopeInfo sci, StringBuffer buf, String nsuri_variable, String localname_variable) {
+            
 		String n = _Element.getLocalName();
-		if(n.equals("name"))
-		{
+		if (n.equals("name")) {
 			buf.append(localname_variable);
 			buf.append(".equals(\"");
 			buf.append(_Element.getFullText());
 			buf.append("\") && ");
 			buf.append(nsuri_variable);
 			buf.append(".equals(");
-			buf.append(sci.getNSStringConstant(_NSURI));
+			// TODO: this doesn't work for attributes but I couldn't figure out why.
+			// - Kohsuke
+			//			buf.append(sci.getNSStringConstant(_NSURI));
+			buf.append("\"" + _NSURI + "\"");
 			buf.append(")");
-		}
-		else if(n.equals("anyName"))
-		{
-			if(_Children.size()==0)
+		} else if (n.equals("anyName")) {
+			if (_Children.size() == 0)
 				buf.append("true");
-			else
-			{
+			else {
 				//skips 'except' element
-				Vector v = ((NameClass)_Children.get(0))._Children;
-				for(int i=0; i<v.size(); i++)
-				{
-					if(i!=0) buf.append(" && ");
+				Vector v = ((NameClass) _Children.get(0))._Children;
+				for (int i = 0; i < v.size(); i++) {
+					if (i != 0)
+						buf.append(" && ");
 					buf.append("!(");
-					((NameClass)v.get(i))._createJudgementClause(sci, buf, nsuri_variable, localname_variable);
+					((NameClass) v.get(i))._createJudgementClause(
+						sci,
+						buf,
+						nsuri_variable,
+						localname_variable);
 					buf.append(")");
 				}
 			}
-		}
-		else if(n.equals("nsName"))
-		{
+		} else if (n.equals("nsName")) {
 			buf.append(nsuri_variable);
 			buf.append(".equals(");
 			buf.append(sci.getNSStringConstant(_Element.getAttribute("ns")));
 			buf.append(")");
-			
+
 			//skips 'except' element
-			Vector v = ((NameClass)_Children.get(0))._Children;
-			for(int i=0; i<v.size(); i++)
-			{
-				buf.append(" && ");
-				buf.append("!(");
-				((NameClass)v.get(i))._createJudgementClause(sci, buf, nsuri_variable, localname_variable);
-				buf.append(")");
+			if (_Children.size() != 0) {
+				Vector v = ((NameClass) _Children.get(0))._Children;
+				for (int i = 0; i < v.size(); i++) {
+					buf.append(" && ");
+					buf.append("!(");
+					((NameClass) v.get(i))._createJudgementClause(
+						sci,
+						buf,
+						nsuri_variable,
+						localname_variable);
+					buf.append(")");
+				}
 			}
-		}
-		else if(n.equals("choice"))
-		{
-			for(int i=0; i<_Children.size(); i++)
-			{
-				if(i!=0) buf.append(" || ");
+		} else if (n.equals("choice")) {
+            if(_Children.size()==0)
+                throw new InternalError("empty choice");
+            
+			for (int i = 0; i < _Children.size(); i++) {
+				if (i != 0)
+					buf.append(" || ");
 				buf.append("(");
-				((NameClass)_Children.get(i))._createJudgementClause(sci, buf, nsuri_variable, localname_variable);
+				((NameClass) _Children.get(i))._createJudgementClause(
+					sci,
+					buf,
+					nsuri_variable,
+					localname_variable);
 				buf.append(")");
 			}
-		}
+		} else {
+            throw new InternalError(n);
+        }
 	}
 	
 	public int compareTo(Object obj)

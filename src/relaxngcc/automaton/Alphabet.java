@@ -5,123 +5,332 @@
  */
 
 package relaxngcc.automaton;
+import java.util.Comparator;
+
 import relaxngcc.MetaDataType;
+import relaxngcc.NGCCGrammar;
 import relaxngcc.builder.NameClass;
+import relaxngcc.builder.ScopeInfo;
 
 /**
  * An alphabet in RelaxNGCC is one of following types:
  * 1. element start
  * 2. element end
  * 3. attribute start
+ * 3. attribute end
  * 4. ref
- * 5. typed value
+ * 5. typed value (&lt;data>)
+ * 6. fixed value (&lt;value>)
  *
  */
-public class Alphabet implements Comparable
+public abstract class Alphabet implements Comparable
 {
-	public static final int START_ELEMENT = 1;
-	public static final int END_ELEMENT = 2;
-	public static final int START_ATTRIBUTE = 3;
-	public static final int TYPED_VALUE = 4;
-	public static final int FIXED_VALUE = 5;
-	public static final int REF_BLOCK = 6;
+    // type of alphabets
+	public static final int ENTER_ELEMENT      = 1;
+	public static final int LEAVE_ELEMENT      = 2;
+	public static final int ENTER_ATTRIBUTE    = 4;
+    public static final int LEAVE_ATTRIBUTE    = 8;
+    public static final int REF_BLOCK          = 64;
+	public static final int DATA_TEXT          = 16;
+	public static final int VALUE_TEXT         = 32;
+    
+    /**
+     * type of this alphabet. One of the above constants.
+     */
+	private final int _Type;
+    public final int getType() { return _Type; }
 
-	private int _Type; //one of above constants
-	private MetaDataType _DataType; //used when _Type is TYPED_VALUE
-	private String _Alias; //user-defined name for this alphabet
-	private NameClass _Key;
-	private String _Value;
-	
-	private Alphabet() {}
-	/*
-	 * constructs from type and key
-	 */
-	public Alphabet(int type, NameClass key)
-	{ _Type=type; _Key = key; }
-	public Alphabet(MetaDataType mdt, String alias)
-	{ _Type = TYPED_VALUE; _DataType=mdt; _Alias = alias; }
-	
-    public static Alphabet createFixedValue(String key, String alias)
-    {
-        Alphabet a = new Alphabet();
-		a._Type = FIXED_VALUE;
-		a._Value = key;
-        a._Alias = alias;
-        return a;
+    protected Alphabet( int type ) {
+        this._Type = type;
     }
-    public static Alphabet createRef(String n)
-	{
-        Alphabet a = new Alphabet();
-		a._Type = REF_BLOCK;
-		a._Value = n;
-		return a;
-	}
-    public static Alphabet createRef(String n, String alias)
-	{
-        Alphabet a = new Alphabet();
-		a._Type = REF_BLOCK;
-		a._Value = n;
-		a._Alias = alias;
-		return a;
-	}
-	public NameClass getKey() { return _Key; }
-	public MetaDataType getMetaDataType() { return _DataType; }
-	public String getAlias() { return _Alias; }
-	public int getType() { return _Type; }
-	public String getValue() { return _Value; }
-	
-	public boolean equals(Object obj)
-	{
-		if(!(obj instanceof Alphabet)) return false; //equals never
-		
-		Alphabet i = (Alphabet)obj;
-		if(_Type != i._Type) return false;
-		
-		if(_Type==TYPED_VALUE)
-			return _DataType.equals(i._DataType);
-		else if(_Type==FIXED_VALUE || _Type==REF_BLOCK)
-			return _Value.equals(i._Value);
-		else
-			return _Key.equals(i._Key);
-	}
 
-	public int compareTo(Object o)
-	{
-		if(!(o instanceof Alphabet)) throw new ClassCastException("not an Alphabet");
-		
-		Alphabet i = (Alphabet)o;
-		if(_Type != i._Type) return _Type-i._Type;
-		
-		if(_Type==TYPED_VALUE)
-			return _DataType.hashCode() - i._DataType.hashCode();
-		else if(_Type==FIXED_VALUE || _Type==REF_BLOCK)
-			return _Value.compareTo(i._Value);
-		else
-			return _Key.compareTo(i._Key);
-		
-	}
-	
-	/**
-	 * dumps this alphabet
-	 */
-	public String toString()
-	{
-		switch(_Type)
-		{
-			case START_ELEMENT:
-				return "startElement '" + _Key.toString() + "'";
-			case END_ELEMENT:
-				return "endElement '" + _Key.toString() + "'";
-			case START_ATTRIBUTE:
-				return "attribute '" + _Key.toString() + "'";
-			case TYPED_VALUE:
-				return "data '" + _DataType.getXSTypeName() + "'";
-			case FIXED_VALUE:
-				return "value '" + _Value + "'";
-			case REF_BLOCK:
-				return "ref '" + _Value + "'";
-			default:
-				return super.toString();
-		}
-	}
+
+    
+    //
+    // dynamic cast functions
+    //
+    public Markup           asMarkup() { return null; }
+        public EnterElement     asEnterElement() { return null; }
+        public LeaveElement     asLeaveElement() { return null; }
+        public EnterAttribute   asEnterAttribute() { return null; }
+        public LeaveAttribute   asLeaveAttribute() { return null; }
+    public Ref              asRef() { return null; }
+    public Text             asText() { return null; }
+        public ValueText        asValueText() { return null; }
+        public DataText         asDataText() { return null; }
+    
+    //
+    // type check functions
+    //
+    public final boolean isMarkup() { return asMarkup()!=null; }
+    public final boolean isEnterElement() { return asEnterElement()!=null; }
+    public final boolean isLeaveElement() { return asLeaveElement()!=null; }
+    public final boolean isEnterAttribute() { return asEnterAttribute()!=null; }
+    public final boolean isLeaveAttribute() { return asLeaveAttribute()!=null; }
+    public final boolean isRef() { return asRef()!=null; }
+    public final boolean isText() { return asText()!=null; }
+    public final boolean isValueText() { return asValueText()!=null; }
+    public final boolean isDataText() { return asDataText()!=null; }
+    
+    /**
+     * Base class for (enter|leave)(Attribute|Element).
+     */
+    public static abstract class Markup extends Alphabet {
+        protected Markup( int type, NameClass _key ) {
+            super(type);
+            this.key = _key;
+        }
+        
+        /**
+         * Label of this transition.
+         * A transition is valid if the element/attribute name
+         * is accepted by this name class.
+         */
+        private final NameClass key;
+        // TODO: the variable name "key" seems to be wrong.
+        public NameClass getKey() { return key; }
+        
+        public Markup asMarkup() { return this; }
+        
+        public int hashCode() {
+            return key.hashCode() ^ getType();
+        }
+        public int compareTo( Object o ) {
+            int r = super.compareTo(o);
+            if(r!=0)    return r;
+            
+            return key.compareTo(((Markup)o).key);
+        }
+    }
+    
+    /** Alphabet of the type "enter element." */
+    public static class EnterElement extends Markup {
+        public EnterElement( NameClass key ) {
+            super( ENTER_ELEMENT, key );
+        }
+        public EnterElement asEnterElement() { return this; }
+        public String toString() { return "<"+getKey()+">"; }
+    }
+    
+    /** Alphabet of the type "leave element." */
+    public static class LeaveElement extends Markup {
+        public LeaveElement( NameClass key ) {
+            super( LEAVE_ELEMENT, key );
+        }
+        public LeaveElement asLeaveElement() { return this; }
+        public String toString() { return "</"+getKey()+">"; }
+    }
+    
+    /** Alphabet of the type "enter attribute." */
+    public static class EnterAttribute extends Markup implements WithOrder {
+        public EnterAttribute( NameClass key, int order ) {
+            super( ENTER_ATTRIBUTE, key );
+            _Order = order;
+        }
+        public EnterAttribute asEnterAttribute() { return this; }
+        public String toString() { return "@"+getKey(); }
+        
+        private final int _Order;
+        /**
+         * Gets the number that introduces order
+         * relationship between attribute declarations.
+         * Attributes that appear later in the schema gets
+         * yonger number.
+         */
+        public final int getOrder() { return _Order; }
+    }
+    
+    /** Alphabet of the type "leave attribute." */
+    public static class LeaveAttribute extends Markup {
+        public LeaveAttribute( NameClass key ) {
+            super( LEAVE_ATTRIBUTE, key );
+        }
+        public LeaveAttribute asLeaveAttribute() { return this; }
+        public String toString() { return "/@"+getKey(); }
+    }
+    
+    /** Alphabet of the type "ref." */
+    public static class Ref extends Alphabet implements WithOrder {
+        public Ref( ScopeInfo target, String alias, String params, int order ) {
+            super( REF_BLOCK );
+            this._Target = target;
+            this._Alias  = alias;
+            this._Params = params;
+            this._Order = order;
+        }
+        public Ref( ScopeInfo _target, int order ) {
+            this(_target,null,null,order);
+        }
+        public Ref asRef() { return this; }
+        
+        /** Name of the scope object to be spawned. */
+        private final ScopeInfo _Target;
+
+        /** Gets the child scope to be spawned. */
+        public ScopeInfo getTargetScope() {
+            return _Target;
+        }
+        
+        /** order relationship between attributes and refs. */
+        private final int _Order;
+        public final int getOrder() { return _Order; }
+        
+        /**
+         * Additional parameters passed to
+         * the constructor of the child object.
+         * 
+         * Used only with Alphabets of the REF_BLOCK type.
+         */
+        private final String _Params;
+        public String getParams() {
+            // TODO: this might be an excessively work.
+            // maybe I should just return the value as is
+            if(_Params==null)  return "";
+            return ','+_Params;
+        }
+        
+        /**
+         * User-defined variable name assigned to this alphabet.
+         * User program can access this child object through this
+         * variable.
+         */
+        private final String _Alias;
+        public String getAlias() { return _Alias; }
+
+        public String toString() { return "ref '"+_Target.getNameForTargetLang()+"'"; }
+        
+        public int hashCode() {
+            return h(_Target)^h(_Alias)^h(_Params);
+        }
+        public int compareTo( Object o ) {
+            int r = super.compareTo(o);
+            if(r!=0)    return r;
+            
+            Ref rhs = (Ref)o;
+            // TODO: alphabets are not comparable!
+            r = _Target.hashCode()-rhs._Target.hashCode();
+            if(r!=0)    return r;
+            r = compare(_Alias,rhs._Alias);
+            if(r!=0)    return r;
+            return compare(_Params,rhs._Params);
+        }
+    }
+    
+    
+    public static abstract class Text extends Alphabet {
+        protected Text( int _type, String _alias ) {
+            super(_type);
+            this.alias = _alias;
+        }
+        public Text asText() { return this; }
+        
+        /**
+         * User-defined variable name assigned to this alphabet.
+         * User program can access this child object through this
+         * variable.
+         */
+        private final String alias;
+        public String getAlias() { return alias; }   
+        
+        public int compareTo( Object o ) {
+            int r = super.compareTo(o);
+            if(r!=0)    return r;
+            
+            return compare(alias,((Text)o).alias);
+        }
+    }
+    
+    public static class ValueText extends Text {
+        public ValueText( String _value, String _alias ) {
+            super(VALUE_TEXT,_alias);
+            this.value = _value;
+        }
+        public ValueText asValueText() { return this; }
+        
+        /**
+         * Value of the &lt;value> element.
+         */
+        private final String value;
+        public String getValue() { return value; }
+        
+        public String toString() { return "value '"+value+"'"; }
+        public int hashCode() { return value.hashCode(); }
+        public int compareTo( Object o ) {
+            int r = super.compareTo(o);
+            if(r!=0)    return r;
+            
+            return compare(value,((ValueText)o).value);
+        }
+    }
+    
+    public static class DataText extends Text {
+        public DataText( MetaDataType dt, String _alias ) {
+            super(DATA_TEXT,_alias);
+            this._DataType = dt;
+        }
+        public DataText asDataText() { return this; }
+
+        /** Datatype of this &lt;data> element. */
+        private final MetaDataType _DataType;
+        public MetaDataType getMetaDataType() { return _DataType; }
+        
+        public String toString() { return "data '"+_DataType.getXSTypeName()+"'"; }
+        public int hashCode() { return _DataType.hashCode(); }
+        public int compareTo( Object o ) {
+            int r = super.compareTo(o);
+            if(r!=0)    return r;
+            
+            // TODO: datatype is uncomparable!!
+//            return compare(_DataType,((DataText)o)._DataType);
+            return _DataType.hashCode() - ((DataText)o)._DataType.hashCode();
+        }
+    }
+
+
+    public final boolean equals( Object o ) {
+        if( o instanceof Alphabet )
+            return compareTo(o)==0;
+        else
+            return false;
+    }
+    
+    public int compareTo(Object o) {
+        if(!(o instanceof Alphabet)) throw new ClassCastException("not an Alphabet");
+        
+        return _Type-((Alphabet)o)._Type;
+    }
+    
+    // the hashCode method needs to be implemented properly
+    public abstract int hashCode();
+
+    /** Computes the hashCode of the object, even if it's null. */
+    protected static int h( Object o ) {
+        if(o==null) return 0;
+        else        return o.hashCode();
+    }
+    /** Compares two objects, even if they are null. */
+    protected static int compare( Comparable o1, Comparable o2 ) {
+        if(o1==null && o2==null)    return 0;
+        if(o1==null)                return -1;
+        if(o2==null)                return +1;
+        return o1.compareTo(o2);
+    }
+    
+    /**
+     * Implemented by those alphabets that have orders.
+     * Currently, just EnterAttribute and Ref.
+     */
+    public static interface WithOrder {
+        public int getOrder();
+    }
+    
+    /**
+     * Comparator that can be used to sort ordered alphabets into
+     * descending orders (larger numbers first.)
+     */
+    public static Comparator orderComparator = new Comparator() {
+        public int compare( Object o1, Object o2 ) {
+            return ((WithOrder)o2).getOrder()-((WithOrder)o1).getOrder();
+        }
+    };
 }

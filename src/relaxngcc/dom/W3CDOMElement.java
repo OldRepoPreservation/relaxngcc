@@ -8,8 +8,9 @@ package relaxngcc.dom;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import relaxngcc.NGCCGrammar;
 
-public class W3CDOMElement implements NGCCElement
+public class W3CDOMElement extends NGCCElement
 {
 	private Element _Element;
 	
@@ -19,6 +20,10 @@ public class W3CDOMElement implements NGCCElement
 	public NGCCNodeList getChildNodes() { return new W3CDOMNodeList(_Element.getChildNodes()); }
 	
 	public String getAttributeNS(String uri, String name) { return _Element.getAttributeNS(uri,name); }
+
+    public boolean hasAttributeNGCC(String localName) {
+        return _Element.hasAttributeNS(NGCCGrammar.NGCC_NSURI,localName);
+    }
 	
 	public String getAttribute(String name) { return _Element.getAttribute(name); }
 	

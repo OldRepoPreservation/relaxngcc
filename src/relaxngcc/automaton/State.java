@@ -10,23 +10,19 @@ import java.io.PrintStream;
 
 import relaxngcc.NGCCGrammar;
 import relaxngcc.dom.NGCCElement;
+import relaxngcc.util.SelectiveIterator;
 import relaxngcc.builder.ScopeInfo;
 
 /**
  * A State object has zero or more Transition objects
  */
-public class State implements Comparable
+public final class State implements Comparable
 {
 	public static final int LISTMODE_PRESERVE = 0;
 	public static final int LISTMODE_ON = 1;
 	public static final int LISTMODE_OFF = 2;
 
 	private Set _AllTransitions;
-	private Set _StartElementTransitions; //collection of startElement type transitions
-	private Set _EndElementTransitions; //collection of endElement type transitions
-	private Set _TextTransitions; //collection of text type transitions
-	private Set _AttributeTransitions; //collection of attribute type transitions
-	private Set _RefTransitions; //collection of ref type transitions 
 	private Set _ReversalTransitions; //collection of transitions that comes to this state from other state
     
 	//acceptable or not
@@ -34,9 +30,27 @@ public class State implements Comparable
 	public void setAcceptable(boolean newvalue) { _Acceptable=newvalue; }
 	public boolean isAcceptable() { return _Acceptable; }
 	
-	private String _ActionOnExit;
-	public String getActionOnExit() { return _ActionOnExit; }
-	public void addActionOnExit(String code) { _ActionOnExit = (_ActionOnExit==null)? code : code + _ActionOnExit; }
+    /** Actions that get executed when the execution leaves this state. */
+	private final Vector actionsOnExit = new Vector();
+    
+    public ScopeInfo.Action[] getActionsOnExit() {
+        return (ScopeInfo.Action[])actionsOnExit.toArray(new ScopeInfo.Action[0]);
+    }
+    /** Gets the code to invoke exit-actions. */
+	public String invokeActionsOnExit() {
+        StringBuffer buf = new StringBuffer();
+        for( int i=0; i<actionsOnExit.size(); i++ )
+            buf.append(((ScopeInfo.Action)actionsOnExit.get(i)).invoke());
+        return buf.toString();
+    }
+    
+	public void addActionOnExit(ScopeInfo.Action act) {
+       actionsOnExit.add(0,act);
+    }
+    public void addActionsOnExit(ScopeInfo.Action[] act) {
+        for( int i=act.length-1; i>=0; i-- )
+            addActionOnExit(act[i]);
+    }
 	 
 	//for interleave support
 	private State _MeetingDestination;
@@ -52,6 +66,7 @@ public class State implements Comparable
 	private int _ThreadIndex;
 
 	private NGCCElement _LocationHint;
+    public NGCCElement getLocationHint() { return _LocationHint; }
 	
 	//about list operation
 	private int _ListMode;
@@ -64,11 +79,6 @@ public class State implements Comparable
 		_Container = container;
 		_LocationHint = e;
 		_AllTransitions = new HashSet();
-		_StartElementTransitions = new HashSet();
-		_EndElementTransitions = new HashSet();
-		_TextTransitions = new HashSet();
-		_AttributeTransitions = new HashSet();
-		_RefTransitions = new HashSet();
         
         _ReversalTransitions = new HashSet();
         
@@ -81,111 +91,148 @@ public class State implements Comparable
 	public void addTransition(Transition t)
 	{
 		_AllTransitions.add(t);
-		switch(t.getAlphabet().getType())
+        t.nextState().addReversalTransition(t);
+/*		switch(t.getAlphabet().getType())
 		{
-			case Alphabet.START_ELEMENT:
-				addTransitionWithCheck(_StartElementTransitions, t, null);
-				break;
-			case Alphabet.END_ELEMENT:
-				addTransitionWithCheck(_EndElementTransitions, t, null);
-				break;
-			case Alphabet.START_ATTRIBUTE:
-				addTransitionWithCheck(_AttributeTransitions, t, null);
-				break;
 			case Alphabet.TYPED_VALUE:
 			case Alphabet.FIXED_VALUE:
 				addTransitionWithCheck(_TextTransitions, t, null);
 				break;
-			case Alphabet.REF_BLOCK:
-				addTransitionWithCheck(_RefTransitions, t, null);
-				break;
 		}
-	}
-	
-	public boolean hasStartElementTransition() { return !_StartElementTransitions.isEmpty(); }
-	public boolean hasEndElementTransition()   { return !_EndElementTransitions.isEmpty(); }
-	public boolean hasAttributeTransition()    { return !_AttributeTransitions.isEmpty(); }
-	public boolean hasTextTransition()         { return !_TextTransitions.isEmpty(); }
-	public boolean hasRefTransition()          { return !_RefTransitions.isEmpty(); }
+*/	}
 
-	public Iterator iterateTransitions()             { return _AllTransitions.iterator(); }
-	public Iterator iterateStartElementTransitions() { return _StartElementTransitions.iterator(); }
-	public Iterator iterateEndElementTransitions()   { return _EndElementTransitions.iterator(); }
-	public Iterator iterateAttributeTransitions()    { return _AttributeTransitions.iterator(); }
-	public Iterator iterateTextTransitions()         { return _TextTransitions.iterator(); }
-	public Iterator iterateRefTransitions()          { return _RefTransitions.iterator(); }
+    public void removeTransition( Transition t) {
+        _AllTransitions.remove(t);
+        t.nextState()._ReversalTransitions.remove(t);
+    }
+	
+    private class TypeIterator extends SelectiveIterator {
+        TypeIterator( int _typeMask ) {
+            super(_AllTransitions.iterator());
+            this.typeMask=_typeMask;
+        }
+        private final int typeMask;
+        protected boolean filter( Object o ) {
+            return (((Transition)o).getAlphabet().getType()&typeMask)!=0;
+        }
+    }
+
+    public Iterator iterateTransitions() { return _AllTransitions.iterator(); }
+
+    /**
+     * Checks if this state has transitions with
+     * at least one of given types of alphabets.
+     * 
+     * @param alphabetTypes
+     *      OR-ed combination of alphabet types you want to iterate.
+     */
+    public boolean hasTransition( int alphabetTypes ) {
+        return new TypeIterator(alphabetTypes).hasNext();
+    }
+    
+    /**
+     * Iterate transitions with specified alphabets.
+     * 
+     * @param alphabetTypes
+     *      OR-ed combination of alphabet types you want to iterate.
+     */
+    public Iterator iterateTransitions( int alphabetTypes ) {
+        return new TypeIterator(alphabetTypes);
+    }
+    
 	public Iterator iterateReversalTransitions()     { return _ReversalTransitions.iterator(); }
     
-	public Set firstStartElementAlphabets() { return transitionsToFirstAlphabets(_StartElementTransitions); }
-	public Set firstTextAlphabets()         { return transitionsToFirstAlphabets(_TextTransitions); }
-	public Set firstAttributeAlphabets()    { return transitionsToFirstAlphabets(_AttributeTransitions); }
-	
+    /**
+     * Computes the FIRST alphabet set of this state.
+     * Only returns alphabets of the given type.
+     */
+    public Set firstAlphabets( int alphabetType ) {
+        return transitionsToFirstAlphabets(iterateTransitions(alphabetType));
+    }	
 	public void addReversalTransition(Transition t) { _ReversalTransitions.add(t); }
     
-	public void mergeTransitions(State s)
-	{
-		mergeTransitions(s, null);
-	}
-	public void mergeTransitions(State s, String action)
-	{
-		addTransitionsWithCheck(_StartElementTransitions, s._StartElementTransitions, action);
-		addTransitionsWithCheck(_EndElementTransitions, s._EndElementTransitions, action);
-		addTransitionsWithCheck(_AttributeTransitions, s._AttributeTransitions, action);
-		addTransitionsWithCheck(_TextTransitions, s._TextTransitions, action);
-		addTransitionsWithCheck(_RefTransitions, s._RefTransitions, action);
-		_AllTransitions.addAll(s._AllTransitions);
-	}
-	
-	public int compareTo(Object obj)
-	{
-		if(!(obj instanceof State)) throw new ClassCastException("not State object");
-		
-		return _Index-((State)obj)._Index;
+    public int compareTo(Object obj)
+    {
+        if(!(obj instanceof State)) throw new ClassCastException("not State object");
+        
+        return _Index-((State)obj)._Index;
+    }
+    
+    public void mergeTransitions(State s) {
+        if(this==s)
+            // this causes ConcurrentModificationException.
+            // so we need to treat this as a special case.
+            // 
+            // merging a state to itself without any action
+            // is a no-operation. so we can just return.
+            return;
+        mergeTransitions(s, null);
+    }
+    
+    /**
+     * For all the transitions leaving from the specified state,
+     * add it to this state by appending the specified action
+     * (possibly null) at the head of its prologue actions.
+     */
+	public void mergeTransitions(State s, ScopeInfo.Action action) {
+        Iterator itr = s.iterateTransitions();
+        while(itr.hasNext())
+            // TODO: why there needs to be two methods "addTransitionWithCheck" and "addTransition"?
+            addTransitionWithCheck( (Transition)itr.next(), action );
 	}
 	
 	//reports if this state has ambiguous transitions. [target] is a set of Transitions.
-	private void addTransitionWithCheck(Set currentTransitions, Transition newtransition, String action)
+    /**
+     * Adds the specified transition to this state,
+     * and reports any ambiguity error if detected.
+     */
+	private void addTransitionWithCheck(
+        Transition newtransition, ScopeInfo.Action action)
 	{
 		Alphabet a = newtransition.getAlphabet();
-		Iterator it = currentTransitions.iterator();
-		while(it.hasNext())
-		{
+        
+		Iterator it = iterateTransitions();
+		while(it.hasNext()) {
 			Transition tr = (Transition)it.next();
-			if(tr==newtransition) continue;
 			Alphabet existing_alphabet = tr.getAlphabet();
             
-            if(a.getType()==Alphabet.TYPED_VALUE && existing_alphabet.getType()==Alphabet.TYPED_VALUE)
+            if(a.isText())
             	printAmbiguousTransitionsWarning(tr, newtransition);
-			else if(existing_alphabet.equals(a) && tr.nextState()!=newtransition.nextState())
-            {
-                if(newtransition.getAction()==null && tr.getAction()==null) //if both of them have no action, merge is possible
-                {
-                    tr.nextState().mergeTransitions(newtransition.nextState());
-                    Iterator r = newtransition.nextState().iterateReversalTransitions();
-                    while(r.hasNext())
-                        ((Transition)r.next()).changeDestination(tr.nextState());
-					return; //ignores newtransition
+			else
+            if(existing_alphabet.equals(a)) {
+                if(tr.nextState()==newtransition.nextState()) {
+                    if(action==null)
+                        return; // trying to add the same transition. no-op.
+                    else
+                        // the same transition is being added but with an action.
+                        // I guess this is ambiguous, but not sure. - Kohsuke
+                        printAmbiguousTransitionsWarning(tr, newtransition);
+                } else {
+	                if(!newtransition.hasAction() && !tr.hasAction()) {
+	                    // only if both of them have no action, we can merge them.
+	                    tr.nextState().mergeTransitions(newtransition.nextState());
+	                    Iterator r = newtransition.nextState().iterateReversalTransitions();
+	                    while(r.hasNext())
+	                        ((Transition)r.next()).changeDestination(tr.nextState());
+						return; //ignores newtransition
+	                } else
+	            		printAmbiguousTransitionsWarning(tr, newtransition);
                 }
-                else
-            		printAmbiguousTransitionsWarning(tr, newtransition);
             }
 		}
 		
+        // always make a copy, because we might modify actions later.
+        // in general, it is dangerous to share transitions.
+        newtransition = (Transition)newtransition.clone();
+        
 		if(action!=null)
-		{
-			newtransition = (Transition)newtransition.clone();
-			newtransition.appendActionAtHead(action);
-		}
+			newtransition.insertPrologueAction(action);
 		
-        currentTransitions.add(newtransition);
+        _AllTransitions.add(newtransition);
         newtransition.nextState().addReversalTransition(newtransition);
 	}
-	private void addTransitionsWithCheck(Set target, Set newtransitions, String action)
-	{
-		Iterator it = newtransitions.iterator();
-		while(it.hasNext()) addTransitionWithCheck(target, (Transition)it.next(), action);
-	}
-	
+
+/*	
 	private static Set transitionsToFirstAlphabets(Set transitions)
 	{
 		Set result = new HashSet();
@@ -197,7 +244,16 @@ public class State implements Comparable
 		}
 		return result;
 	}
-	
+*/
+    private static Set transitionsToFirstAlphabets(Iterator itr) {
+        Set result = new HashSet();
+        while(itr.hasNext()) {
+            Transition t = (Transition)itr.next();
+            result.add(t.getAlphabet());
+        }
+        return result;
+    }
+    	
 	public void checkFirstAlphabetAmbiguousity()
 	{
 		TreeSet alphabets = new TreeSet();
@@ -209,11 +265,12 @@ public class State implements Comparable
 		}
 		
 		NGCCGrammar gr = _Container.getGrammar();
-		Iterator refs = iterateRefTransitions();
+		Iterator refs = iterateTransitions(Alphabet.REF_BLOCK);
 		while(refs.hasNext())
 		{
 			Transition ref = (Transition)refs.next();
-			ScopeInfo sci = gr.getScopeInfoByName(ref.getAlphabet().getValue());
+			ScopeInfo sci = ref.getAlphabet().asRef().getTargetScope();
+            
 			Iterator as = alphabets.iterator();
 			while(as.hasNext())
 			{

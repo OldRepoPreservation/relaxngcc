@@ -5,63 +5,78 @@
  */
 
 package relaxngcc.builder;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.Iterator;
-import java.util.Vector;
-import java.util.StringTokenizer;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintStream;
-import relaxngcc.automaton.State;
-import relaxngcc.automaton.Transition;
-import relaxngcc.automaton.Alphabet;
+import java.io.PrintWriter;
+import java.io.StringReader;
+import java.text.MessageFormat;
+import java.util.HashSet;
+import java.util.Hashtable;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+import java.util.Stack;
+import java.util.StringTokenizer;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.Vector;
+
 import relaxngcc.NGCCGrammar;
 import relaxngcc.NGCCUtil;
 import relaxngcc.Options;
+import relaxngcc.automaton.Alphabet;
+import relaxngcc.automaton.State;
+import relaxngcc.automaton.Transition;
+import relaxngcc.javabody.JavaBodyParser;
+import relaxngcc.util.SelectiveIterator;
 
 /**
  * information about a scope
  */
-public class ScopeInfo
+public final class ScopeInfo
 {
 	private NGCCGrammar _Grammar;
 	public NGCCGrammar getGrammar() { return _Grammar; }
 	
 	private Set _AllStates;
-	private Set _StartElement_States; //a set of states that have transition(s) with StartElement alphabet
-	private Set _EndElement_States;   //a set of states that have transition(s) with EndElement alphabet
-	private Set _Text_States;         //a set of states that have transition(s) with Typed-value alphabet
-	private Set _Attribute_States;    //a set of states that have transition(s) with Attribute alphabet
-	private Set _Ref_States;    //a set of states that have transition(s) with Attribute alphabet
-	private Set _Acceptable_States;
 
 	private Set _FollowAlphabet;
-	private Set _ContainingScopeForFollowAlphabet;
 	private Set _FirstAlphabet;
-	private Set _ContainingScopeForFirstAlphabet;
+    public void setFirstAndFollow( Set first, Set follow ) {
+        _FirstAlphabet = first;
+        _FollowAlphabet = follow;
+    }
 	
     private Set _ChildScopes; //child lambda scopes
     
-	private boolean _Dirty;
 	private boolean _Root; //true if this ScopeInfo represents the content of <start> tag
 	private Map _NSURItoStringConstant;
 	
 	private State _InitialState;
-	private String _InitialCode;
+    /**
+     * Code that gets executed at the beginning of this scope.
+     */
+    // TODO: initial action is not used!
+	private Action _InitialAction;
     private boolean _IsLambda; //lambda scope or not
 	private boolean _Nullable;
 	private boolean _IsInline;
 	private int _ThreadCount;
 
 	public State getInitialState() { return _InitialState; }
-	public boolean nullable() { return _Nullable; }	
+	public boolean isNullable() { return _Nullable; }	
 	public boolean isLambda() { return _IsLambda; }
 	public boolean isInline() { return _IsInline; }
     
     public void setNullable(boolean v) { _Nullable = v; }
-	public void setInitialState(State s, String initialcode) { _InitialState = s; _InitialCode = initialcode; }
+	public void setInitialState(State s, Action initAction) {
+        _InitialState = s;
+        _InitialAction = initAction;
+    }
 	public void setThreadCount(int n) { _ThreadCount = n; } 
 	
     //simple attributes
@@ -70,51 +85,265 @@ public class ScopeInfo
 	private String _PackageName; //java package name
     private String _Access; //java access identifier i.e. "private final"
 	private String _Name; //scope name
-
+    
 	public String getNameForTargetLang() { return _NameForTargetLang; }
 	public String getName() { return _Name; }
 	public String getPackageName() { return _PackageName; }
 	public String getLocation() { return _Location; }
 	public int getStateCount() { return _AllStates.size(); }
 	
+    
+    /**
+     * Parameters to the constructor. Array of Aliases.
+     */
+    private Alias[] constructorParams;
+    
+    /**
+     * The name of the variable that will be "returned" to the
+     * parent scope.
+     * 
+     * The parent scope will access this variable via the alias.
+     * Defaults to "this", meaning that the class itself will be
+     * returned.
+     */
+    private String returnVariable = "this";
+    public String getReturnVariable() { return returnVariable; }
+    
+    /**
+     * The type of the <code>returnVariable</code> field.
+     * Ideally, one could figure this out by parsing the Java code.
+     * For now, we will ask the user to specify this value.
+     * 
+     * If null, the type of this class will be used as the default value.
+     */
+    private String returnType = null;
+    public String getReturnType() {
+        if(returnType!=null)    return returnType;
+        
+        if(_PackageName==null)  return _NameForTargetLang;
+        else    return _PackageName+'.'+_NameForTargetLang;
+    }
+    
+    
+    private class AlphabetIterator extends SelectiveIterator {
+        AlphabetIterator( Iterator base, int _typeMask ) {
+            super(base);
+            this.typeMask=_typeMask;
+        }
+        private final int typeMask;
+        protected boolean filter( Object o ) {
+            return (((Alphabet)o).getType()&typeMask)!=0;
+        }
+    }
+    
 	public Iterator iterateFirstAlphabets()  { return _FirstAlphabet.iterator(); }
-	public Iterator iterateFollowAlphabets() { return _FollowAlphabet.iterator(); }
+    /** Iterates FIRST alphabets that match the given type mask. */
+	public Iterator iterateFirstAlphabets( int typeMask ) {
+        return new AlphabetIterator(iterateFirstAlphabets(),typeMask);
+    }
+    
+    public Iterator iterateFollowAlphabets() { return _FollowAlphabet.iterator(); }
+    /** Iterates FOLLOW alphabets that match the given type mask. */
+    public Iterator iterateFollowAlphabets( int typeMask ) {
+        return new AlphabetIterator(iterateFollowAlphabets(),typeMask);
+    }
+    
+    
 	public boolean isFollowAlphabet(Alphabet a) { return _FollowAlphabet.contains(a); }
 	public boolean isFirstAlphabet(Alphabet a) { return _FirstAlphabet.contains(a); }
-	
+    
+    
     public Iterator iterateChildScopes() { return _ChildScopes.iterator(); }
     
-    public boolean containsFirstAttributeAlphabet()
-    {
-    	Iterator it = _FirstAlphabet.iterator();
-    	while(it.hasNext())
-    	{
-    		Alphabet a = (Alphabet)it.next();
-    		if(a.getType()==Alphabet.START_ATTRIBUTE) return true;
-    	}
-    	return false;
+    /**
+     * Returns true if the FIRST alphabets includes alphabets
+     * of given types.
+     */
+    public boolean hasFirstAlphabet(final int type) {
+        Iterator itr = new SelectiveIterator(_FirstAlphabet.iterator()) {
+            public boolean filter( Object o ) {
+                return ((Alphabet)o).getType()==type;
+            }
+        };
+        return itr.hasNext();
     }
-    public boolean containsFollowAttributeAlphabet()
-    {
-    	Iterator it = _FollowAlphabet.iterator();
-    	while(it.hasNext())
-    	{
-    		Alphabet a = (Alphabet)it.next();
-    		if(a.getType()==Alphabet.START_ATTRIBUTE) return true;
-    	}
-    	return false;
+    
+    public boolean containsFollowAttributeAlphabet() {
+        return iterateFollowAlphabets(Alphabet.ENTER_ATTRIBUTE).hasNext();
+    }
+    
+    /**
+     * Fixes the attribute handlers so that a transition by
+     * an attribute will always return to the same state that
+     * it started.
+     */
+    public void copyAttributeHandlers() {
+        State[] states = (State[]) _AllStates.toArray(new State[_AllStates.size()]);
+        for( int i=0; i<states.length; i++ ) {
+            State st = states[i];
+            
+            Vector transitions = new Vector();
+            Iterator itr = st.iterateTransitions(Alphabet.ENTER_ATTRIBUTE);
+            while(itr.hasNext())
+                transitions.add(itr.next());
+                
+            for( int j=0; j<transitions.size(); j++ ) {
+                // replace this transition by a cloned transition.
+                Transition t = (Transition)transitions.get(j);
+                Transition t2 = cloneAttributeTransition(t,st);
+                st.removeTransition(t);
+                st.addTransition(t2);
+            }
+        }
+    }
+    
+    /**
+     * Clones a sub-automaton that starts from t and ends with
+     * leaveAttribute. The destination state of such a leaveAttribute
+     * event would be re-written to the 'dest' state.
+     */
+    private Transition cloneAttributeTransition( Transition t, State dest ) {
+        return cloneAttributeTransition(t,dest,new Hashtable());
+    }
+    
+    /**
+     * @param m
+     *      map from the original state to the cloned state.
+     */
+    private Transition cloneAttributeTransition( Transition t, State dest,
+        Map m ) {
+            
+        if(t.getAlphabet().isLeaveAttribute())
+            // this is the leave attribute transition. So go back to
+            // the 'dest' state.
+            return t.clone(dest);
+        
+        State orig = t.nextState();
+        
+        State st = (State)m.get(orig);
+        if(st==null) {
+            // we need to clone the state
+            st = new State(
+                this,
+                orig.getThreadIndex(),
+                getStateCount(),
+                orig.getLocationHint());
+            addState(st);
+            m.put(orig,st);
+            
+            st.setAcceptable(orig.isAcceptable());
+            st.setListMode  (orig.getListMode());
+            
+            // clone transitions
+            Iterator itr = orig.iterateTransitions();
+            while(itr.hasNext())
+                st.addTransition(cloneAttributeTransition(
+                    (Transition)itr.next(), dest, m));
+        }
+        
+        return t.clone(st);
+    }
+    
+    /**
+     * Makes the automaton smaller.
+     * 
+     * In actuality, this method only removes unreachable states.
+     */
+    public void minimizeStates() {
+        Stack queue = new Stack();
+        Set reachable = new HashSet();
+        
+        queue.push(getInitialState());
+        reachable.add(getInitialState());
+        
+        while(!queue.isEmpty()) {
+            State s = (State)queue.pop();
+            Iterator itr = s.iterateTransitions();
+            while(itr.hasNext()) {
+                Transition t = (Transition)itr.next();
+                
+                if(reachable.add(t.nextState()))
+                    queue.push(t.nextState());
+            }
+        }
+        
+        _AllStates.retainAll(reachable);
     }
     
 	//about header and body
 	private String _HeaderSection = "";
-	private String _Body = "";
 	public void appendHeaderSection(String c) { _HeaderSection += c; }
-	public void appendBody(String c) { _Body += c; }
+    
+    private String _Body = "";
+
+    /** Name of fields defined in &lt;cc:java-body>. */
+    private final Set userDefinedFields = new HashSet();
+    
+    /** Appends new &lt;java-body>. */
+    public void appendBody(String c) {
+        _Body += c;
+        
+        JavaBodyParser p = new JavaBodyParser(new StringReader(c));
+        
+        try {
+            p.JavaBody();       // parse the text
+        } catch( relaxngcc.javabody.ParseException e ) {
+            // TODO: report error location and such.
+            System.err.println("[Warning] unable to parse <java-body>");
+        }
+        
+        userDefinedFields.addAll(p.fields);
+    }
 	
 	//type usage information. these flags affect the output of import statements
 	private boolean _UsingBigInteger;
 	private boolean _UsingCalendar;
+    
+    /** All actions in this scope. */
+    private final Vector actions = new Vector();
+    
+    /** Creates a new Action object inside this scope. */
+    public Action createAction( String code ) {
+        Action a = new Action(code);
+        actions.add(a);
+        return a;
+    }
+    public Action createAction( StringBuffer code ) {
+        return createAction(code.toString());
+    }
+    
+    /**
+     * User-defined code fragment.
+     */
+    public final class Action {
+        Action( String _codeFragment ) {
+            this.codeFragment = _codeFragment;
+            this.uniqueId = actionIdGen++;
+        }
+        
+        /** A code fragment that the user wrote. */
+        private final String codeFragment;
+        public String getCodeFragment() { return codeFragment; }
+        
+        /** Gets the code to invoke this action. */
+        public String invoke() { return "action"+uniqueId+"();"; }
+        
+        /** ID number that uniquely identifies this fragment. */
+        private final int uniqueId;
+        public int getUniqueId() { return uniqueId; }
+        
+        /** Generates the action function. */
+        void generate( PrintStream out ) {
+            out.println("void action"+uniqueId+"() throws SAXException {");
+            out.println(codeFragment);
+            out.println("}");
+        }
+    }
+    
+    /** used to generate unique IDs for Actions. */
+    private int actionIdGen = 0;
 	
+    
 	private class Alias
 	{
 		public final String name;
@@ -122,7 +351,8 @@ public class ScopeInfo
 		public final boolean isUserObject;
 		public Alias(String n, String t, boolean user) { name=n; javatype=t; isUserObject=user; }
 	}
-	private Vector _Aliases;
+    /** All the aliases indexed by their names. */
+	private final Map aliases = new TreeMap();
 	
 	public ScopeInfo(NGCCGrammar g, int type, String location, boolean inline)
 	{
@@ -131,29 +361,49 @@ public class ScopeInfo
 		_Root = (type==ScopeBuilder.TYPE_ROOT);
 		_IsInline = inline;
 		_Location = location;
-		_Aliases = new Vector();
 		_UsingBigInteger = false;
 		_UsingCalendar = false;
 	
 		_AllStates = new TreeSet();
-		_StartElement_States = new TreeSet();
-		_EndElement_States = new TreeSet();
-		_Text_States = new TreeSet();
-		_Attribute_States = new TreeSet();
-		_Ref_States = new TreeSet();
-		_Acceptable_States = new TreeSet();
 		
         _ChildScopes = new HashSet();
 		_FollowAlphabet = new TreeSet();
         
 		_NSURItoStringConstant = new TreeMap();
 	}
-	public void setClassNames(String name, String nameForTargetLang, String packageName, String access)
+    
+    /**
+     * Sets various information about this scope.
+     */
+	public void setParameters(
+        String name, String nameForTargetLang, String packageName, String access,
+        String returnType, String returnValue,
+        String params)
 	{
 		_Name = name;
 		_NameForTargetLang = nameForTargetLang;
 		_PackageName = packageName;
 		_Access = access;
+        
+        this.returnType = returnType;
+        this.returnVariable = returnValue;
+        
+        Vector vec = new Vector();
+        // parse constructor parameters
+        if(params!=null) {
+            StringTokenizer tokens = new StringTokenizer(params,",");
+            while(tokens.hasMoreTokens()) {
+                // (type,name) pair.
+                String pair = tokens.nextToken().trim();
+                int idx = pair.indexOf(' ');
+                String vartype = pair.substring(0,idx).trim();
+                String varname = pair.substring(idx+1).trim();
+                
+                vec.add(
+                    addUserDefinedAlias(varname,vartype));
+            }
+        }
+        constructorParams = (Alias[])vec.toArray(new Alias[vec.size()]);
 	}
 	
 	public void addNSURI(String nsuri)
@@ -184,181 +434,66 @@ public class ScopeInfo
 	
     public void addChildScope(ScopeInfo info) { _ChildScopes.add(info); }
     
-	public Iterator iterateStatesHavingStartElementOrRef()
-	{
-		if(_Dirty) collectStates();
-		TreeSet result = new TreeSet(_StartElement_States);
-		result.addAll(_Ref_States);
-		return result.iterator();
-	}
-	public Iterator iterateStatesHavingEndElement()
-	{ if(_Dirty) collectStates(); return _EndElement_States.iterator(); }
-	public Iterator iterateStatesHavingAttribute()
-	{ if(_Dirty) collectStates(); return _Attribute_States.iterator(); }
-	public Iterator iterateStatesHavingText()
-	{ if(_Dirty) collectStates(); return _Text_States.iterator(); }
-	public Iterator iterateAllStates()
-	{ return _AllStates.iterator(); }
-	public Iterator iterateStatesHavingRef()
-	{ if(_Dirty) collectStates(); return _Ref_States.iterator(); }
-	public Iterator iterateAcceptableStates()
-	{ if(_Dirty) collectStates(); return _Acceptable_States.iterator(); }
+    
+    /**
+     * Iterates states that have transitions with one of specified
+     * alphabets.
+     */
+	public Iterator iterateStatesHaving( final int alphabetTypes ) {
+        return new SelectiveIterator(iterateAllStates()) {
+            protected boolean filter( Object o ) {
+                return ((State)o).hasTransition(alphabetTypes);
+            }
+        };
+    }
+    
+	public Iterator iterateAcceptableStates() {
+        return new SelectiveIterator(_AllStates.iterator()) {
+            protected boolean filter( Object o ) {
+                return ((State)o).isAcceptable();
+            }
+        };
+    }
+    public Iterator iterateAllStates() {
+        return _AllStates.iterator();
+    }
+    
+    
 	
-	private void collectStates()
-	{
-		_StartElement_States.clear();
-		_EndElement_States.clear();
-		_Text_States.clear();
-		_Attribute_States.clear();
-		
-		Iterator i = _AllStates.iterator();
-		while(i.hasNext())
-		{
-			State state = (State)i.next();
-			if(state.hasStartElementTransition())
-				_StartElement_States.add(state);
-			if(state.hasEndElementTransition())
-				_EndElement_States.add(state);
-			if(state.hasAttributeTransition())
-				_Attribute_States.add(state);
-			if(state.hasTextTransition())
-				_Text_States.add(state);
-			if(state.hasRefTransition())
-				_Ref_States.add(state);
-			if(state.isAcceptable())
-				_Acceptable_States.add(state);
-		}
-		_Dirty = false;
-	}
-	
-	public void addState(State state)
-	{
+	public void addState(State state) {
 		_AllStates.add(state);
-		_Dirty = true;
 	}
 	
-	public void addAlias(String name, String xsdtype)
+	public Alias addAlias(String name, String xsdtype)
 	{
-		String javatype = NGCCUtil.XSDTypeToJavaType(xsdtype);
-		_Aliases.add(new Alias(name, javatype, false));
+        String javatype = NGCCUtil.XSDTypeToJavaType(xsdtype);
 		if(!_UsingBigInteger && javatype.equals("BigInteger"))
 			_UsingBigInteger = true;
 		else if(!_UsingCalendar && javatype.equals("GregorianCalendar"))
 			_UsingCalendar = true;
+
+        Alias a = new Alias(name, javatype, false);
+        aliases.put(name,a);
+        return a;
 	}
-	public void addUserDefinedAlias(String name, String classname)
+	public Alias addUserDefinedAlias(String name, String classname)
 	{
-		_Aliases.add(new Alias(name, classname, true));
+        Alias a = new Alias(name, classname, true);
+		aliases.put(name,a);
+        return a;
 	}
 	
-	
-	public void calcFirst_Step1()
-	{
-		_FirstAlphabet = new TreeSet();
-		_ContainingScopeForFirstAlphabet = new HashSet();
-		
-		Iterator it = _InitialState.iterateTransitions();
-		while(it.hasNext())
-		{
-			Transition tr = (Transition)it.next();
-			Alphabet a = tr.getAlphabet();
-			if(a.getType()==Alphabet.REF_BLOCK)
-				_ContainingScopeForFirstAlphabet.add(_Grammar.getScopeInfoByName(a.getValue()));
-			else
-				_FirstAlphabet.add(a);
-		}
-	}
-	public void calcFirst_Step2()
-	{
-		ScopeList list = new ScopeList(this);
-		Iterator it = _ContainingScopeForFirstAlphabet.iterator();
-		while(it.hasNext())
-		{
-			ScopeInfo neighbor = (ScopeInfo)it.next();
-			_FirstAlphabet.addAll(neighbor.calcFirst_Step2(list));
-		}
-	}
-	private Set calcFirst_Step2(ScopeList list)
-	{
-		ScopeList nextlist = new ScopeList(this, list);
-		Iterator it = _ContainingScopeForFirstAlphabet.iterator();
-		while(it.hasNext())
-		{
-			ScopeInfo neighbor = (ScopeInfo)it.next();
-			if(!list.contains(neighbor))
-				_FirstAlphabet.addAll(neighbor.calcFirst_Step2(nextlist));
-		}
-		return _FirstAlphabet;
-	}
+    
+    
 	
 	public void checkFirstAlphabetAmbiguousity()
 	{
-		Iterator it = iterateStatesHavingRef();
+		Iterator it = iterateStatesHaving(Alphabet.REF_BLOCK);
 		while(it.hasNext())
 		{
 			State s = (State)it.next();
 			s.checkFirstAlphabetAmbiguousity();
 		}
-	}
-	
-	public void calcFollow_Step0()
-	{
-		_ContainingScopeForFollowAlphabet = new HashSet();
-		if(_Dirty) collectStates();
-	}
-	
-	public void calcFollow_Step1()
-	{
-		Iterator refs = _Ref_States.iterator();
-		while(refs.hasNext())
-		{
-			State s = (State)refs.next();
-			Iterator trs = s.iterateRefTransitions();
-			while(trs.hasNext())
-			{
-				Transition tr = (Transition)trs.next();
-				ScopeInfo target = _Grammar.getScopeInfoByName(tr.getAlphabet().getValue());
-				State next = tr.nextState();
-				if(next.isAcceptable())
-				{
-					_ContainingScopeForFollowAlphabet.add(target);
-					target._ContainingScopeForFollowAlphabet.add(this);
-				}
-				
-				Iterator next_trs = next.iterateTransitions();
-				while(next_trs.hasNext())
-				{
-					Alphabet next_alphabet = ((Transition)next_trs.next()).getAlphabet();
-					if(next_alphabet.getType()==Alphabet.REF_BLOCK)
-						target._FollowAlphabet.addAll(_Grammar.getScopeInfoByName(next_alphabet.getValue())._FirstAlphabet);
-					else
-						target._FollowAlphabet.add(next_alphabet);
-				}
-			}
-		}
-	}
-	
-	public void calcFollow_Step2()
-	{
-		ScopeList list = new ScopeList(this);
-		Iterator it = _ContainingScopeForFollowAlphabet.iterator();
-		while(it.hasNext())
-		{
-			ScopeInfo neighbor = (ScopeInfo)it.next();
-			_FollowAlphabet.addAll(neighbor.calcFollow_Step2(list));
-		}
-	}
-	private Set calcFollow_Step2(ScopeList list)
-	{
-		ScopeList nextlist = new ScopeList(this, list);
-		Iterator it = _ContainingScopeForFollowAlphabet.iterator();
-		while(it.hasNext())
-		{
-			ScopeInfo neighbor = (ScopeInfo)it.next();
-			if(!list.contains(neighbor))
-				_FollowAlphabet.addAll(neighbor.calcFollow_Step2(nextlist));
-		}
-		return _FollowAlphabet;
 	}
 	
 	public void checkFollowAlphabetAmbiguousity()
@@ -371,6 +506,9 @@ public class ScopeInfo
 		}
 	}
 	
+    /**
+     * Writes the beginning of the class to the specified output.
+     */
 	public void printHeaderSection(PrintStream output, Options options, String globalimport)
 	{
         if(!_IsLambda)
@@ -388,21 +526,11 @@ public class ScopeInfo
 
             output.println("import org.xml.sax.SAXException;");
             output.println("import org.xml.sax.XMLReader;");
-            if(options.style==Options.STYLE_MSV)
-            {
-                output.println("import relaxngcc.runtime.NGCCTypedContentHandler;");
-                output.println("import com.sun.msv.datatype.xsd.XSDatatype;");
-                output.println("import com.sun.msv.verifier.DocumentDeclaration;");
-                output.println("import com.sun.msv.verifier.psvi.TypeDetector;");
-                output.println("import com.sun.msv.verifier.util.ErrorHandlerImpl;");
-                output.println("import com.sun.msv.driver.textui.DebugController;");
-                output.println("import com.sun.msv.reader.util.GrammarLoader;");
-            }
-            else
-            {
-                output.println("import relaxngcc.runtime.NGCCPlainHandler;");
-            }
-
+            
+            if(!options.usePrivateRuntime)
+                output.println("import relaxngcc.runtime.NGCCHandler;");
+            output.println("import "+_Grammar.getRuntimeTypeFullName()+";");
+            
             if(_Root)
             {
                 output.println("import javax.xml.parsers.SAXParserFactory;");
@@ -416,7 +544,7 @@ public class ScopeInfo
         }
 		//class name
 		if(_Access.length()>0) _Access += " ";
-		output.println(_Access + "class " + _NameForTargetLang + " extends " + (options.style==Options.STYLE_MSV? "NGCCTypedContentHandler" : "NGCCPlainHandler") + " {");
+		output.println(_Access + "class " + _NameForTargetLang + " extends NGCCHandler {");
 		//NSURI constants
 		Iterator uris = _NSURItoStringConstant.entrySet().iterator();
 		while(uris.hasNext())
@@ -428,68 +556,118 @@ public class ScopeInfo
 		output.println("private int _ngcc_current_state;");
 		if(_ThreadCount>0)
 			output.println("private int[] _ngcc_threaded_state;");
-		for(int i=0; i<_Aliases.size(); i++)
-		{
-			Alias a = (Alias)_Aliases.get(i);
+        
+        // aliases
+        Iterator itr = aliases.values().iterator();
+		while(itr.hasNext()) {
+			Alias a = (Alias)itr.next();
+            
+            // if the alias is already declared explicitly by the <java-body>,
+            // don't write it again.
+            if(userDefinedFields.contains(a.name))
+                continue;
+                
 			if(options.style==Options.STYLE_PLAIN_SAX && !a.isUserObject)
 				output.println("private String " + a.name + ";");
 			else
 				output.println("private " + a.javatype + " " + a.name + ";");
 		}
+        
+        String argList; // constructor arguments
+        String argAssign;   // constructor aguments assignments
+        String argParam;
+        {// build up constructor arguments
+            StringBuffer buf = new StringBuffer();
+            for( int i=0; i<constructorParams.length; i++ ) {
+                buf.append(',');
+                buf.append(constructorParams[i].javatype);
+                buf.append(" _");
+                buf.append(constructorParams[i].name);
+            }
+            argList = buf.toString();
+            
+            buf = new StringBuffer();
+            for( int i=0; i<constructorParams.length; i++ )
+                buf.append(MessageFormat.format("this.{0}=_{0};\n",
+                    new Object[]{constructorParams[i].name}));
+            argAssign = buf.toString();
+
+            buf = new StringBuffer();
+            for( int i=0; i<constructorParams.length; i++ ) {
+                buf.append(",_");
+                buf.append(constructorParams[i].name);
+            }
+            argParam = buf.toString();
+        }
+        
 		//constructor
-		if(options.style==Options.STYLE_MSV)
-			output.println("public " + _NameForTargetLang + "(TypeDetector reader, NGCCTypedContentHandler parent) {");
-		else
-			output.println("public " + _NameForTargetLang + "(XMLReader reader, NGCCPlainHandler parent) {");
-		output.println("\tsuper(reader, parent);");
+		output.println(MessageFormat.format(
+            "public {0}(NGCCHandler parent, {1} _runtime, int cookie {2} ) '{'\n"+
+            "    super(parent,cookie);\n"+
+            "    this.runtime = _runtime;\n"+
+            "    {3}",
+            new Object[]{
+                getNameForTargetLang(),
+                _Grammar.getRuntimeTypeShortName(),
+                argList, argAssign }
+        ));
+        
+        output.println("\t_ngcc_current_state=" + _InitialState.getIndex() + ";");
+        if(_ThreadCount>0)
+            output.println("_ngcc_threaded_state = new int[" + _ThreadCount + "];");
 		output.println("}");
-		output.println("protected void initState() { _ngcc_current_state=" + _InitialState.getIndex() + "; ");
-		if(_InitialCode!=null) output.println(_InitialCode);
-		if(_ThreadCount>0)
-			output.println("_ngcc_threaded_state = new int[" + _ThreadCount + "]; }");
-		else
-			output.println("}");
+
+        output.println(MessageFormat.format(
+            "public {0}( {1} _runtime {2} ) '{'\n"+
+            "    this(null,_runtime,-1{3});\n"+
+            "'}'",
+            new Object[]{
+                getNameForTargetLang(),
+                _Grammar.getRuntimeTypeShortName(),
+                argList, argParam }
+        ));
+
+        String runtimeBaseName = "relaxngcc.runtime.NGCCRuntime";
+        if(options.usePrivateRuntime) runtimeBaseName = "NGCCRuntime";
+        
+        output.println(MessageFormat.format(
+            "    protected final {0} runtime;\n"+
+            "    public final {1} getRuntime() '{' return runtime; '}'",
+            new Object[]{
+                _Grammar.getRuntimeTypeShortName(),
+                runtimeBaseName }
+        ));
 		
+        // action functions
+        for( int i=0; i<actions.size(); i++ )
+            ((Action)actions.get(i)).generate(output);
+        
 		//simple entry point
 		if(_Root)
 		{
-			if(options.style==Options.STYLE_MSV)
-			{
-				output.println("public static XMLReader getPreparedReader(SAXParserFactory f, DocumentDeclaration g) throws ParserConfigurationException, SAXException {");
-				output.println("\tXMLReader r = f.newSAXParser().getXMLReader();");
-				output.println("\tTypeDetector v = new TypeDetector(g, new ErrorHandlerImpl());");
-				output.println("\tr.setContentHandler(v);");
-				output.println("\tv.setContentHandler(new " + _NameForTargetLang + "(v, null));");
-				output.println("\treturn r;");
-				output.println("}");
-				output.println("public static void main(String[] args) throws Exception {");
-				output.println("\tif(args.length!=2) { System.err.println(\"usage: " + _NameForTargetLang + " <grammarfile> <instancefile>\"); return; }");
-				output.println("\tSAXParserFactory f = SAXParserFactory.newInstance();");
-				output.println("\tf.setNamespaceAware(true);");
-				output.println("\tGrammarLoader loader = new GrammarLoader();");
-				output.println("\tloader.setController( new DebugController(false,false) );");
-				output.println("\tDocumentDeclaration g = loader.loadVGM( args[0] );");
-				output.println("\tif(g==null) { System.err.println(\"Failed to load grammar.\"); return; }");
-				output.println("\tXMLReader r = getPreparedReader(f,g);");
-				output.println("\tr.parse(args[1]);");
-				output.println("}");
-			}
-			else
-			{
-				output.println("public static XMLReader getPreparedReader(SAXParserFactory f) throws ParserConfigurationException, SAXException {");
-				output.println("\tXMLReader r = f.newSAXParser().getXMLReader();");
-				output.println("\tr.setContentHandler(new " + _NameForTargetLang + "(r, null));");
-				output.println("\treturn r;");
-				output.println("}");
-				output.println("public static void main(String[] args) throws Exception {");
-				output.println("\tif(args.length!=1) { System.err.println(\"usage: " + _NameForTargetLang + " <instancefile>\"); return; }");
-				output.println("\tSAXParserFactory f = SAXParserFactory.newInstance();");
-				output.println("\tf.setNamespaceAware(true);");
-				output.println("\tXMLReader r = getPreparedReader(f);");
-				if(options.style==Options.STYLE_TYPED_SAX) output.println("\tDataTypes.init();");
-				output.println("\tr.parse(args[0]);");
-				output.println("}");
-			}
+            if(options.style==Options.STYLE_MSV)
+            {
+                output.println("public static XMLReader getPreparedReader(SAXParserFactory f, DocumentDeclaration g) throws ParserConfigurationException, SAXException {");
+                output.println("\tXMLReader r = f.newSAXParser().getXMLReader();");
+                output.println("\tTypeDetector v = new TypeDetector(g, new ErrorHandlerImpl());");
+                output.println("\tr.setContentHandler(v);");
+                output.println("\tv.setContentHandler(new " + _NameForTargetLang + "(null));");
+                output.println("\treturn r;");
+                output.println("}");
+                output.println("public static void main(String[] args) throws Exception {");
+                output.println("\tif(args.length!=2) { System.err.println(\"usage: " + _NameForTargetLang + " <grammarfile> <instancefile>\"); return; }");
+                output.println("\tSAXParserFactory f = SAXParserFactory.newInstance();");
+                output.println("\tf.setNamespaceAware(true);");
+                output.println("\tGrammarLoader loader = new GrammarLoader();");
+                output.println("\tloader.setController( new DebugController(false,false) );");
+                output.println("\tDocumentDeclaration g = loader.loadVGM( args[0] );");
+                output.println("\tif(g==null) { System.err.println(\"Failed to load grammar.\"); return; }");
+                output.println("\tXMLReader r = getPreparedReader(f,g);");
+                output.println("\tr.parse(args[1]);");
+                output.println("}");
+            }
+            // removed because this won't work well with
+            // custom NGCCRuntime, which we don't know how to instanciate
 		}
         
 	}
@@ -526,4 +704,115 @@ public class ScopeInfo
 		}
 		strm.println();
 	}
+    
+    
+    
+    
+    
+    /** Gets the display name of a state. */
+    private String getStateName( State s ) {
+        StringBuffer buf = new StringBuffer();
+        buf.append('"');
+        if(s==getInitialState()) {
+            buf.append("init(");
+            buf.append(s.getIndex());
+            buf.append(")");
+        } else {
+            buf.append("s");
+            buf.append(s.getIndex());
+        }
+        if(s.getListMode()==State.LISTMODE_ON)
+            buf.append('*');
+            
+        buf.append(buildActionList('+',s.getActionsOnExit()));
+        buf.append('"');
+        return buf.toString();
+    }
+    
+    /** Gets the hue of the color for an alphabet. */
+    private static String getColor( Alphabet a ) {
+        // H S V
+        double d;
+        switch(a.getType()) {
+        case Alphabet.ENTER_ELEMENT:     return "0";
+        case Alphabet.LEAVE_ELEMENT:     return "0.16";
+        case Alphabet.ENTER_ATTRIBUTE:   return "0.32";
+        case Alphabet.LEAVE_ATTRIBUTE:   return "0.48";
+        case Alphabet.REF_BLOCK:         return "0.64";
+        case Alphabet.DATA_TEXT:
+        case Alphabet.VALUE_TEXT:        return "0.80";
+        default:
+            throw new Error(); // assertion failed
+        }
+    }
+    
+    /**
+     * Writes the automaton by using
+     * <a href="http://www.research.att.com/sw/tools/graphviz/">GraphViz</a>.
+     */
+    public void dumpAutomaton( File target ) throws IOException, InterruptedException {
+        
+        System.err.println("generating a graph to "+target.getPath());
+        
+//        Process proc = Runtime.getRuntime().exec("dot");
+        Process proc = Runtime.getRuntime().exec(
+            new String[]{"dot","-Tgif","-o",target.getPath()});
+        PrintWriter out = new PrintWriter(
+            new BufferedOutputStream(proc.getOutputStream()));
+//        PrintWriter out = new PrintWriter(System.out); // if you want to debug the input to GraphViz.
+    
+        out.println("digraph G {");
+        out.println("node [shape=\"circle\"];");
+
+        Iterator itr = iterateAllStates();
+        while( itr.hasNext() ) {
+            State s = (State)itr.next();
+            if(s.isAcceptable())
+                out.println(getStateName(s)+" [shape=\"doublecircle\"];");
+            
+            Iterator jtr = s.iterateTransitions();
+            while(jtr.hasNext() ) {
+                Transition t = (Transition)jtr.next();
+                
+                String str = MessageFormat.format(
+                        "{0} -> {1} [ label=\"{2}{3}{4}\",color=\"{5} 1 .5\",fontcolor=\"{5} 1 .3\" ];",
+                        new Object[]{
+                            getStateName(s),
+                            getStateName(t.nextState()),
+                            t.getAlphabet().toString(),
+                            buildActionList('^',t.getPrologueActions()),
+                            buildActionList('_',t.getEpilogueActions()),
+                            getColor(t.getAlphabet()) });
+                out.println(str);
+            }
+        }
+        
+        out.println("}");
+        out.flush();
+        out.close();
+        
+        BufferedReader in = new BufferedReader(
+            new InputStreamReader(proc.getInputStream()));
+        while(true) {
+            String s = in.readLine();
+            if(s==null)     break;
+            System.out.println(s);
+        }
+        in.close();
+        
+        proc.waitFor();
+    }
+    
+    /** concatanates all action names (so that it can be printed out.) */
+    private static String buildActionList( char head, Action[] actions ) {
+        if(actions.length==0)   return "";
+        
+        StringBuffer label = new StringBuffer();
+        label.append(head);
+        for( int i=0; i<actions.length; i++ ) {
+            if(i!=0)    label.append(',');
+            label.append(actions[i].getUniqueId());
+        }
+        return label.toString();
+    }
 }

@@ -7,6 +7,7 @@
 package relaxngcc.builder;
 import java.util.Stack;
 import java.util.Iterator;
+
 import relaxngcc.automaton.Alphabet;
 import relaxngcc.automaton.State;
 import relaxngcc.automaton.Transition;
@@ -37,11 +38,18 @@ public class ScopeBuilder
 	private NGCCElement _Root;
 	private ScopeInfo _ScopeInfo;
 	private NGCCGrammar _Grammar;
-	private String _PreservedAction;
 	private Stack _Namespaces;
 	private boolean _ExpandInline;
 	private int _Nullable;
 	private int _ThreadCount;
+
+    /**
+     * Used to give order numbers to EnterAttribute alphabets.
+     */
+    private int _OrderCounter;
+    
+    /** actions are added to this buffer until it is processed */
+    private StringBuffer preservedAction = new StringBuffer();
 	
 	//constructor must be called from following static methods
 	private ScopeBuilder(int type, NGCCGrammar grm, String location, NGCCElement root)
@@ -49,18 +57,15 @@ public class ScopeBuilder
 		_Type = type;
 		_Root = root;
 		_ThreadCount = 0;
-		_PreservedAction = null;
 		_Grammar = grm;
 		_Nullable = NULLABLE_UNKNOWN;
         
 		_Namespaces = new Stack();
 		
-		String ns = root.getAttribute("ns");
-		if(ns.length()==0) ns = grm.getDefaultNSURI(); //‚È‚¯‚ê‚Îgrammar‚Ì‚à‚Ì‚ðŽg—p
+        String ns = root.getAttribute("ns",grm.getDefaultNSURI());
 		_Namespaces.push(ns);
 		
-        String inline = root.getAttributeNS(NGCCGrammar.NGCC_NSURI, "inline");
-        if("true".equals(inline)) { _ExpandInline = true; }
+        _ExpandInline = "true".equals(root.attributeNGCC("inline",null));
         
 		_ScopeInfo = new ScopeInfo(grm, _Type, location, _ExpandInline);
 		_ScopeInfo.addNSURI(ns);
@@ -73,16 +78,24 @@ public class ScopeBuilder
 	{
 		ScopeBuilder inst = new ScopeBuilder(TYPE_NORMAL, grm, location, root);
 		
-		String nameForTargetLang = root.getAttributeNS(NGCCGrammar.NGCC_NSURI, "class");
-		if(nameForTargetLang.length()==0) nameForTargetLang=root.getAttribute("name");
-		if(nameForTargetLang.length()==0) nameForTargetLang="RelaxNGCC_Result";
-
-		String packageName = root.getAttributeNS(NGCCGrammar.NGCC_NSURI, "package");
-		if(packageName.length()==0) packageName = grm.getPackageName();
-		
-		inst._ScopeInfo.setClassNames(root.getAttribute("name"), nameForTargetLang, packageName, root.getAttributeNS(NGCCGrammar.NGCC_NSURI, "access"));
-		
+		String nameForTargetLang = root.attributeNGCC("class",
+            root.getAttribute("name","RelaxNGCC_Result"));
+        
+        setScopeParameters(grm,inst,root,nameForTargetLang);
 		return inst;
+    }
+    
+    private static void setScopeParameters(
+        NGCCGrammar grm, ScopeBuilder inst,NGCCElement root,String nameForTargetLang) {
+        
+        inst._ScopeInfo.setParameters(
+            root.getAttribute("name"),
+            nameForTargetLang,
+            root.attributeNGCC("package", grm.getPackageName()),
+            root.attributeNGCC("access",""),
+            root.attributeNGCC("return-type",null),
+            root.attributeNGCC("return-value","this"),
+            root.attributeNGCC("params",null));
     }
 	
 	/** Creates new ScopeBuilder */
@@ -90,14 +103,8 @@ public class ScopeBuilder
 	{
 		ScopeBuilder inst = new ScopeBuilder(TYPE_ROOT, grm, location, root);
 		
-		String nameForTargetLang = root.getAttributeNS(NGCCGrammar.NGCC_NSURI, "class");
-		if(nameForTargetLang.length()==0) nameForTargetLang="RelaxNGCC_Result";
-
-		String packageName = root.getAttributeNS(NGCCGrammar.NGCC_NSURI, "package");
-		if(packageName.length()==0) packageName = grm.getPackageName();
-		
-		inst._ScopeInfo.setClassNames(root.getAttribute("name"), nameForTargetLang, packageName, root.getAttributeNS(NGCCGrammar.NGCC_NSURI, "access"));
-		
+        setScopeParameters(grm,inst,root,
+            root.attributeNGCC("class","RelaxNGCC_Result"));
 		return inst;
     }
     
@@ -106,7 +113,9 @@ public class ScopeBuilder
 	{
 		ScopeBuilder inst = new ScopeBuilder(TYPE_LAMBDA, grm, location, root);
 		
-		inst._ScopeInfo.setClassNames(lambda_name, root.getAttributeNS(NGCCGrammar.NGCC_NSURI, "class"), null, "");
+		inst._ScopeInfo.setParameters(lambda_name,
+            root.attributeNGCC("class",""),
+            null, "", null, "this",null);
 		return inst;
     }
 
@@ -217,7 +226,15 @@ public class ScopeBuilder
 		else
 			initial = processRelaxNGNode(_Root, ctx, finalstate);
 		_ScopeInfo.setThreadCount(_ThreadCount);
-		_ScopeInfo.setInitialState(initial, _PreservedAction);
+        // TODO: don't we need to reset the preservedAction variable? - Kohsuke
+		_ScopeInfo.setInitialState(initial,
+            (preservedAction.length()!=0)?
+                _ScopeInfo.createAction(preservedAction):
+                null);
+        
+        _ScopeInfo.copyAttributeHandlers();
+        
+        _ScopeInfo.minimizeStates();
 	}
 	
 	private State traverseNodeList(NGCCNodeList nl, ScopeBuildingContext ctx, State destination)
@@ -244,7 +261,7 @@ public class ScopeBuilder
 		{
 			String name = child.getLocalName();
             //process lambda scope
-            if(!name.equals("ref") && child.getAttributeNS(NGCCGrammar.NGCC_NSURI, "class").length()>0)
+            if(!name.equals("ref") && child.hasAttributeNGCC("class"))
             {
                 String tempname = _Grammar.createLambdaName();
 				ScopeBuilder b = ScopeBuilder.createAsLambda(_Grammar, child, _ScopeInfo.getLocation(), tempname);
@@ -252,7 +269,8 @@ public class ScopeBuilder
                 ScopeInfo info = b.getScopeInfo();
                 _ScopeInfo.addChildScope(info);
                 State head = createState(child, ctx);
-                head.addTransition(createTransition(Alphabet.createRef(tempname), destination));
+                head.addTransition(createTransition(
+                    new Alphabet.Ref(info,_OrderCounter++), destination));
                 destination = head;
 				
 				b.buildAutomaton();
@@ -269,12 +287,7 @@ public class ScopeBuilder
 		{
 			String code = child.getFullText();
 			if(code!=null)
-			{
-				if(_PreservedAction==null)
-					_PreservedAction = code;
-				else
-					_PreservedAction = code + _PreservedAction;
-			}
+                preservedAction.append(code);
 		}
 		else if(name.equals("java-import"))
 			_ScopeInfo.appendHeaderSection(child.getFullText());
@@ -302,7 +315,7 @@ public class ScopeBuilder
 		else if(name.equals("group"))
 		{
 			destination = traverseNodeList(exp.getChildNodes(), ctx, destination); //group doesn't need special care
-			addAction(destination);
+			addAction(destination,true);
 		}
 		else if(name.equals("interleave"))
 			destination = processInterleave(exp, ctx, destination);
@@ -340,8 +353,8 @@ public class ScopeBuilder
 			nc = NameClass.fromElementElement(_ScopeInfo, exp, (String)_Namespaces.peek());
 		
 		State tail = createState(exp, ctx);
-		Transition te = createTransition(new Alphabet(Alphabet.END_ELEMENT, nc), destination);
-		addAction(te);
+		Transition te = createTransition(new Alphabet.LeaveElement(nc), destination);
+		addAction(te,true);
 		if(ctx.getInterleaveBranchRoot()!=null) te.setEnableState(ctx.getInterleaveBranchRoot());
 		tail.addTransition(te);
 		
@@ -349,8 +362,8 @@ public class ScopeBuilder
 		newctx.setInterleaveBranchRoot(null);
 		State middle = traverseNodeList(exp.getChildNodes(), newctx, tail);
 		State head = createState(exp, ctx);
-		Transition ts = createTransition(new Alphabet(Alphabet.START_ELEMENT, nc), middle);
-		addAction(ts);
+		Transition ts = createTransition(new Alphabet.EnterElement(nc), middle);
+		addAction(ts,true);
 		if(ctx.getInterleaveBranchRoot()!=null) ts.setDisableState(ctx.getInterleaveBranchRoot());
 		head.addTransition(ts);
 		
@@ -358,7 +371,7 @@ public class ScopeBuilder
 		
 		return head;
 	}
-	
+    
 	private State processAttribute(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
 		String attr_name = exp.getAttribute("name");
@@ -370,12 +383,38 @@ public class ScopeBuilder
 		else
 			nc = NameClass.fromElementElement(_ScopeInfo, exp, ns);
 
-		State middle = traverseNodeList(exp.getChildNodes(), ctx, destination);
-		State head = createState(exp, ctx);
-		Transition t = createTransition(new Alphabet(Alphabet.START_ATTRIBUTE, nc), middle);
-		addAction(t);
-		head.addTransition(t);
+        // I think I broke the code related to interleave handling.
+        // I just don't know how to fix them.  - Kohsuke
+        
+        State tail = createState(exp, ctx);
+        Transition te = createTransition(new Alphabet.LeaveAttribute(nc),
+            destination /*createState(exp,ctx)*/);
+        addAction(te,true);
+        tail.addTransition(te);
+        
+        State middle = traverseNodeList(exp.getChildNodes(), ctx/*newctx*/, tail);
+        
+        State head = createState(exp, ctx);
+        Transition ts = createTransition(
+            new Alphabet.EnterAttribute(nc,_OrderCounter++),
+            middle);
+        addAction(ts,true);
+//??        if(ctx.getInterleaveBranchRoot()!=null) ts.setDisableState(ctx.getInterleaveBranchRoot());
+
+        // always treat attributes as optional,
+        // otherwise we cannot properly handle things like:
+        // <optional>
+        //   <attribute> ..A1.. </attribute>
+        // </optional>
+        // <optional>
+        //   <attribute> ..A2.. </attribute>
+        // </optional>
+        destination.addTransition(ts);
+        return destination;
+/*
+        head.addTransition(ts);
 		return head;
+*/
 	}
 	private State processData(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
@@ -396,44 +435,40 @@ public class ScopeBuilder
 	}
 	private State processData(NGCCElement exp, ScopeBuildingContext ctx, State destination, MetaDataType mdt)
 	{
-		String alias = exp.getAttributeNS(NGCCGrammar.NGCC_NSURI, "alias");
-		if(alias.length()>0)
-			_ScopeInfo.addAlias(alias, mdt.getXSTypeName());
-		else
-			alias = null;
+        String alias = exp.attributeNGCC("alias",null);
+		if(alias!=null)   _ScopeInfo.addAlias(alias, mdt.getXSTypeName());
+        
 		State result = createState(exp, ctx);
-		Transition t = createTransition(new Alphabet(mdt, alias), destination);
-		addAction(t);
+		Transition t = createTransition(new Alphabet.DataText(mdt, alias), destination);
+		addAction(t,false);
 		result.addTransition(t);
 		return result;
 	}
 	private State processValue(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
-		String alias = exp.getAttributeNS(NGCCGrammar.NGCC_NSURI, "alias");
-		if(alias.length()>0)
-			_ScopeInfo.addAlias(alias, "string");
-		else
-			alias = null;
+        String alias = exp.attributeNGCC("alias",null);
+        
+		if(alias!=null)	_ScopeInfo.addAlias(alias, "string");
+        
 		State result = createState(exp, ctx);
-		Transition t = createTransition(Alphabet.createFixedValue(exp.getFullText(), alias), destination);
-		addAction(t);
+		Transition t = createTransition(new Alphabet.ValueText(exp.getFullText(), alias), destination);
+		addAction(t,false);
 		result.addTransition(t);
 		return result;
 	}
 	private State processList(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
-		String alias = exp.getAttributeNS(NGCCGrammar.NGCC_NSURI, "alias");
-		if(alias.length()>0)
-		{
+        String alias = exp.attributeNGCC("alias",null);
+        
+        if(alias!=null) {
 			_ScopeInfo.addAlias(alias, "string");
 			State result = createState(exp, ctx);
-			Transition t = createTransition(new Alphabet(MetaDataType.STRING, alias), destination);
-			addAction(t);
+			Transition t = createTransition(
+                new Alphabet.DataText(MetaDataType.STRING, alias), destination);
+			addAction(t,true);
 			result.addTransition(t);
 			return result;
-		}
-		else
-		{
+		} else {
 			destination.setListMode(State.LISTMODE_OFF);
 			State head = traverseNodeList(exp.getChildNodes(), ctx, destination);
 			head.setListMode(State.LISTMODE_ON);
@@ -444,23 +479,45 @@ public class ScopeBuilder
 	{
 		NGCCNodeList nl = exp.getChildNodes();
 		int len = nl.getLength();
-		addAction(destination);
+		addAction(destination,true);
 		State head = createState(exp, ctx);
 		for(int index=len-1; index>=0; index--)
 		{
 			NGCCElement child = nl.item(index);
 			if(child==null) continue;
 			
-			head.mergeTransitions(processNode(child, ctx, destination));
+            State member = processNode(child, ctx, destination);
+            addAction(member,true);
+			head.mergeTransitions(member);
+            
+            if(member.isAcceptable()) {
+                // TODO: we need to copy exit actions from the member state
+                // to the head state, but what if there already are some exit
+                // actions?
+                // this would happen for cases like
+                // <choice>
+                //   <group>
+                //     <optional>...</optoinal>
+                //     <cc:java> AAA </cc:java>
+                //   </group>
+                //   <group>
+                //     <optional>...</optoinal>
+                //     <cc:java> BBB </cc:java>
+                //   </group>
+                // </choice>
+                //
+                // this is a variation of ambiguity which we need to
+                // detect.
+                head.setAcceptable(true);
+            }
 		}
-		addAction(head);
 		return head;
 	}
 	
 	private State processInterleave(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
 		NGCCNodeList nl = exp.getChildNodes();
-		addAction(destination);
+		addAction(destination,true);
 		State head = createState(exp, ctx);
 		ScopeBuildingContext newctx = new ScopeBuildingContext(ctx);
 		newctx.setInterleaveBranchRoot(head);
@@ -483,37 +540,70 @@ public class ScopeBuilder
 				destination.addStateForWait(meetingspot);
 			}
 		}
-		addAction(head);
+		addAction(head,true);
 		return head;
 	}
 	private State processOneOrMore(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
-		addAction(destination);
+		addAction(destination,true);
 		State head = traverseNodeList(exp.getChildNodes(), ctx, destination);
-		addAction(head); //addAction must be before mergeTransition
+		addAction(head,true); //addAction must be before mergeTransition
 		destination.mergeTransitions(head);
 		return head;
 	}
 	private State processZeroOrMore(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
-		String action_last = _PreservedAction;
-		addAction(destination);
+        ScopeInfo.Action action_last = null;
+        
+        if(preservedAction.length()!=0)
+            action_last = _ScopeInfo.createAction(preservedAction);
+        // TODO: put those actions into the same Action object if applicable.
+        
+		addAction(destination,true);
 		State head = traverseNodeList(exp.getChildNodes(), ctx, destination);
-		addAction(head);
-		head.mergeTransitions(destination, action_last);
-		destination.mergeTransitions(head);
-		if(destination.isAcceptable()) head.setAcceptable(true);
+		addAction(head,true);
+
+        State tmp = createState(exp,ctx);
+        tmp.mergeTransitions(destination);
+        
+        destination.mergeTransitions(head);
+        head.mergeTransitions(tmp);
+        
+        if(destination.isAcceptable()) {
+            head.addActionsOnExit(destination.getActionsOnExit());
+            head.setAcceptable(true);
+        }
+        // TODO: I suppose we also need to copy list state?
+        
 		return head;
 	}
 	private State processOptional(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
-		String action_last = _PreservedAction;
-		addAction(destination);
+        addAction(destination,true);
+        
+//        ScopeInfo.Action action_last = null;
+//        if(preservedAction.length()!=0)
+//            action_last = _ScopeInfo.createAction(preservedAction);
+        
+        State tmp = createState(exp,ctx);
+        tmp.mergeTransitions(destination);
+            
+        // any transition that leaves the destination state could be modified
+        // while we process our descendant patterns.
+        // therefore, we cannot simply do
+        //      head.mergeTransitions(destination,action_last)
+        // at the end of the function. Instead, we need to clone them
+        // temporaily, so that changes made inside the traverseNodeList won't
+        // affect us.
 		State head = traverseNodeList(exp.getChildNodes(), ctx, destination);
-		addAction(head);
-		head.mergeTransitions(destination, action_last);
-		if(destination.isAcceptable()) head.setAcceptable(true);
-		return head;
+		addAction(head,true);
+        
+        head.mergeTransitions(tmp);
+        if(destination.isAcceptable()) {
+            head.addActionsOnExit(destination.getActionsOnExit());
+            head.setAcceptable(true);
+        }
+        return head;
 	}
 	
 	private State processRef(NGCCElement exp, ScopeBuildingContext ctx, State destination)
@@ -521,26 +611,39 @@ public class ScopeBuilder
 		ScopeBuilder target = _Grammar.getScopeBuilderByName(exp.getAttribute("name"));
 		if(target._ExpandInline)
 		{
-			addAction(destination);
+			addAction(destination,true);
 			State head = traverseNodeList(target._Root.getChildNodes(), ctx, destination);
-			addAction(head);
+			addAction(head,true);
 			return head;
 		}
 		else
 		{
-			String action = _PreservedAction;
-			addAction(destination);
-			
+//			ScopeInfo.Action action = null;
+//            if(preservedAction.length()!=0)
+//                action = _ScopeInfo.createAction(preservedAction);
+            
 			State head = createState(exp, ctx);
-			String alias = exp.getAttributeNS(NGCCGrammar.NGCC_NSURI, "alias");
-			if(alias.length()>0)
-				_ScopeInfo.addUserDefinedAlias(alias, target._ScopeInfo.getNameForTargetLang());
-			else
-				alias = null;
+            
+			String alias = exp.attributeNGCC("alias",null);
+			if(alias!=null)
+				_ScopeInfo.addUserDefinedAlias(alias,
+                    target._ScopeInfo.getReturnType());
 			
-			Transition t = createTransition(Alphabet.createRef(exp.getAttribute("name"), alias), destination);
+			Transition t = createTransition(new Alphabet.Ref(
+                target.getScopeInfo(), alias,
+                exp.attributeNGCC("with-params",null),_OrderCounter++),
+                destination);
 			head.addTransition(t);
-			if(target.nullable()) head.mergeTransitions(destination, action);
+
+            // add action as epilogue because code should be executed
+            // *after* the transition is performed.
+            addAction(t,false);
+            
+            
+// this is a bug. even if the target is nullable, we need to call it
+// because the parent scope is expecting to call it.
+// it is the child scope's responsibility to revert to parent ASAP.
+//			if(target.nullable()) head.mergeTransitions(destination, action);
 			return head;
 		}
 	}
@@ -556,24 +659,35 @@ public class ScopeBuilder
 		Transition t = new Transition(key, destination);
 		return t;
 	}
-	private void addAction(Transition t)
+	private void addAction(Transition t,boolean prologue)
 	{
-		if(_PreservedAction!=null)
+		if(preservedAction.length()!=0)
 		{
-			t.appendActionAtHead(_PreservedAction);
-			_PreservedAction=null;
+            ScopeInfo.Action action = _ScopeInfo.createAction(preservedAction);
+            preservedAction = new StringBuffer();
+            
+            if(prologue)    t.insertPrologueAction(action);
+            else            t.insertEpilogueAction(action);
 		}
 	}
-	private void addAction(State s)
+    /**
+     * Adds the specified action as a prologue/epilogue action
+     * to all the transitions that leave the given state.
+     */
+	private void addAction(State s,boolean prologue)
 	{
-		if(_PreservedAction!=null)
-		{
+        if(preservedAction.length()!=0) {
+            ScopeInfo.Action act = _ScopeInfo.createAction(preservedAction);
+            preservedAction = new StringBuffer();
+            
 			Iterator it = s.iterateTransitions();
-			while(it.hasNext())
-				((Transition)it.next()).appendActionAtHead(_PreservedAction);
-				
-			s.addActionOnExit(_PreservedAction);
+			while(it.hasNext()) {
+                Transition t = (Transition)it.next();
+                if(prologue)    t.insertPrologueAction(act);
+                else            t.insertEpilogueAction(act);
+            }
+            				
+			s.addActionOnExit(act);
 		}
-		_PreservedAction=null;
 	}
 }

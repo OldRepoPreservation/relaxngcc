@@ -18,7 +18,7 @@ import relaxngcc.NGCCGrammar;
 import relaxngcc.NGCCException;
 
 
-public class NonXmlElement implements NGCCElement
+public class NonXmlElement extends NGCCElement
 {
 	public static final int RELAXNG_ELEMENT = 1;
 	public static final int NGCC_ELEMENT = 2;
@@ -32,6 +32,7 @@ public class NonXmlElement implements NGCCElement
 	
 	public String getAttributeNS(String uri, String name)
 	{ return getAttribute(name); } //don't care namespace for nonxml support
+
 	
 	public String getAttribute(String name)
 	{
@@ -71,6 +72,10 @@ public class NonXmlElement implements NGCCElement
 	{
 		return _Attributes.get(name)!=null;
 	}
+    
+    public boolean hasAttributeNGCC( String localName ) {
+        return hasAttribute(localName); // ??? - Kohsuke
+    }
 	
 	public String getPath()
 	{

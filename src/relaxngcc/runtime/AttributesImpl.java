@@ -2,7 +2,7 @@
 // Written by David Megginson, sax@megginson.com
 // NO WARRANTY!  This class is in the public domain.
 
-// $Id: AttributesImpl.java,v 1.1 2002/05/18 17:32:34 kkawa Exp $
+// $Id: AttributesImpl.java,v 1.2 2002/06/12 15:34:44 kkawa Exp $
 
 //fixed bug at removeAttribute!! by Daisuke OKAJIMA 2002.4.21
 
@@ -430,16 +430,15 @@ public class AttributesImpl implements Attributes
      */
     public void removeAttribute (int index)
     {
-	if (index >= 0 && index < length) {
-	    data[index] = null;
-	    if (index < length - 1) {
-		System.arraycopy(data, (index+1)*5, data, index*5,
-				 (length-index-1)*5);
-	    }
-	    length--;
-	} else {
-	    badIndex(index);
-	}
+        if (index >= 0 && index < length) {
+            if (index < length - 1) {
+                System.arraycopy(data, (index+1)*5, data, index*5,
+                		 (length-index-1)*5);
+            }
+            length--;
+        } else {
+            badIndex(index);
+        }
     }
 
 
