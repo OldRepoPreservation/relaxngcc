@@ -278,7 +278,7 @@ public class CodeWriter
         StringBuffer code = new StringBuffer();
         ScopeInfo ref_block = alpha.getTargetScope();
         
-        code.append(ref_tr.invokeActions());
+        code.append(ref_tr.invokePrologueActions());
         
         code.append(MessageFormat.format(
             "NGCCHandler h = new {0}(this,runtime,{1}{2});{3}", new Object[]{
@@ -405,6 +405,9 @@ public class CodeWriter
                     }
                     
                     StringBuffer buf= new StringBuffer();
+
+                    buf.append(tr.invokeEpilogueActions());
+
                     appendStateTransition(buf, tr.nextState());
                     
                     if(tr.nextState().hasTransition(Alphabet.ENTER_ATTRIBUTE))
@@ -472,7 +475,7 @@ public class CodeWriter
 	{
 		StringBuffer buf = new StringBuffer();
 		
-        buf.append(tr.invokeActions());
+        buf.append(tr.invokePrologueActions());
 		State nextstate = tr.nextState();
 		if(tr.getDisableState()!=null)
 		{
@@ -491,6 +494,7 @@ public class CodeWriter
 			buf.append(";");
 			buf.append(_Options.newline);
 		}
+        buf.append(tr.invokeEpilogueActions());
 		State result = appendStateTransition(buf, nextstate);
 		buf.append(_Options.newline);
 		if(_Options.debug)

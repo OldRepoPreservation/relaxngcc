@@ -705,7 +705,7 @@ public final class ScopeInfo
         if(s.getListMode()==State.LISTMODE_ON)
             buf.append('*');
             
-        buf.append(buildActionList(s.getActionsOnExit()));
+        buf.append(buildActionList('+',s.getActionsOnExit()));
         buf.append('"');
         return buf.toString();
     }
@@ -713,7 +713,18 @@ public final class ScopeInfo
     /** Gets the hue of the color for an alphabet. */
     private static String getColor( Alphabet a ) {
         // H S V
-        return Double.toString(((double)a.getType())/8);
+        double d;
+        switch(a.getType()) {
+        case Alphabet.ENTER_ELEMENT:     return "0";
+        case Alphabet.LEAVE_ELEMENT:     return "0.16";
+        case Alphabet.ENTER_ATTRIBUTE:   return "0.32";
+        case Alphabet.LEAVE_ATTRIBUTE:   return "0.48";
+        case Alphabet.REF_BLOCK:         return "0.64";
+        case Alphabet.DATA_TEXT:
+        case Alphabet.VALUE_TEXT:        return "0.80";
+        default:
+            throw new Error(); // assertion failed
+        }
     }
     
     /**
@@ -744,11 +755,13 @@ public final class ScopeInfo
                 Transition t = (Transition)jtr.next();
                 
                 String str = MessageFormat.format(
-                        "{0} -> {1} [ label=\"{2}\",color=\"{3} 1 .5\",fontcolor=\"{3} 1 .3\" ];",
+                        "{0} -> {1} [ label=\"{2}{3}{4}\",color=\"{5} 1 .5\",fontcolor=\"{5} 1 .3\" ];",
                         new Object[]{
                             getStateName(s),
                             getStateName(t.nextState()),
-                            t.getAlphabet().toString()+buildActionList(t.getActions()),
+                            t.getAlphabet().toString(),
+                            buildActionList('^',t.getPrologueActions()),
+                            buildActionList('_',t.getEpilogueActions()),
                             getColor(t.getAlphabet()) });
                 out.println(str);
             }
@@ -771,10 +784,13 @@ public final class ScopeInfo
     }
     
     /** concatanates all action names (so that it can be printed out.) */
-    private static String buildActionList( Action[] actions ) {
+    private static String buildActionList( char head, Action[] actions ) {
+        if(actions.length==0)   return "";
+        
         StringBuffer label = new StringBuffer();
+        label.append(head);
         for( int i=0; i<actions.length; i++ ) {
-            label.append(',');
+            if(i!=0)    label.append(',');
             label.append(actions[i].getUniqueId());
         }
         return label.toString();

@@ -308,7 +308,7 @@ public class ScopeBuilder
 		else if(name.equals("group"))
 		{
 			destination = traverseNodeList(exp.getChildNodes(), ctx, destination); //group doesn't need special care
-			addAction(destination);
+			addAction(destination,true);
 		}
 		else if(name.equals("interleave"))
 			destination = processInterleave(exp, ctx, destination);
@@ -347,7 +347,7 @@ public class ScopeBuilder
 		
 		State tail = createState(exp, ctx);
 		Transition te = createTransition(new Alphabet.LeaveElement(nc), destination);
-		addAction(te);
+		addAction(te,true);
 		if(ctx.getInterleaveBranchRoot()!=null) te.setEnableState(ctx.getInterleaveBranchRoot());
 		tail.addTransition(te);
 		
@@ -356,7 +356,7 @@ public class ScopeBuilder
 		State middle = traverseNodeList(exp.getChildNodes(), newctx, tail);
 		State head = createState(exp, ctx);
 		Transition ts = createTransition(new Alphabet.EnterElement(nc), middle);
-		addAction(ts);
+		addAction(ts,true);
 		if(ctx.getInterleaveBranchRoot()!=null) ts.setDisableState(ctx.getInterleaveBranchRoot());
 		head.addTransition(ts);
 		
@@ -379,7 +379,7 @@ public class ScopeBuilder
         
         State tail = createState(exp, ctx);
         Transition te = createTransition(new Alphabet.LeaveAttribute(nc), destination);
-        addAction(te);
+        addAction(te,true);
 //??        if(ctx.getInterleaveBranchRoot()!=null) te.setEnableState(ctx.getInterleaveBranchRoot());
         tail.addTransition(te);
         
@@ -388,7 +388,7 @@ public class ScopeBuilder
         State middle = traverseNodeList(exp.getChildNodes(), ctx/*newctx*/, tail);
         State head = createState(exp, ctx);
         Transition ts = createTransition(new Alphabet.EnterAttribute(nc), middle);
-        addAction(ts);
+        addAction(ts,true);
 //??        if(ctx.getInterleaveBranchRoot()!=null) ts.setDisableState(ctx.getInterleaveBranchRoot());
         head.addTransition(ts);
         
@@ -418,7 +418,7 @@ public class ScopeBuilder
         
 		State result = createState(exp, ctx);
 		Transition t = createTransition(new Alphabet.DataText(mdt, alias), destination);
-		addAction(t);
+		addAction(t,false);
 		result.addTransition(t);
 		return result;
 	}
@@ -430,7 +430,7 @@ public class ScopeBuilder
         
 		State result = createState(exp, ctx);
 		Transition t = createTransition(new Alphabet.ValueText(exp.getFullText(), alias), destination);
-		addAction(t);
+		addAction(t,false);
 		result.addTransition(t);
 		return result;
 	}
@@ -443,7 +443,7 @@ public class ScopeBuilder
 			State result = createState(exp, ctx);
 			Transition t = createTransition(
                 new Alphabet.DataText(MetaDataType.STRING, alias), destination);
-			addAction(t);
+			addAction(t,true);
 			result.addTransition(t);
 			return result;
 		} else {
@@ -457,23 +457,24 @@ public class ScopeBuilder
 	{
 		NGCCNodeList nl = exp.getChildNodes();
 		int len = nl.getLength();
-		addAction(destination);
+		addAction(destination,true);
 		State head = createState(exp, ctx);
 		for(int index=len-1; index>=0; index--)
 		{
 			NGCCElement child = nl.item(index);
 			if(child==null) continue;
 			
-			head.mergeTransitions(processNode(child, ctx, destination));
+            State member = processNode(child, ctx, destination);
+            addAction(member,true);
+			head.mergeTransitions(member);
 		}
-		addAction(head);
 		return head;
 	}
 	
 	private State processInterleave(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
 		NGCCNodeList nl = exp.getChildNodes();
-		addAction(destination);
+		addAction(destination,true);
 		State head = createState(exp, ctx);
 		ScopeBuildingContext newctx = new ScopeBuildingContext(ctx);
 		newctx.setInterleaveBranchRoot(head);
@@ -496,14 +497,14 @@ public class ScopeBuilder
 				destination.addStateForWait(meetingspot);
 			}
 		}
-		addAction(head);
+		addAction(head,true);
 		return head;
 	}
 	private State processOneOrMore(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
-		addAction(destination);
+		addAction(destination,true);
 		State head = traverseNodeList(exp.getChildNodes(), ctx, destination);
-		addAction(head); //addAction must be before mergeTransition
+		addAction(head,true); //addAction must be before mergeTransition
 		destination.mergeTransitions(head);
 		return head;
 	}
@@ -515,9 +516,9 @@ public class ScopeBuilder
             action_last = _ScopeInfo.createAction(preservedAction);
         // TODO: put those actions into the same Action object if applicable.
         
-		addAction(destination);
+		addAction(destination,true);
 		State head = traverseNodeList(exp.getChildNodes(), ctx, destination);
-		addAction(head);
+		addAction(head,true);
 
         State tmp = createState(exp,ctx);
         tmp.mergeTransitions(destination);
@@ -540,9 +541,9 @@ public class ScopeBuilder
             preservedAction = new StringBuffer();
         }
             
-		addAction(destination);
+		addAction(destination,true);
 		State head = traverseNodeList(exp.getChildNodes(), ctx, destination);
-		addAction(head);
+		addAction(head,true);
         
         head.mergeTransitions(destination,action_last);
         return head;
@@ -553,9 +554,9 @@ public class ScopeBuilder
 		ScopeBuilder target = _Grammar.getScopeBuilderByName(exp.getAttribute("name"));
 		if(target._ExpandInline)
 		{
-			addAction(destination);
+			addAction(destination,true);
 			State head = traverseNodeList(target._Root.getChildNodes(), ctx, destination);
-			addAction(head);
+			addAction(head,true);
 			return head;
 		}
 		else
@@ -564,8 +565,6 @@ public class ScopeBuilder
 //            if(preservedAction.length()!=0)
 //                action = _ScopeInfo.createAction(preservedAction);
             
-			addAction(destination);
-			
 			State head = createState(exp, ctx);
             
 			String alias = exp.attributeNGCC("alias",null);
@@ -579,6 +578,11 @@ public class ScopeBuilder
                 exp.attributeNGCC("with-params",null)),
                 destination);
 			head.addTransition(t);
+
+            // add action as epilogue because code should be executed
+            // *after* the transition is performed.
+            addAction(t,false);
+            
             
 // this is a bug. even if the target is nullable, we need to call it
 // because the parent scope is expecting to call it.
@@ -599,25 +603,30 @@ public class ScopeBuilder
 		Transition t = new Transition(key, destination);
 		return t;
 	}
-	private void addAction(Transition t)
+	private void addAction(Transition t,boolean prologue)
 	{
 		if(preservedAction.length()!=0)
 		{
-			t.appendActionAtHead(
-                _ScopeInfo.createAction(preservedAction));
-			preservedAction = new StringBuffer();
+            ScopeInfo.Action action = _ScopeInfo.createAction(preservedAction);
+            preservedAction = new StringBuffer();
+            
+            if(prologue)    t.insertPrologueAction(action);
+            else            t.insertEpilogueAction(action);
 		}
 	}
-	private void addAction(State s)
+	private void addAction(State s,boolean prologue)
 	{
         if(preservedAction.length()!=0) {
             ScopeInfo.Action act = _ScopeInfo.createAction(preservedAction);
             preservedAction = new StringBuffer();
             
 			Iterator it = s.iterateTransitions();
-			while(it.hasNext())
-				((Transition)it.next()).appendActionAtHead(act);
-				
+			while(it.hasNext()) {
+                Transition t = (Transition)it.next();
+                if(prologue)    t.insertPrologueAction(act);
+                else            t.insertEpilogueAction(act);
+            }
+            				
 			s.addActionOnExit(act);
 		}
 	}

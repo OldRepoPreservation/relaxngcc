@@ -152,6 +152,11 @@ public final class State implements Comparable
         return _Index-((State)obj)._Index;
     }
     
+    /**
+     * For all the transitions leaving from the specified state,
+     * add it to this state by appending the specified action
+     * (possibly null) at the head of its prologue actions.
+     */
 	public void mergeTransitions(State s, ScopeInfo.Action action) {
         Iterator itr = s.iterateTransitions();
         while(itr.hasNext())
@@ -179,7 +184,7 @@ public final class State implements Comparable
             	printAmbiguousTransitionsWarning(tr, newtransition);
 			else if(existing_alphabet.equals(a) && tr.nextState()!=newtransition.nextState())
             {
-                if(newtransition.getActions().length==0 && tr.getActions().length==0) {
+                if(!newtransition.hasAction() && !tr.hasAction()) {
                     // only if both of them have no action, we can merge them.
                     tr.nextState().mergeTransitions(newtransition.nextState());
                     Iterator r = newtransition.nextState().iterateReversalTransitions();
@@ -195,7 +200,7 @@ public final class State implements Comparable
 		if(action!=null)
 		{
 			newtransition = (Transition)newtransition.clone();
-			newtransition.appendActionAtHead(action);
+			newtransition.insertPrologueAction(action);
 		}
 		
         _AllTransitions.add(newtransition);
