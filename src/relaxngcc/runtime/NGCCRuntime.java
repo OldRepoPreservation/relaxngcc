@@ -231,6 +231,7 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
         String uri, String local, String qname ) throws SAXException {
         
         redirect = child;
+        redirect.setDocumentLocator(locator);
         redirect.startDocument();
         
         // TODO: when a prefix is re-bound to something else,
