@@ -113,16 +113,27 @@ public final class ScopeInfo
     }
     
     
+    private class AlphabetIterator extends SelectiveIterator {
+        AlphabetIterator( Iterator base, int _typeMask ) {
+            super(base);
+            this.typeMask=_typeMask;
+        }
+        private final int typeMask;
+        protected boolean filter( Object o ) {
+            return (((Alphabet)o).getType()&typeMask)!=0;
+        }
+    }
+    
 	public Iterator iterateFirstAlphabets()  { return _FirstAlphabet.iterator(); }
     /** Iterates FIRST alphabets that match the given type mask. */
 	public Iterator iterateFirstAlphabets( int typeMask ) {
-        return new TypeIterator(iterateFirstAlphabets(),typeMask);
+        return new AlphabetIterator(iterateFirstAlphabets(),typeMask);
     }
     
     public Iterator iterateFollowAlphabets() { return _FollowAlphabet.iterator(); }
     /** Iterates FOLLOW alphabets that match the given type mask. */
     public Iterator iterateFollowAlphabets( int typeMask ) {
-        return new TypeIterator(iterateFollowAlphabets(),typeMask);
+        return new AlphabetIterator(iterateFollowAlphabets(),typeMask);
     }
     
     
@@ -192,7 +203,8 @@ public final class ScopeInfo
 		public final boolean isUserObject;
 		public Alias(String n, String t, boolean user) { name=n; javatype=t; isUserObject=user; }
 	}
-	private Vector _Aliases;
+    /** All the aliases indexed by their names. */
+	private final Map aliases = new TreeMap();
 	
 	public ScopeInfo(NGCCGrammar g, int type, String location, boolean inline)
 	{
@@ -201,7 +213,6 @@ public final class ScopeInfo
 		_Root = (type==ScopeBuilder.TYPE_ROOT);
 		_IsInline = inline;
 		_Location = location;
-		_Aliases = new Vector();
 		_UsingBigInteger = false;
 		_UsingCalendar = false;
 	
@@ -280,8 +291,12 @@ public final class ScopeInfo
      * Iterates states that have transitions with one of specified
      * alphabets.
      */
-	public Iterator iterateStatesHaving( int alphabetTypes ) {
-        return new TypeIterator(iterateAllStates(),alphabetTypes);
+	public Iterator iterateStatesHaving( final int alphabetTypes ) {
+        return new SelectiveIterator(iterateAllStates()) {
+            protected boolean filter( Object o ) {
+                return ((State)o).hasTransition(alphabetTypes);
+            }
+        };
     }
     
 	public Iterator iterateAcceptableStates() {
@@ -295,16 +310,6 @@ public final class ScopeInfo
         return _AllStates.iterator();
     }
     
-    private static class TypeIterator extends SelectiveIterator {
-        TypeIterator( Iterator base, int _typeMask ) {
-            super(base);
-            this.typeMask=_typeMask;
-        }
-        private final int typeMask;
-        protected boolean filter( Object o ) {
-            return ((State)o).hasTransition(typeMask);
-        }
-    }
     
 	
 	public void addState(State state) {
@@ -320,13 +325,13 @@ public final class ScopeInfo
 			_UsingCalendar = true;
 
         Alias a = new Alias(name, javatype, false);
-        _Aliases.add(a);
+        aliases.put(name,a);
         return a;
 	}
 	public Alias addUserDefinedAlias(String name, String classname)
 	{
         Alias a = new Alias(name, classname, true);
-		_Aliases.add(a);
+		aliases.put(name,a);
         return a;
 	}
 	
@@ -498,9 +503,10 @@ public final class ScopeInfo
 		output.println("private int _ngcc_current_state;");
 		if(_ThreadCount>0)
 			output.println("private int[] _ngcc_threaded_state;");
-		for(int i=0; i<_Aliases.size(); i++)
-		{
-			Alias a = (Alias)_Aliases.get(i);
+            
+        Iterator itr = aliases.values().iterator();
+		while(itr.hasNext()) {
+			Alias a = (Alias)itr.next();
 			if(options.style==Options.STYLE_PLAIN_SAX && !a.isUserObject)
 				output.println("private String " + a.name + ";");
 			else
