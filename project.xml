@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:j="jelly:core">
+  <pomVersion>3</pomVersion>
+  <id>relaxngcc</id>
+  <name>RELAXNGCC</name>
+  <currentVersion>1.12-SNAPSHOT</currentVersion>
+  <shortDescription>Application-level XML Parser Generator from RELAX NG</shortDescription>
+
+  <url>http://relaxngcc.sf.net/</url>
+  
+  <siteAddress>relaxngcc.sf.net</siteAddress>
+  <siteDirectory>/home/groups/r/re/relaxngcc/htdocs/maven</siteDirectory>
+  
+  <distributionSite>relaxngcc.sf.net</distributionSite>
+  <distributionDirectory>/home/groups/r/re/relaxngcc/htdocs/maven-repository</distributionDirectory>
+  
+  
+  <repository>
+    <connection>scm:cvs:pserver:anonymous@cvs.sourceforge.net:/cvsroot/relaxngcc:relaxngcc</connection>
+    <url>http://cvs.sourceforge.net/viewcvs.py/relaxngcc/</url>
+  </repository>
+  <developers>
+    <developer>
+      <name>Kohsuke Kawaguchi</name>
+      <id>kkawa</id>
+      <email>kk@kohsuke.org</email>
+      <organization>Sun Microsystems</organization>
+    </developer>
+  </developers>
+  <dependencies>
+    <dependency>
+      <id>msv</id>
+      <version>20030807</version>
+    </dependency>
+    <dependency>
+      <id>xsdlib</id>
+      <version>20030225</version>
+    </dependency>
+    <dependency>
+      <id>relaxngDatatype</id>
+      <version>20020414</version>
+    </dependency>
+    <dependency>
+      <id>isorelax</id>
+      <version>20030108</version>
+    </dependency>
+    <dependency>
+      <id>ant</id>
+      <version>1.5</version>
+    </dependency>
+    <dependency>
+      <id>commons-jelly</id>
+      <version>SNAPSHOT</version>
+    </dependency>
+  </dependencies>
+  
+  <build>
+    <sourceDirectory>src</sourceDirectory>
+    <resources> 
+      <!--resource> 
+        <directory>${basedir}/src/plugin-resources</directory> 
+        <targetPath>plugin-resources</targetPath> 
+      </resource--> 
+      <resource>
+        <directory>${basedir}/src</directory>
+        <includes>
+          <include>plugin.jelly</include>
+          <include>relaxngcc/runtime/*.java</include>
+          <include>**/*.properties</include>
+          <include>**/*.xsl</include>
+          <!--include>project.properties</include-->
+          <!--include>plugin.properties</include-->
+        </includes>
+      </resource>
+      <resource>
+        <directory>${basedir}</directory>
+        <includes>
+          <include>project.xml</include>
+        </includes>
+      </resource> 
+    </resources> 
+  </build>
+</project>

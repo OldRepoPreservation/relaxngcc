@@ -46,7 +46,7 @@
 			classpath="lib">
 			
 			<classpath>
-				<fileset dir="lib" includes="*.jar"/>
+				<fileset dir="lib" includes="**/*.jar"/>
 			</classpath>
 		</javac>
 	</target>
@@ -108,8 +108,10 @@ Class-Path: crimson.jar relaxngDatatype.jar xsdlib.jar msv.jar jaxp-api.jar
 		<jar jarfile="relaxngcc.jar" compress="false" manifest="bin/METAINF.MF">
 			<fileset dir="src" includes="**/*.properties"/>
 			<fileset dir="src" includes="**/*.xsl"/>
+			<fileset dir="src" includes="**/*.jelly"/>
 			<fileset dir="src" includes="relaxngcc/runtime/*.java"/>
 			<fileset dir="bin" includes="**/*.class"/>
+			<fileset dir="." includes="project.xml"/>
 		</jar>
 		<delete file="bin/METAINF.MF"/>
 	</target>

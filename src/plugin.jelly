@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<project xmlns:ngcc="ngcc"
+         xmlns:j="jelly:core" 
+         xmlns:a="jelly:ant"
+         xmlns:define="jelly:define">
+  
+  <!-- have RELAXNGCC run before java compilation -->
+  <preGoal name="java:compile">
+    <attainGoal name="relaxngcc"/>
+  </preGoal>
+  
+  <goal name="relaxngcc"
+        description="Compile annotated RELAX NG schemas and generate Java source code">
+    
+    <define:taglib uri="ngcc" >
+      <define:jellybean
+        name="childAnt"
+        className="relaxngcc.maven.ChildAntProjectTag"
+        method="doTag"
+        />
+    </define:taglib>
+  
+  
+    <!-- define RelaxNGCC task. -->
+    <a:taskdef name="relaxngcc" classname="relaxngcc.ant.RelaxNGCCTask">
+      <a:classpath>
+        <!-- FIXME: hack for referencing this plug-in itself from Ant.-->
+        <a:pathelement path="${pom.getPluginContext('relaxngcc').getUnpackedPluginsDir()}/relaxngcc"/>
+      </a:classpath>
+    </a:taskdef>
+    
+    <!-- iterate all *.relaxngcc files -->
+    <a:fileScanner var="configs">
+      <a:fileset dir="${maven.src.dir}" includes="**/*.relaxngcc" />
+    </a:fileScanner>
+    
+    <!-- include each of them as an Ant task -->
+    <j:forEach var="config" items="${configs.iterator()}">
+      <ngcc:childAnt base="${config}">
+        <a:echo>Processing ${config}</a:echo>
+        <j:include file="${config}"/>
+      </ngcc:childAnt>
+    </j:forEach>
+  </goal>
+</project>
