@@ -15,11 +15,36 @@ import relaxngcc.automaton.Transition;
 import relaxngcc.grammar.*;
 
 /**
- * A ScopeBuilder constructs an automaton from a given root Element of scope in target grammar. 
+ * Builds an automaton from {@link Scope} object.
+ * 
+ * <p>
+ * This function returns {@link String}.
+ * 
+ * @author Daisuke Okajima
+ * @author Kohsuke Kawaguchi (kk@kohsuke.org)
  */
-public class ScopeBuilder implements PatternFunction
+public class AutomatonBuilder implements PatternFunction
 {
 	private int _ThreadCount;
+
+	class Context {
+	    private State _InterleaveBranchRoot;
+	    private int _CurrentThreadIndex;
+	    
+		public Context() {
+			_CurrentThreadIndex = -1;
+		}
+		public Context(Context ctx) {
+			_InterleaveBranchRoot = ctx._InterleaveBranchRoot;
+			_CurrentThreadIndex = ctx._CurrentThreadIndex;
+		}
+        
+	    public int getCurrentThreadIndex() { return _CurrentThreadIndex; }
+	    public void setCurrentThreadIndex(int n) { _CurrentThreadIndex = n; }
+	    
+	    public State getInterleaveBranchRoot() { return _InterleaveBranchRoot; }
+	    public void  setInterleaveBranchRoot(State s) { _InterleaveBranchRoot = s; }
+	}
 
     /**
      * Used to give order numbers to EnterAttribute alphabets.
@@ -33,10 +58,10 @@ public class ScopeBuilder implements PatternFunction
 	
     /** Builds ScopeInfo. */
     public static void build( NGCCGrammar grammar, ScopeInfo scope ) {
-        new ScopeBuilder(grammar,scope).build();
+        new AutomatonBuilder(grammar,scope).build();
     }
     
-    private ScopeBuilder( NGCCGrammar grammar, ScopeInfo scope ) {
+    private AutomatonBuilder( NGCCGrammar grammar, ScopeInfo scope ) {
         this.grammar = grammar;
         this._ScopeInfo = scope;
     }
@@ -45,7 +70,7 @@ public class ScopeBuilder implements PatternFunction
     private final ScopeInfo _ScopeInfo;
     
 	public void build() {
-		ctx = new ScopeBuildingContext();
+		ctx = new Context();
 		//starts from final state
 	    destination = createState(null);
 		destination.setAcceptable(true);
@@ -70,7 +95,7 @@ public class ScopeBuilder implements PatternFunction
 	}
 	
 
-    private ScopeBuildingContext ctx;
+    private Context ctx;
     private State destination;
     
     public Object element( ElementPattern pattern ) {
@@ -83,8 +108,8 @@ public class ScopeBuilder implements PatternFunction
         tail.addTransition(te);
         
         // start a new context
-        ScopeBuildingContext oldContext = ctx;
-        ctx = new ScopeBuildingContext(ctx);
+        Context oldContext = ctx;
+        ctx = new Context(ctx);
         
         ctx.setInterleaveBranchRoot(null);
 
@@ -237,12 +262,12 @@ public class ScopeBuilder implements PatternFunction
 
     public Object interleave( InterleavePattern pattern ) {
         State tail = destination;
-        ScopeBuildingContext oldContext = ctx;
+        Context oldContext = ctx;
         
         addAction(destination,true);
         
         State head = createState(pattern);
-        ctx = new ScopeBuildingContext(ctx);
+        ctx = new Context(ctx);
         ctx.setInterleaveBranchRoot(head);
 
         tail.addStateForWait(processInterleaveBranch(pattern.p1,head));

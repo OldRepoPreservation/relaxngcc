@@ -16,7 +16,7 @@ import java.util.Set;
 
 import relaxngcc.builder.CodeWriter;
 import relaxngcc.builder.NullableChecker;
-import relaxngcc.builder.ScopeBuilder;
+import relaxngcc.builder.AutomatonBuilder;
 import relaxngcc.builder.ScopeCollector;
 import relaxngcc.builder.ScopeInfo;
 import relaxngcc.grammar.Grammar;
@@ -114,7 +114,7 @@ public class NGCCGrammar {
         it = scopes.iterator();
         while(it.hasNext()) {
             Scope s = (Scope)it.next();
-            ScopeBuilder.build(this,getScopeInfo(s));
+            AutomatonBuilder.build(this,getScopeInfo(s));
         }
             
         NullableChecker.computeNullability(this);
