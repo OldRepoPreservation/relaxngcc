@@ -5,21 +5,14 @@
  */
 
 package relaxngcc;
-import java.io.FileInputStream;
-import java.io.InputStreamReader;
 import java.io.PrintStream;
 
-import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.SAXParserFactory;
 
-import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 import relaxngcc.parser.RootParserRuntime;
-
-import com.thaiopensource.relaxng.nonxml.NonXmlSyntax;
-import com.thaiopensource.relaxng.nonxml.SchemaBuilderImpl;
 
 
 /**
