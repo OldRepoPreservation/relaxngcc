@@ -1,5 +1,7 @@
 package relaxngcc.grammar;
 
+import relaxngcc.parser.ParserRuntime;
+
 /**
  *
  *
@@ -7,7 +9,7 @@ package relaxngcc.grammar;
  *      Kohsuke Kawaguchi (kk@kohsuke.org)
  */
 public class NotAllowedPattern extends Pattern {
-    public NotAllowedPattern() {}
+    public NotAllowedPattern(ParserRuntime rt) {}
     
     public Object apply( PatternFunction f ) {
         return f.notAllowed(this);

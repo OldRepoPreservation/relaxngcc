@@ -1,5 +1,6 @@
 package relaxngcc.grammar;
 
+import relaxngcc.parser.ParserRuntime;
 /**
  *
  *
@@ -7,7 +8,7 @@ package relaxngcc.grammar;
  *      Kohsuke Kawaguchi (kk@kohsuke.org)
  */
 public class AnyNameClass extends NameClass {
-    public AnyNameClass( NameClass _except ) {
+    public AnyNameClass(ParserRuntime rt, NameClass _except) {
         this.except = _except;
     }
     

@@ -1,8 +1,11 @@
 package relaxngcc.grammar;
 
+import relaxngcc.BuildError;
 import relaxngcc.codedom.CDExpression;
 import relaxngcc.codedom.CDLanguageSpecificString;
 import relaxngcc.codedom.CDType;
+
+import relaxngcc.parser.ParserRuntime;
 
 /**
  * NGCC Parameter for scope definitions.
@@ -11,9 +14,14 @@ import relaxngcc.codedom.CDType;
  */
 public class NGCCDefineParam {
     
-    public NGCCDefineParam( String _className, String _access,
+    public NGCCDefineParam(ParserRuntime rt, String _className, String _access,
         String _returnType, String _returnValue, String _params ) {
         
+        if(_returnType==null && _returnValue!=null)
+            rt.addError(new BuildError(BuildError.ERROR, rt.createLocator(), "@return-type is required when @return-value is specified."));
+        else if(_returnType!=null && _returnValue==null)            
+            rt.addError(new BuildError(BuildError.ERROR, rt.createLocator(), "@return-value is required when @return-type is specified"));
+            
         if(_returnType==null)   _returnType=_className;
         if(_returnValue==null)  _returnValue="this";
         if(_access==null)       _access="";

@@ -1,5 +1,6 @@
 package relaxngcc.grammar;
 
+import relaxngcc.parser.ParserRuntime;
 /**
  * Represents &lt;cc:java> block.
  * This class derives Pattern so that it can be mixed with
@@ -11,8 +12,8 @@ package relaxngcc.grammar;
  */
 public class JavaBlock extends Pattern {
     
-    public JavaBlock( String _code ) {
-        this.code = _code;
+    public JavaBlock(ParserRuntime rt, String code_) {
+        this.code = code_;
     }
 
     public Object apply( PatternFunction f ) {

@@ -1,6 +1,7 @@
 package relaxngcc.grammar;
 
 import org.xml.sax.Locator;
+import relaxngcc.parser.ParserRuntime;
 
 /**
  *
@@ -9,9 +10,9 @@ import org.xml.sax.Locator;
  *      Kohsuke Kawaguchi (kk@kohsuke.org)
  */
 public class ListPattern extends Pattern {
-    public ListPattern( Locator loc, Pattern _p, String _alias ) {
-        this.p = _p;
-        this.alias = _alias;
+    public ListPattern(ParserRuntime rt, Locator loc, Pattern p_, String alias_ ) {
+        this.p = p_;
+        this.alias = alias_;
         this.locator = loc;
     }
     

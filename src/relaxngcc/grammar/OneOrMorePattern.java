@@ -1,5 +1,6 @@
 package relaxngcc.grammar;
 
+import relaxngcc.parser.ParserRuntime;
 /**
  *
  *
@@ -7,8 +8,8 @@ package relaxngcc.grammar;
  *      Kohsuke Kawaguchi (kk@kohsuke.org)
  */
 public class OneOrMorePattern extends Pattern {
-    public OneOrMorePattern( Pattern _p ) {
-        this.p = _p;
+    public OneOrMorePattern(ParserRuntime rt, Pattern p_) {
+        this.p = p_;
     }
     
     public final Pattern p;

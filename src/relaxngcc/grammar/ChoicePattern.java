@@ -1,5 +1,6 @@
 package relaxngcc.grammar;
 
+import relaxngcc.parser.ParserRuntime;
 /**
  *
  *
@@ -7,7 +8,7 @@ package relaxngcc.grammar;
  *      Kohsuke Kawaguchi (kk@kohsuke.org)
  */
 public class ChoicePattern extends BinaryPattern {
-    public ChoicePattern( Pattern p1, Pattern p2 ) {
+    public ChoicePattern(ParserRuntime rt, Pattern p1, Pattern p2 ) {
         super(p1,p2);
     }
     

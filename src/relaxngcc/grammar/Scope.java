@@ -1,6 +1,6 @@
 package relaxngcc.grammar;
 
-
+import relaxngcc.parser.ParserRuntime;
 /**
  * A pattern defined by a &lt;define> and &lt;start>.
  * 
@@ -10,8 +10,8 @@ package relaxngcc.grammar;
  *      Kohsuke Kawaguchi (kk@kohsuke.org)
  */
 public class Scope extends Pattern {
-    public Scope( String _name ) {
-        this.name = _name;
+    public Scope(ParserRuntime rt, String name_) {
+        this.name = name_;
     }
     
     /**
@@ -59,4 +59,15 @@ public class Scope extends Pattern {
     public Object apply( PatternFunction f ) {
         return f.scope(this);
     }
+    
+    public int getParamCount() {
+        String s = param.params;
+        if(s==null || s.length()==0) return 0;
+        //count the number of comma
+        int c = 1;
+        for(int i=0; i<s.length(); i++)
+            if(s.charAt(i)==',') c++;
+        return c;
+    }
+        
 }

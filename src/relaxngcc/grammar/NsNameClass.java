@@ -1,5 +1,6 @@
 package relaxngcc.grammar;
 
+import relaxngcc.parser.ParserRuntime;
 /**
  * 
  *
@@ -7,9 +8,9 @@ package relaxngcc.grammar;
  *      Kohsuke Kawaguchi (kk@kohsuke.org)
  */
 public class NsNameClass extends NameClass {
-    public NsNameClass( String _uri, NameClass _except ) {
-        this.uri = _uri;
-        this.except = _except;
+    public NsNameClass(ParserRuntime rt, String uri_, NameClass except_) {
+        this.uri = uri_;
+        this.except = except_;
     }
     
     public final String uri;

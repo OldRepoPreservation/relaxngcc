@@ -102,7 +102,9 @@ public class NGCCGrammar {
 //
     public void buildAutomaton() {
         // collect all scopes inside the grammar
-        Set scopes = (Set)grammar.apply(new ScopeCollector());
+        ScopeCollector sc = new ScopeCollector();
+        Set scopes = (Set)grammar.apply(sc);
+        reportErrors(sc.iterateErrors());
         Iterator it;
         
         // create empty ScopeInfos
@@ -116,7 +118,9 @@ public class NGCCGrammar {
         it = scopes.iterator();
         while(it.hasNext()) {
             Scope s = (Scope)it.next();
-            AutomatonBuilder.build(this,getScopeInfo(s));
+            AutomatonBuilder ab = new AutomatonBuilder(this, getScopeInfo(s));
+            ab.build();
+            reportErrors(ab.iterateErrors());
         }
             
         NullableChecker.computeNullability(this);
@@ -127,6 +131,12 @@ public class NGCCGrammar {
             ScopeInfo s = getScopeInfo((Scope)it.next());
             s.calcAFOLLOW();
             s.simplifyAutomaton();
+        }
+    }
+    private void reportErrors(Iterator it) {
+        while(it.hasNext()) {
+            BuildError err = (BuildError)it.next();
+            System.err.println(err.toString());
         }
     }
     
@@ -182,7 +192,7 @@ public class NGCCGrammar {
         }
         
         // copy runtime code if necessary
-        if(opt.usePrivateRuntime && generated) {
+        if(!opt.noRuntime && opt.usePrivateRuntime && generated) {
             copyResourceAsFile("NGCCHandler.java",opt);
             copyResourceAsFile("AttributesImpl.java",opt);
             copyResourceAsFile("NGCCRuntime.java",opt);

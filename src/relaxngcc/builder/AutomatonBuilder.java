@@ -6,8 +6,10 @@
 
 package relaxngcc.builder;
 import java.util.Iterator;
+import java.util.Vector;
 
 import relaxngcc.NGCCGrammar;
+import relaxngcc.BuildError;
 import relaxngcc.automaton.Alphabet;
 import relaxngcc.automaton.State;
 import relaxngcc.automaton.Transition;
@@ -55,15 +57,8 @@ public class AutomatonBuilder implements PatternFunction
      * add *in front*, not at the end.
      */
     private String _preservedAction="";
-
     
-    
-    /** Builds ScopeInfo. */
-    public static void build( NGCCGrammar grammar, ScopeInfo scope ) {
-        new AutomatonBuilder(grammar,scope).build();
-    }
-    
-    private AutomatonBuilder( NGCCGrammar grammar, ScopeInfo scope ) {
+    public AutomatonBuilder( NGCCGrammar grammar, ScopeInfo scope ) {
         _grammar = grammar;
         _scopeInfo = scope;
     }
@@ -363,10 +358,17 @@ public class AutomatonBuilder implements PatternFunction
     }
 
     public Object ref( RefPattern pattern ) {
-        
         State head = createState(pattern);
         
         ScopeInfo targetScope = _grammar.getScopeInfo(pattern.target);
+        if(targetScope==null) {
+           addError(new BuildError(BuildError.ERROR, pattern.locator, "The scope "+pattern.target.name+" is undefined."));
+           return _destination;
+        }
+        
+        if(pattern.getParamCount()!=targetScope._scope.getParamCount()) {
+            addError(new BuildError(BuildError.ERROR, pattern.locator, "The number of parameters in @with-params is wrong. The scope "+pattern.target.name+" requires " + targetScope._scope.getParamCount() + " parameter(s)."));
+        }
         
         String alias = pattern.param.getAlias();
         if(alias!=null)
@@ -470,4 +472,15 @@ public class AutomatonBuilder implements PatternFunction
         _preservedAction = "";
         return act;
     }
+
+    //error collection
+    private Vector _errors = new Vector();
+    
+    public void addError(BuildError err) {
+        _errors.add(err);
+    }
+    public Iterator iterateErrors() {
+        return _errors.iterator();
+    }
+    
 }

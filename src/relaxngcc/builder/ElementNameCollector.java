@@ -1,5 +1,6 @@
 package relaxngcc.builder;
 
+import relaxngcc.BuildError;
 import relaxngcc.grammar.ChoiceNameClass;
 import relaxngcc.grammar.ElementPattern;
 import relaxngcc.grammar.NameClass;
@@ -32,5 +33,8 @@ class ElementNameCollector extends PatternWalker {
         else
             _nameClass = new ChoiceNameClass(_nameClass,p.name);
         return null;
+    }
+    public void addError(BuildError err) {
+        throw new UnsupportedOperationException();
     }
 }

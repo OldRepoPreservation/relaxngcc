@@ -3,6 +3,7 @@ package relaxngcc.grammar;
 import org.xml.sax.Locator;
 
 import relaxngcc.datatype.Datatype;
+import relaxngcc.parser.ParserRuntime;
 
 /**
  *
@@ -11,10 +12,10 @@ import relaxngcc.datatype.Datatype;
  *      Kohsuke Kawaguchi (kk@kohsuke.org)
  */
 public class ValuePattern extends Pattern {
-    public ValuePattern( Locator loc, Datatype _type, String _value, String _alias ) {
-        this.type = _type;
-        this.value = _value;
-        this.alias = _alias;
+    public ValuePattern(ParserRuntime rt, Locator loc, Datatype type_, String value_, String alias_ ) {
+        this.type = type_;
+        this.value = value_;
+        this.alias = alias_;
         this.locator = loc;
     }
     

@@ -7,6 +7,11 @@
 package relaxngcc;
 import java.io.File;
 import java.io.PrintStream;
+import java.io.IOException;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
+import java.util.Iterator;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.SAXParserFactory;
@@ -17,9 +22,13 @@ import javax.xml.transform.stream.StreamSource;
 
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
+import org.xml.sax.XMLReader;
+import org.xml.sax.InputSource;
 
 import relaxngcc.parser.RootParserRuntime;
-
+import relaxngcc.samplegen.SampleGenRoot;
+import relaxngcc.samplegen.SampleGenRuntime;
+import relaxngcc.samplegen.XMLSerializer;
 
 /**
  * main class
@@ -66,6 +75,9 @@ public class RelaxNGCC {
         try {
             RootParserRuntime parser = new RootParserRuntime(o);
             parser.parse(o.sourcefile.toURL().toExternalForm());
+            //if critical errors are found, we exit immediately
+            if(reportParserErrors(parser)) return;
+            
             NGCCGrammar grammar = parser.getResult();
             
             grammar.buildAutomaton();
@@ -101,6 +113,19 @@ public class RelaxNGCC {
                 throw e.getException();
         }
     }
+    
+    //prints errors and warnings.
+    //returns true if we stop automaton construction
+    private static boolean reportParserErrors(RootParserRuntime rt) {
+        boolean error_found = false;
+        Iterator it = rt.iterateErrors();
+        while(it.hasNext()) {
+            BuildError err = (BuildError)it.next();
+            if(err.getType()==BuildError.ERROR) error_found = true;
+            System.err.println(err.toString());
+        }
+        return error_found;
+    }
 
     /**
      * Removes RelaxNGCC annotations from the source schema
@@ -113,7 +138,6 @@ public class RelaxNGCC {
             
         transformer.transform(new StreamSource(in),new StreamResult(out));
     }    
-    
     
     
     /**
@@ -145,7 +169,7 @@ public class RelaxNGCC {
         if(msg!=null)       s.println(msg);
         
         s.println("RELAX NG Compiler Compiler 1.1");
-        s.println("   Copyright(c) Daisuke Okajima and Kohsuke Kawaguchi 2001-2002");
+        s.println("   Copyright(c) Daisuke Okajima and Kohsuke Kawaguchi 2001-2003");
         s.println();
         s.println("[Usage]");
         s.println("relaxngcc.jar [options] <grammarfile>");
@@ -161,6 +185,8 @@ public class RelaxNGCC {
         s.println("   emit a lot of debug codes in the generated code");
         s.println(" --print-automata <dir>");
         s.println("   print automata in gif files. Need GraphViz.");
+        s.println(" --noruntime");
+        s.println("   disables copying relaxngcc.runtime package");
         s.println();
         s.println(" For more information, see http://www.relaxngcc.sourceforge.net/ ");
         s.println();

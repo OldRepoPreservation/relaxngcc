@@ -1,7 +1,7 @@
 package relaxngcc.grammar;
 
 import org.xml.sax.Locator;
-
+import relaxngcc.parser.ParserRuntime;
 import relaxngcc.datatype.Datatype;
 
 /**
@@ -12,9 +12,9 @@ import relaxngcc.datatype.Datatype;
  */
 public class DataPattern extends Pattern {
     
-    public DataPattern( Locator loc, Datatype _type, String _alias ) {
-        this.alias = _alias;
-        this.type = _type;
+    public DataPattern(ParserRuntime rt, Locator loc, Datatype type_, String alias_) {
+        this.alias = alias_;
+        this.type = type_;
         this.locator = loc;
     }
     

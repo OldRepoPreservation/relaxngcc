@@ -26,7 +26,7 @@ import org.xml.sax.SAXParseException;
  * 
  *  <li>TODO: provide support for interleaving.
  * 
- * @version $Id: NGCCRuntime.java,v 1.15 2002/09/29 02:55:48 okajima Exp $
+ * @version $Id: NGCCRuntime.java,v 1.16 2003/03/23 02:47:46 okajima Exp $
  * @author Kohsuke Kawaguchi (kk@kohsuke.org)
  */
 public class NGCCRuntime implements ContentHandler, NGCCEventSource {
@@ -210,6 +210,10 @@ public class NGCCRuntime implements ContentHandler, NGCCEventSource {
     public void startElement(String uri, String localname, String qname, Attributes atts)
             throws SAXException {
         
+        uri = uri.intern();
+        localname = localname.intern();
+        qname = qname.intern();
+        
         if(redirect!=null) {
             redirect.startElement(uri,localname,qname,atts);
             redirectionDepth++;
@@ -254,6 +258,10 @@ public class NGCCRuntime implements ContentHandler, NGCCEventSource {
     public void endElement(String uri, String localname, String qname)
             throws SAXException {
         
+        uri = uri.intern();
+        localname = localname.intern();
+        qname = qname.intern();
+        
         if(redirect!=null) {
             redirect.endElement(uri,localname,qname);
             redirectionDepth--;
@@ -293,9 +301,9 @@ public class NGCCRuntime implements ContentHandler, NGCCEventSource {
         return currentAtts.getIndex(uri, localname);
     }
     public void consumeAttribute(int index) throws SAXException {
-        final String uri    = currentAtts.getURI(index);
-        final String local  = currentAtts.getLocalName(index);
-        final String qname  = currentAtts.getQName(index);
+        final String uri    = currentAtts.getURI(index).intern();
+        final String local  = currentAtts.getLocalName(index).intern();
+        final String qname  = currentAtts.getQName(index).intern();
         final String value  = currentAtts.getValue(index);
         currentAtts.removeAttribute(index);
         
@@ -355,7 +363,7 @@ public class NGCCRuntime implements ContentHandler, NGCCEventSource {
         
         reset();
     }
-    public void startDocument() {}
+    public void startDocument() throws SAXException {}
 
 
 

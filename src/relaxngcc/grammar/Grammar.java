@@ -4,6 +4,8 @@ import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Map;
 
+import relaxngcc.parser.ParserRuntime;
+
 /**
  * Set of {@link Scope}s.
  * 
@@ -16,9 +18,9 @@ import java.util.Map;
  */
 public final class Grammar extends Scope {
     
-    public Grammar( Grammar _parent ) {
-        super(null);
-        this.parent = _parent;
+    public Grammar(ParserRuntime rt) {
+        super(rt, null);
+        this.parent = rt.grammar;
     }
     
     /** Parent {@link Grammar} object, if any. Otherwise null. */
@@ -33,10 +35,10 @@ public final class Grammar extends Scope {
         return (Scope)patterns.get(name);
     }
     
-    public Scope getOrCreate( String name ) {
+    public Scope getOrCreate(ParserRuntime rt, String name) {
         Scope s = get(name);
         if(s==null)
-            patterns.put(name,s=new Scope(name));
+            patterns.put(name, s = new Scope(rt, name));
         return s;
     }
     

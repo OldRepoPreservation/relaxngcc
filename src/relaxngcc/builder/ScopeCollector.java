@@ -3,7 +3,9 @@ package relaxngcc.builder;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.Vector;
 
+import relaxngcc.BuildError;
 import relaxngcc.grammar.AttributePattern;
 import relaxngcc.grammar.BinaryPattern;
 import relaxngcc.grammar.ChoicePattern;
@@ -33,6 +35,7 @@ import relaxngcc.grammar.ValuePattern;
 public class ScopeCollector implements PatternFunction {
     
     private final Set _scopes = new HashSet();
+    private final Vector _errors = new Vector();
     
     // terminals
     public Object empty(EmptyPattern p) { return _scopes; }
@@ -61,11 +64,7 @@ public class ScopeCollector implements PatternFunction {
     
     // this is the only place where things get a bit interesting
     public Object scope(Scope scope) {
-        if(_scopes.add(scope)) {
-            
-            if(scope.getPattern()==null) {
-                throw new IllegalArgumentException("Scope [" + scope.name + "] is not found.");
-            }
+        if(scope.getPattern()!=null && _scopes.add(scope)) {
             
             // if the content of this scope is not processed yet, then recurse.
             scope.getPattern().apply(this);
@@ -80,6 +79,13 @@ public class ScopeCollector implements PatternFunction {
             }
         }
         return _scopes;
+    }
+    
+    public void addError(BuildError err) {
+        _errors.add(err);
+    }
+    public Iterator iterateErrors() {
+        return _errors.iterator();
     }
 }
 

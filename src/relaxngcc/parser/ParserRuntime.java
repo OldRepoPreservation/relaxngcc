@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Stack;
+import java.util.Vector;
+import java.util.Iterator;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParserFactory;
@@ -15,6 +17,7 @@ import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.LocatorImpl;
 
+import relaxngcc.*;
 import relaxngcc.datatype.Datatype;
 import relaxngcc.grammar.Grammar;
 import relaxngcc.grammar.NameClass;
@@ -36,6 +39,9 @@ public abstract class ParserRuntime extends NGCCRuntime {
     protected final Stack _nsStack = new Stack();
     
     protected final Stack _datatypeLibraryStack = new Stack();
+    
+    /** collection of errors and warnings */
+    protected final Vector _errors = new Vector();
 
     /** static SAX parser factory. */
     static private final SAXParserFactory _SAXFactory;
@@ -119,7 +125,9 @@ public abstract class ParserRuntime extends NGCCRuntime {
             throw new SAXException(e);
         }
         
-        new IncludeParserRuntime(this).parse(href);
+        IncludeParserRuntime rt = new IncludeParserRuntime(this);
+        rt.parse(href);
+        _errors.addAll(rt._errors);
     }
     
     /**
@@ -175,5 +183,13 @@ public abstract class ParserRuntime extends NGCCRuntime {
         _nsStack.pop();
         _datatypeLibraryStack.pop();
     }
+    
+    public void addError(BuildError err) {
+        _errors.add(err);
+    }
+    public Iterator iterateErrors() {
+        return _errors.iterator();
+    }
+    
 }
 

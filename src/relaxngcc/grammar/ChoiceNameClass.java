@@ -1,5 +1,6 @@
 package relaxngcc.grammar;
 
+import relaxngcc.parser.ParserRuntime;
 /**
  *
  *
@@ -7,9 +8,9 @@ package relaxngcc.grammar;
  *      Kohsuke Kawaguchi (kk@kohsuke.org)
  */
 public class ChoiceNameClass extends NameClass {
-    public ChoiceNameClass( NameClass _nc1, NameClass _nc2 ) {
-        this.nc1 = _nc1;
-        this.nc2 = _nc2;
+    public ChoiceNameClass(NameClass nc1_, NameClass nc2_) {
+        this.nc1 = nc1_;
+        this.nc2 = nc2_;
     }
     
     public final NameClass nc1;

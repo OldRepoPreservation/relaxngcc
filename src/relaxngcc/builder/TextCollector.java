@@ -1,5 +1,6 @@
 package relaxngcc.builder;
 
+import relaxngcc.BuildError;
 import relaxngcc.grammar.AttributePattern;
 import relaxngcc.grammar.DataPattern;
 import relaxngcc.grammar.ElementPattern;
@@ -47,4 +48,7 @@ class TextCollector extends PatternWalker {
         return super.value(p);
     }
 
+    public void addError(BuildError err) {
+        throw new UnsupportedOperationException();
+    }
 }

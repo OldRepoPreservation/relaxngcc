@@ -53,8 +53,8 @@ public class NameTestBuilder implements NameClassFunction {
 
     public Object name(String ns, String local) {
         return CDOp.AND(
-            CDOp.STREQ( _$uriVar, new CDConstant(ns) ),
-            CDOp.STREQ( _$localNameVar, new CDConstant(local)) );
+            CDOp.STRFASTEQ( _$uriVar, new CDConstant(ns) ),
+            CDOp.STRFASTEQ( _$localNameVar, new CDConstant(local)) );
     }
 
 }

@@ -1,7 +1,8 @@
 package relaxngcc.grammar;
 
 import org.xml.sax.Locator;
-
+import relaxngcc.BuildError;
+import relaxngcc.parser.ParserRuntime;
 /**
  *
  *
@@ -9,9 +10,9 @@ import org.xml.sax.Locator;
  *      Kohsuke Kawaguchi (kk@kohsuke.org)
  */
 public class RefPattern extends Pattern {
-    public RefPattern( Locator loc, Scope _target, NGCCCallParam _param ) {
-        this.target = _target;
-        this.param = _param;
+    public RefPattern(ParserRuntime rt, Locator loc, Scope target_, NGCCCallParam param_) {
+        this.target = target_;
+        this.param = param_;
         this.locator = loc;
     }
     
@@ -21,5 +22,21 @@ public class RefPattern extends Pattern {
 
     public Object apply( PatternFunction f ) {
         return f.ref(this);
+    }
+    
+    public int getParamCount() {
+        String s = param.getWithParams();
+        if(s==null || s.length()==0) return 0;
+        //count the number of comma
+        int c = 1;
+        int bracket = 0;
+        for(int i=0; i<s.length(); i++) {
+            char ch = s.charAt(i);
+            if(bracket==0 && ch==',') c++;
+            
+            if(ch=='(') bracket++;
+            else if(ch==')') bracket--;
+        }
+        return c;
     }
 }

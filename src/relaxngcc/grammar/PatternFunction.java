@@ -1,5 +1,6 @@
 package relaxngcc.grammar;
 
+import relaxngcc.BuildError;
 /**
  *
  *
@@ -22,4 +23,7 @@ public interface PatternFunction {
     // special patterns
     Object scope(Scope s);
     Object javaBlock(JavaBlock p);
+    
+    //error collection
+    void addError(BuildError err);
 }

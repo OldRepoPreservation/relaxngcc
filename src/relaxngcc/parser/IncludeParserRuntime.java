@@ -20,7 +20,7 @@ public class IncludeParserRuntime extends ParserRuntime {
         // inherit context from the parent
         grammar = parent.grammar;
         _parent = parent;
-        _nsStack.add(parent.getCurrentAttributes()); // inherit the ns attribute
+        _nsStack.add(parent.getTargetNamespace()); // inherit the ns attribute
     }
     
     /** The root state object that we use to parse the RELAX NG grammar. */

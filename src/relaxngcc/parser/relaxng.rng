@@ -64,7 +64,7 @@
       <element name="element">
         <ref name="name" cc:alias="name" cc:with-params="false" />
         <ref name="patterns" cc:alias="p" />
-        p = new ElementPattern(loc,$runtime.createLocator(),name,p);
+        p = new ElementPattern($runtime, loc, name, p);
         <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
       
@@ -78,10 +78,8 @@
         <cc:java>
           // if there is no child pattern, assume &lt;text>.
           if(p==null)
-            p = new DataPattern(loc,Datatype.NOOP,alias);
-          p = new AttributePattern(
-            loc,$runtime.createLocator(),
-            name,p);
+            p = new DataPattern($runtime, loc, Datatype.NOOP, alias);
+            p = new AttributePattern($runtime, loc, name, p);
         </cc:java>
         <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
@@ -96,7 +94,7 @@
           <ref name="pattern" cc:alias="child"/>
           <cc:java>
             if(p==null)  p = child;
-            else         p = new InterleavePattern(p,child);
+            else         p = new InterleavePattern($runtime, p, child);
           </cc:java>
         </oneOrMore>
         <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
@@ -107,7 +105,7 @@
           <ref name="pattern" cc:alias="child"/>
           <cc:java>
             if(p==null)  p = child;
-            else         p = new ChoicePattern(p,child);
+            else         p = new ChoicePattern($runtime, p, child);
           </cc:java>
         </oneOrMore>
         <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
@@ -116,7 +114,7 @@
       <element name="optional">
         <ref name="patterns" cc:alias="p" />
         <cc:java>
-          p = new ChoicePattern( p, new EmptyPattern() );
+          p = new ChoicePattern($runtime, p, new EmptyPattern($runtime));
         </cc:java>
         <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
@@ -124,8 +122,7 @@
       <element name="zeroOrMore">
         <ref name="patterns" cc:alias="p" />
         <cc:java>
-          p = new ChoicePattern( new OneOrMorePattern(p),
-              new EmptyPattern() );
+          p = new ChoicePattern($runtime, new OneOrMorePattern($runtime, p), new EmptyPattern($runtime));
         </cc:java>
         <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
@@ -133,7 +130,7 @@
       <element name="oneOrMore">
         <ref name="patterns" cc:alias="p" />
         <cc:java>
-          p = new OneOrMorePattern( p );
+          p = new OneOrMorePattern($runtime, p);
         </cc:java>
         <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
@@ -142,7 +139,7 @@
         <ref name="NGCC-alias" cc:alias="alias"/>
         <ref name="patterns" cc:alias="p" />
         <cc:java>
-          p = new ListPattern( loc, p, alias );
+          p = new ListPattern($runtime, loc, p, alias);
         </cc:java>
         <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
@@ -150,7 +147,7 @@
       <element name="mixed">
         <ref name="patterns" cc:alias="p" />
         <cc:java>
-          p = new InterleavePattern( new DataPattern( loc, Datatype.NOOP, null ), p );
+          p = new InterleavePattern($runtime, new DataPattern($runtime, loc, Datatype.NOOP, null ), p );
         </cc:java>
         <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
@@ -160,8 +157,7 @@
           <ref name="NGCC-call" cc:alias="params" />
           <attribute name="name" cc:alias="target" />
           <cc:java>
-            p = new RefPattern( loc,
-                $runtime.grammar.getOrCreate(target),params);
+            p = new RefPattern($runtime, loc, $runtime.grammar.getOrCreate($runtime, target), params);
           </cc:java>
         </element>
         <ref name="NGCC-withParams" cc:with-params="params"/>
@@ -173,15 +169,15 @@
         <cc:java>
           // refers to the parent grammar,
           // instead of the current grammar
-          p = new RefPattern( loc,
-              $runtime.grammar.parent.getOrCreate(target),params);
+          p = new RefPattern($runtime, loc,
+              $runtime.grammar.parent.getOrCreate($runtime, target),params);
         </cc:java>
       </element>
       
       <element name="empty">
         <empty/>
         <cc:java>
-          p = new EmptyPattern();
+          p = new EmptyPattern($runtime);
         </cc:java>
         <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
@@ -190,7 +186,7 @@
         <empty/>
         <ref name="NGCC-alias" cc:alias="alias" />
         <cc:java>
-          p = new DataPattern(loc,Datatype.NOOP,alias);
+          p = new DataPattern($runtime, loc, Datatype.NOOP, alias);
         </cc:java>
         <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
@@ -204,7 +200,7 @@
         <ref name="NGCC-alias" cc:alias="alias" />
         <text cc:alias="value"/>
         <cc:java>
-          p = new ValuePattern(loc,Datatype.NOOP,value,alias);
+          p = new ValuePattern($runtime, loc,Datatype.NOOP, value, alias);
         </cc:java>
         <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
@@ -224,7 +220,7 @@
         </optional-->
         <ref name="NGCC-alias" cc:alias="alias" />
         <cc:java>
-          p = new DataPattern(loc, $runtime.getDatatype(typeName),alias);
+          p = new DataPattern($runtime, loc, $runtime.getDatatype(typeName),alias);
         </cc:java>
         <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
@@ -232,7 +228,7 @@
       <element name="notAllowed">
         <empty/>
         <cc:java>
-          p = new NotAllowedPattern();
+          p = new NotAllowedPattern($runtime);
         </cc:java>
       </element>
       <!--element name="externalRef">
@@ -245,13 +241,13 @@
       
       <element name="grammar">
         <cc:java>
-          $runtime.grammar = new Grammar( $runtime.grammar );
+          $runtime.grammar = new Grammar( $runtime );
         </cc:java>
         <ref name="grammar-content" />
         <cc:java>
           // behave as if there is an implicit ref
           // between &lt;grammar> and its  parent.
-          p = new RefPattern( loc, $runtime.grammar, null );
+          p = new RefPattern($runtime, loc, $runtime.grammar, null );
           // get back to the parent context
           $runtime.grammar = $runtime.grammar.parent;
         </cc:java>
@@ -259,7 +255,7 @@
       
       <element name="cc:java">
         <text cc:alias="value"/>
-        <cc:java> p = new JavaBlock(value); </cc:java>
+        <cc:java> p = new JavaBlock($runtime, value); </cc:java>
       </element>
     </choice>
   </define>
@@ -319,7 +315,7 @@
     <element name="define">
       <attribute name="name" cc:alias="name" />
       <ref name="pattern-definition"
-        cc:with-params="$runtime.grammar.getOrCreate(name)"/>
+        cc:with-params="$runtime.grammar.getOrCreate($runtime, name)"/>
     </element>
   </define>
   
@@ -376,7 +372,7 @@
       <ref name="pattern" cc:alias="child"/>
       <cc:java>
         if(p==null)  p = child;
-        else         p = new GroupPattern(p,child);
+        else         p = new GroupPattern($runtime, p, child);
       </cc:java>
     </oneOrMore>
   </define>
@@ -398,13 +394,13 @@
       <element name="anyName">
         <ref name="except-name-class" cc:alias="child"/>
         <cc:java>
-          nc = new AnyNameClass(child);
+          nc = new AnyNameClass($runtime, child);
         </cc:java>
       </element>
       <element name="nsName">
         <ref name="except-name-class" cc:alias="child"/>
         <cc:java>
-          nc = new NsNameClass($runtime.getTargetNamespace(),child);
+          nc = new NsNameClass($runtime, $runtime.getTargetNamespace(),child);
         </cc:java>
       </element>
       <element name="choice">
@@ -458,12 +454,12 @@
       
       
       // wrap it by Scope. Scope will then be turned into a class
-      Scope sc = new Scope(name);
+      Scope sc = new Scope($runtime, name);
       sc.append(p,null);
       sc.setParam(dparam);
       
       // further wrap it by RefPattern
-      p = new RefPattern( loc, sc, cparam );
+      p = new RefPattern($runtime, loc, sc, cparam );
     </optional>
   </define>
   
@@ -482,7 +478,7 @@
     </optional>
     <ref name="NGCC-alias" cc:alias="alias"/>
     <cc:java>
-      param = new NGCCCallParam(withParams,alias);
+      param = new NGCCCallParam($runtime, withParams, alias);
     </cc:java>
   </define>
   
@@ -540,7 +536,7 @@
       <attribute name="cc:return-value" cc:alias="returnValue"/>
     </optional>
     <cc:java>
-      param = new NGCCDefineParam(className,access,returnType,returnValue,params);
+      param = new NGCCDefineParam($runtime,className,access,returnType,returnValue,params);
     </cc:java>
   </define>
   

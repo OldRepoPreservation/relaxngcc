@@ -13,6 +13,7 @@ public abstract class CDOp {
     public static final int STREQ = 2;
     public static final int AND = 3;
     public static final int OR = 4;
+    public static final int STRFASTEQ = 5; //for interned strings
     
     private static class BinaryOperator extends CDExpression {
         private int _type;
@@ -26,9 +27,11 @@ public abstract class CDOp {
         }
         
         public void express(CDFormatter f) throws IOException {
-            if(_type==STREQ) {
+            if(_type==STREQ)
                 f.express(_left).p('.').p("equals").p('(').express(_right).p(')');
-            } else {
+            else if(_type==STRFASTEQ)
+                f.express(_left).p("==").express(_right);
+            else {
                 //TODO: eliminate excessive brackets
                 f.p('(');
                 _left.express(f);
@@ -56,6 +59,10 @@ public abstract class CDOp {
     /** String value equality operator. */
     public static CDExpression STREQ(CDExpression left, CDExpression right) {
         return new BinaryOperator(STREQ, left, right);
+    }
+    /** String value equality operator. */
+    public static CDExpression STRFASTEQ(CDExpression left, CDExpression right) {
+        return new BinaryOperator(STRFASTEQ, left, right);
     }
     /** Logical and operator. */
     public static CDExpression AND(CDExpression left, CDExpression right) {

@@ -1,5 +1,6 @@
 package relaxngcc.grammar;
 
+import relaxngcc.parser.ParserRuntime;
 import org.xml.sax.Locator;
 
 /**
@@ -9,8 +10,8 @@ import org.xml.sax.Locator;
  *      Kohsuke Kawaguchi (kk@kohsuke.org)
  */
 public class ElementPattern extends MarkupPattern {
-    public ElementPattern(Locator sloc, Locator eloc, NameClass _name, Pattern _body) {
-        super(sloc, eloc, _name, _body);
+    public ElementPattern(ParserRuntime rt, Locator sloc, NameClass name, Pattern body) {
+        super(sloc, rt.createLocator(), name, body);
     }
     public Object apply( PatternFunction f ) {
         return f.element(this);

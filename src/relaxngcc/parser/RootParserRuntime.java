@@ -82,7 +82,7 @@ public class RootParserRuntime extends ParserRuntime {
         } else {
             // if the parsed tree doesn't have the enclosing &lt;grammar>, add one.
             grammar = new Grammar(null);
-            grammar.setParam(new NGCCDefineParam("RelaxNGCC_Result",null,null,null,null));
+            grammar.setParam(new NGCCDefineParam(this, "RelaxNGCC_Result",null,null,null,null));
             grammar.append(p,null);
         }
         
