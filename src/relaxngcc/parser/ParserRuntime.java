@@ -1,5 +1,6 @@
 package relaxngcc.parser;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -25,6 +26,11 @@ public abstract class ParserRuntime extends NGCCRuntime {
     
     /** Parses a document with this runtime. */
     public void parse(String source) throws SAXException {
+        
+        // check the date of this source file
+        checkLastModifiedTime(new File(source).lastModified());
+        
+        // parse
         try {
 	        XMLReader reader = _SAXFactory.newSAXParser().getXMLReader();
             reader = new ForeignElementFilter(reader);
@@ -37,6 +43,9 @@ public abstract class ParserRuntime extends NGCCRuntime {
             throw new SAXException(e);
         }
     }
+    
+    /** Call-back method that receives the last modified time of a newly parsed file. */
+    protected abstract void checkLastModifiedTime( long time );
 
     /** static SAX parser factory. */
     static private final SAXParserFactory _SAXFactory;

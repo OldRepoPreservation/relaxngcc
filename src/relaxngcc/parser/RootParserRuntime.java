@@ -40,6 +40,17 @@ public class RootParserRuntime extends ParserRuntime {
         globalBody += code;
     }
 
+    /**
+     * Timestamp of the source grammar file.
+     * If other files are included via some mechanism, those are
+     * also incorporated.
+     */
+    private long grammarTimestamp = -1;
+    protected void checkLastModifiedTime( long time ) {
+        grammarTimestamp = Math.max( grammarTimestamp, time );
+    }
+    public long getGrammarTimestamp() { return grammarTimestamp; }
+
     
     /** Gets the parsed result, or null if there was any error. */
     public NGCCGrammar getResult() {

@@ -143,8 +143,16 @@ public class NGCCGrammar {
         }
     }
 
-    public void output( Options opt ) throws IOException
+    /**
+     * Generates the source code.
+     * 
+     * @return
+     *      true if files are in fact generated.
+     */
+    public boolean output( Options opt, long sourceTimestamp ) throws IOException
     {
+        boolean generated = false;
+        
 /*        //step1 datatypes
         if(_Options.style==Options.STYLE_TYPED_SAX && _DataTypes.size() > 0)
         {
@@ -158,21 +166,27 @@ public class NGCCGrammar {
             ScopeInfo si = (ScopeInfo)it.next();
             
 //            if(!si.isLambda() && !si.isInline()) {
-                CodeWriter w = new CodeWriter(this, si, opt);
-                File f = new File(opt.targetdir, si.getClassName() + ".java");
+            CodeWriter w = new CodeWriter(this, si, opt);
+            File f = new File(opt.targetdir, si.getClassName() + ".java");
+            if(!f.exists() || f.lastModified()<=sourceTimestamp || !opt.smartOverwrite) {
+                generated = true;
                 f.delete();
                 PrintStream out = new PrintStream(new FileOutputStream(f));
                 w.output(out);
                 out.close();
                 f.setReadOnly();
+            }
 //            }
         }
+        
         // copy runtime code if necessary
-        if(opt.usePrivateRuntime) {
+        if(opt.usePrivateRuntime && generated) {
             copyResourceAsFile("NGCCHandler.java",opt);
             copyResourceAsFile("AttributesImpl.java",opt);
             copyResourceAsFile("NGCCRuntime.java",opt);
         }
+        
+        return generated;
     }
     
     /**

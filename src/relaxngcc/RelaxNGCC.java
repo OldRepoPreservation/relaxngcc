@@ -20,11 +20,20 @@ import relaxngcc.parser.RootParserRuntime;
  */
 public class RelaxNGCC
 {
-	private static DocumentBuilderFactory _DOMFactory;
-	private static SAXParserFactory _SAXFactory;
-	
-	public static void main(String[] args) throws Exception
-	{
+	private static final DocumentBuilderFactory _DOMFactory;
+	private static final SAXParserFactory _SAXFactory;
+    
+    static {
+        _DOMFactory = DocumentBuilderFactory.newInstance();
+        _DOMFactory.setNamespaceAware(true);
+        _DOMFactory.setValidating(false);
+        
+        _SAXFactory = SAXParserFactory.newInstance();
+        _SAXFactory.setNamespaceAware(true);
+        _SAXFactory.setValidating(false);
+    }	
+    
+	public static void main(String[] args) throws Exception {
         Options o;
         try {
             o = new Options(args);
@@ -35,28 +44,37 @@ public class RelaxNGCC
 		
         if(!checkDependencies(o)) return;
 		
-		_DOMFactory = DocumentBuilderFactory.newInstance();
-		_DOMFactory.setNamespaceAware(true);
-		_DOMFactory.setValidating(false);
-		
-		_SAXFactory = SAXParserFactory.newInstance();
-		_SAXFactory.setNamespaceAware(true);
-		_SAXFactory.setValidating(false);
+        run(o);
+    }
+    
+    /**
+     * Executes RelaxNGCC with the specified options.
+     */
+    public static void run( Options o ) throws Exception {
         
         // TODO: this code should be moved to somewhere else.
         try {// debug
-            RootParserRuntime runtime = new RootParserRuntime();
-            runtime.parse(o.sourcefile);
-            NGCCGrammar grammar = runtime.getResult();
+            RootParserRuntime parser = new RootParserRuntime();
+            parser.parse(o.sourcefile.getPath());
+            NGCCGrammar grammar = parser.getResult();
             
             grammar.buildAutomaton();
             
+            
+            boolean uptodate=false; // set to true if there is no need for processing
+            
+            // generate code first.
+            if(!o.noCodeGeneration) {
+                uptodate = !grammar.output(o,parser.getGrammarTimestamp());
+                if(uptodate)
+                    System.out.println("files are up-to-date.");
+            }
+            
             // process debug options
-            if(o.printFirstFollow)    grammar.dump(System.err);
-            if(o.printAutomata!=null) grammar.dumpAutomata(o.printAutomata);
-            
-            if(!o.noCodeGeneration) grammar.output(o);
-            
+            if(!uptodate) {
+                if(o.printFirstFollow)    grammar.dump(System.err);
+                if(o.printAutomata!=null) grammar.dumpAutomata(o.printAutomata);
+            }
         } catch( SAXException e ) {
             if( e instanceof SAXParseException )
                 System.err.println(((SAXParseException)e).getSystemId());
@@ -64,69 +82,12 @@ public class RelaxNGCC
                 throw e.getException();
             throw e;
         }
-/*        } else {
-            // classic parser
-			NGCCGrammar grm = new NGCCGrammar(o);
-	        
-			grm.buildAutomaton();
-	        
-			// process debug options
-			if(o.printFirstFollow)    grm.dump(System.err);
-	        if(o.printAutomata!=null) grm.dumpAutomata(o.printAutomata);
-	        
-	        if(!o.noCodeGeneration) grm.output();
-        }
-*/
 	}
 
-/*	
-	//returns a DOM document after checking validity as a RelaxNGCC grammar
-	public static Document readGrammar(Options o, String location) throws NGCCException
-	{
-		try
-		{
-			//returns the document as a DOM document
-			DocumentBuilder docbuilder = _DOMFactory.newDocumentBuilder();
-			Document grm = docbuilder.parse(location);
-			String rootnsuri = grm.getDocumentElement().getNamespaceURI();
-			if(!rootnsuri.equals(NGCCGrammar.RELAXNG_NSURI_09) && !rootnsuri.equals(NGCCGrammar.RELAXNG_NSURI_10))
-				throw new NGCCException("The namespace URI of the root element is not correct as RELAX NG");
-			
-			NGCCGrammar.RELAXNG_NSURI = rootnsuri;
-			
-			// load a schema. GrammarLoader will detect the schema language automatically.
-			if(o.msv_available && !o.from_include)
-			{
-				if(GrammarChecker.check(location, _SAXFactory)==null) throw new NGCCException("failed to load grammar [" + location + "]");
-			}
-			
-			return grm;
-		}
-		catch(Exception e) //IOException, SAXException
-		{ throw new NGCCException(e); }
-	}
-	
-	public static NGCCElement readNGCCGrammar(Options o, String location)
-		throws NGCCException {
-		if (o.input == Options.NORMAL)
-			return new W3CDOMElement(
-				readGrammar(o, location).getDocumentElement());
-		else {
-			try {
-				NonXmlSyntax parser =
-					new NonXmlSyntax(
-						new InputStreamReader(new FileInputStream(location)));
-				SchemaBuilderImpl sb = new SchemaBuilderImpl();
-				parser.Input(sb);
-				return NonXmlElement.create(
-					sb.finish(parser.getPreferredNamespace()));
-			} catch (Exception e) {
-				e.printStackTrace();
-				throw new NGCCException(e);
-			}
-		}
-	}
-*/	
+    
+    
+    
+    
     /**
      * Checks the existance of libraries that are necessary to run RelaxNGCC.
      */
@@ -140,7 +101,7 @@ public class RelaxNGCC
 
 		try {
 			Class.forName("com.sun.msv.grammar.Grammar");
-			o.msv_available = true;
+//			o.msv_available = true;
 		} catch (ClassNotFoundException e) {
 			System.err.println(
 				"[Warning] MSV(Multi Schema Validator) is not found. If the input RELAX NG grammar is wrong syntactically and MSV is not available, RelaxNGCC terminates with Exception. ");
@@ -174,6 +135,8 @@ public class RelaxNGCC
 //        s.println("   generates code that depends on only SAX2 parser. This is the most simple case but no datatypes are supported.");
         s.println(" --target <dir>");
         s.println("   specifies the source code output location.");
+        s.println(" --uptodatecheck");
+        s.println("   don't generate files if they are up-to-date.");
         s.println(" --debug");
         s.println("   emit a lot of debug codes in the generated code");
         s.println();

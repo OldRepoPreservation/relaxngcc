@@ -21,12 +21,11 @@ public class Options
     public int style;
 */	
 
-	public String sourcefile;
-	public String targetdir;
-	public boolean msv_available;
-	public boolean from_include;
-	public boolean debug;
-	public String newline;
+	public File sourcefile;
+	public File targetdir;
+//	public boolean msv_available;
+	public boolean debug       = false;
+	public String newline      = System.getProperty("line.separator");
 	
     /**
      * Directory to write automata gif files. A debug option.
@@ -43,19 +42,23 @@ public class Options
     /** Uses a private copy of runtime code. */
     public boolean usePrivateRuntime=true;
     
+    /** Don't overwrite files when the Java files are up-to-date. */
+    public boolean smartOverwrite=false;
     
+    /** Creates Options filled by the default values. */
+    public Options() {}
+    
+    /** Parses option list. */
 	public Options(String[] args) throws CommandLineException {
         
 //		input = NORMAL;
-		newline = System.getProperty("line.separator");
 //		style = STYLE_PLAIN_SAX;
-		from_include = false;
 		
 		for(int i=0; i<args.length; i++)
 		{
             if(args[i].charAt(0)=='-') {
     			if(args[i].equals("--target"))
-    				targetdir = args[++i];
+    				targetdir = new File(args[++i]);
 //    			else if(args[i].equals("--msv"))
 //    				style = STYLE_MSV;
 //    			else if(args[i].equals("--typedsax"))
@@ -72,6 +75,8 @@ public class Options
                     printFirstFollow = true;
                 else if(args[i].equals("--no-code"))
                     noCodeGeneration = true;
+                else if(args[i].equals("--uptodatecheck"))
+                    smartOverwrite = true;
     			else
                     throw new CommandLineException(
                         "[Warning] Unknown option "+args[i]);
@@ -79,7 +84,7 @@ public class Options
                 if(sourcefile!=null)
                     throw new CommandLineException(
                         "[Warning] Two source files are specified "+args[i]);
-                sourcefile = args[i];
+                sourcefile = new File(args[i]);
             }
 		}
         
@@ -88,11 +93,7 @@ public class Options
         
         if(targetdir==null) {
             // compute the default target directory
-            File src = new File(sourcefile);
-            if(src.isAbsolute())
-                targetdir = src.getParent();
-            else
-                targetdir = ".";
+            targetdir = sourcefile.getParentFile();
         }
 	}
 }

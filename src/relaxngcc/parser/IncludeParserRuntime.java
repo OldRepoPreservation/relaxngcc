@@ -36,5 +36,9 @@ public class IncludeParserRuntime extends ParserRuntime {
     public void appendGlobalBody( String code ) {
         parent.appendGlobalBody(code);
     }
+
+    protected void checkLastModifiedTime( long time ) {
+        parent.checkLastModifiedTime(time);
+    }
 }
 
