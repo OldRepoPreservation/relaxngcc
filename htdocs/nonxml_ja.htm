@@ -1,0 +1,59 @@
+<html>
+<head>
+	<title>non-XML syntax</title>
+	<link rel="stylesheet" href="ngcc.css"/>
+	<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; CHARSET=shift_jis">
+</head>
+<body>
+<h1>non-XML syntax サポート</h1>
+<p align="right">Jan 6, 2002</p>
+<h2>non-XML syntaxとは</h2>
+
+<p>　RELAX NG Non-XML syntaxはJames Clark氏の提案した、RELAX NG文法をXMLではない形式で書き表そうという試みです。使いこなすには少々練習が要りますが、慣れてくるとXML形式の文法に比べ作成時のタイプ量は減り、文法の構造が直感的にわかりやすくなってきます。</p>
+<p>　non-XML syntaxで書かれた文法を通常のXML形式に変換するプログラムはnon-XML syntaxの解説ページ <a href="http://www.thaiopensource.com/relaxng/nonxml/">http://www.thaiopensource.com/relaxng/nonxml/</a> で公開されています。James Clark氏の許可を得て、RelaxNGCCでのnon-XML syntaxサポートはその変換プログラムのソースコードを元になされました。</p>
+
+
+<h2>サンプル</h2>
+<p>まず、もとになるnon-XML syntaxによる文法です。</p>
+<pre>
+datatypes xsd = "http://www.w3.org/2001/XMLSchema-datatypes"
+
+start =
+  element team {
+    element player {
+      attribute number {
+	xsd:positiveInteger
+      },
+      element name {
+	text
+      }
+    }+
+  }
+
+</pre>
+
+<p>次にこれに対しRelaxNGCCの機能を付け加えたnon-XML syntaxです。non-XML syntaxのannotation機能を使って書いています。</p>
+<pre>
+datatypes xsd = "http://www.w3.org/2001/XMLSchema-datatypes"
+namespace c = "http://www.xml.gr.jp/xmlns/relaxngcc"
+
+start [<span class="emph-code">c:class="sample1"</span>] =
+  element team {
+    element player {
+      attribute number {
+	xsd:positiveInteger [<span class="emph-code">c:alias="number"</span>] &gt;&gt; <span class="emph-code">&lt;c:java&gt;System.out.println(number);&lt;/c:java&gt;</span>
+      },
+      element name {
+	text [<span class="emph-code">c:alias="name"</span>] &gt;&gt; <span class="emph-code">&lt;c:java&gt;System.out.println(name);&lt;/c:java&gt;</span>
+      }
+    }+
+  }
+
+</pre>
+
+<h2>RelaxNGCC オプション</h2>
+<p>　RelaxNGCCで、non-XML syntaxで書かれた文法を入力として使うときには、RelaxNGCCの起動オプションに<tt>--nonxml</tt>を使います。</p>
+<hr>
+<p align="right"><a href="index_ja.htm">RelaxNGCC home</a></p>
+</body>
+</html>

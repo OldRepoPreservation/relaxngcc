@@ -1,0 +1,377 @@
+<html>
+<head>
+	<title>RelaxNGCC マニュアル</title>
+	<link rel="stylesheet" href="ngcc.css"/>
+	<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; CHARSET=shift_jis">
+</head>
+<body>
+<a name="top">
+<h1>RelaxNGCC マニュアル</h1>
+<div align="right">Last update 2002/05/03</div>
+<div>もくじ</div>
+<ul>
+<li><a href="#scope">スコープ</a></li>
+<li><a href="#markup">マークアップ</a></li>
+<li><a href="#modes">動作モード</a></li>
+<li><a href="#usage">生成したコードの使い方</a></li>
+<li><a href="#typemap">型の対応表</a></li>
+<li><a href="#restrictions">制約事項</a></li>
+<li><a href="#tbd">未サポート機能</a></li>
+</ul>
+
+<a name="scope">
+<h2>1 スコープ</h2>
+<p>　RelaxNGCCにとって、スコープという概念が重要です。RelaxNGCCは次のルールでスコープを生成し、スコープ１つに対して１つのJavaのクラスを生成します。</p>
+<ul>
+<li>それぞれのdefineブロック(startエレメントによるものも含む)が１スコープに対応します。</li>
+<li>ただし、<tt>class</tt>アトリビュート(後述)がついている要素を単独のスコープとして分離します。</li>
+<li>さらに、defineエレメントに<tt>inline</tt>アトリビュートがついているとそのスコープはインライン展開され、別のスコープにとりこまれます。</li>
+</ul>
+<p>例えば、次の文法は１つの<tt>start</tt>エレメント、２つの<tt>define</tt>エレメントを含んでいるので３つのスコープが生成されます。
+<pre>
+&lt;grammar xmlns="http://relaxng.org/ns/structure/1.0"&gt;
+  &lt;start&gt;
+    ...
+  &lt;/start&gt;
+  &lt;define name="A"&gt;
+    ...
+  &lt;/define&gt;
+  &lt;define name="B"&gt;
+    ...
+  &lt;/define&gt;
+&lt;/grammar&gt;
+</pre>
+
+<a name="markup">
+<h2>2 マークアップ</h2>
+<p>　RelaxNGCC独自のマークアップはすべて<br><br><tt style="font-weight:bold;">http://www.xml.gr.jp/xmlns/relaxngcc</tt><br><br>のnamespace-URIを持ちますが、このマニュアルではプレフィックス "<tt>c</tt>" を使用しています。マークアップは次に説明するように３種のエレメントと５種のアトリビュートから構成されます。
+</p>
+
+<h3>2.1 <tt>alias</tt>アトリビュート</h3>
+<p>　ユーザ定義のコードからアクセスするために、データに名前をつけます。このアトリビュートをつけることのできるRELAX NGのエレメントは、<tt>data</tt>, <tt>text</tt>, <tt>ref</tt>, <tt>value</tt>, <tt>list</tt>の５つです。
+
+</p>
+<pre>
+&lt;data type="nonNegativeInteger" <span class="emph-code">c:alias="count"</span>/&gt;
+</pre>
+<p>　aliasをつけたデータがJavaのオブジェクトとして何になるかは次の表のようにして決まります。
+
+</p>
+<table border="1">
+<tr><th>RELAX NG element</th><th>type</th></tr>
+<tr><td><tt>data</tt></td><td>String (<a href="#modes">plain sax モード</a>), または<br>データ型に依存(その他のモード)(*1)</td></tr>
+<tr><td><tt>text</tt></td><td>String</td></tr>
+<tr><td><tt>ref</tt></td><td>このrefが参照する先のスコープに対応した、RelaxNGCCの生成したクラス</td></tr>
+<tr><td><tt>value</tt></td><td>String</td></tr>
+<tr><td><tt>list</tt></td><td>String (*2)</td></tr>
+</table>
+<p>(*1) <tt>data</tt>の<tt>type</tt>アトリビュートに依存します。後述の<a href="#typemap">表</a>を参照してください。なお、RELAX NGはXML Schema Part2以外のデータ型を使うことも可能な設計になっていますが、RelaxNGCCは現在XML Schema Part2のみをサポートします。<br>(*2)<tt>list</tt>エレメントに<tt>alias</tt>をつけたときには全体が１個の文字列として扱われます。空白文字による分割は行われません。
+
+</p>
+<p>　RelaxNGCCの出力するソースコードはSAXベースであるため、aliasアトリビュートでつけた名前は生成されるクラスのデータメンバとして割り当てられます。従って、１つのスコープ内で同じ名前をaliasに付けることはできません。出力されたソースがコンパイルできなくなってしまいます。
+
+<h3>2.2 <tt>java</tt>エレメント</h3>
+<p>
+　ユーザ定義のJavaコードを記述します。コードの断片には<tt>alias</tt>アトリビュートで定義した名前を使うことができます。記述したコードは、入力XMLの該当個所を読んだところで実行されます。
+<br>
+<pre>
+&lt;element name="name"&gt;
+  &lt;text <span class="emph-code">c:alias="name"</span>/&gt;
+  <span class="emph-code">&lt;c:java&gt;System.out.println(name);&lt;/c:java&gt;</span>
+&lt;/element&gt;
+</pre>
+<p>
+　生成されたコードは最終的にはSAX2ベースの処理になるので、外に投げることのできる例外はSAXExceptionとその派生クラスに限られます。
+
+</p>
+<p>
+　<tt>java</tt>エレメントはスコープ内のどこにでも書くことができます。書いた場所とそれが実行されるタイミングとの関係についての詳細なドキュメントは今後準備する予定です。
+
+</p>
+<p>
+　なおエレメント名に<tt>java</tt>を使っている理由は、将来他のプログラム言語（例えばC#）にも対応するかもしれないからです。
+
+</p>
+
+<h3>2.3 <tt>java-body</tt>エレメント</h3>
+<p>
+　生成されるクラスについて、補助的に使用するメソッドやデータメンバを記述します。ここで定義したものはjavaエレメント内のコードからアクセスできます。
+
+<pre>
+&lt;define name="x"&gt;
+  <span class="emph-code">&lt;c:java-body&gt;
+  private void echo(String msg)
+  { System.out.println(msg); }
+  &lt;/c:java-body&gt;</span>
+  ...
+&lt;/define&gt;
+</pre>
+<p>
+　たとえばこのようにすると、この<tt>define</tt>ブロックの<tt>java</tt>エレメント内から<tt>echo</tt>メソッドが使えるようになります。
+
+</p>
+<p>
+　<tt>java-body</tt>エレメントは、次の場所に書くことができます。
+
+<dl>
+<dt>a. <tt>grammar</tt>エレメントの直下</dt>
+<dd>RelaxNGCCが生成するすべてのクラスのコードに、java-body内のコードが挿入されます。</dd>
+<dt>b. <tt>start</tt>, <tt>define</tt>エレメントの直下</dt>
+<dd>その<tt>start/define</tt>エレメントに対応して生成されるクラスのコードにのみ挿入されます。</dd>
+</dl>
+<h3>2.4 <tt>java-import</tt>エレメント</h3>
+<p>
+　<tt>java-body</tt>と違い、ソースコード中のクラス定義本体の外に記述するコードを記述します。ふつうJavaのimport宣言を記述します。これを置くことのできる位置と効果はjava-bodyと同じです。
+
+</p>
+<pre>
+<span class="emph-code">&lt;c:java-import&gt;
+import java.util.Set;
+import java.util.Iterator;
+&lt;/c:java-import&gt;</span>
+</pre>
+<h3>2.5 <tt>class</tt>アトリビュート</h3>
+<p>
+　<tt>start</tt>エレメント、<tt>define</tt>エレメントに記述して、それに対応するクラスの名前を指定します。Javaのクラス名として正しい文字列を指定する必要があります。省略時には、RelaxNGCCが適当な名前をつけてソースコードを生成します。
+
+<pre>
+&lt;start <span class="emph-code">c:class="Root"</span>&gt;
+...
+&lt;/start&gt;
+</pre>
+<p>
+　さらに、<tt>element</tt>、<tt>oneOrMore</tt>のようなRELAX NGの文法要素に<tt>class</tt>アトリビュートを書くこともできます。こうした場合には、アトリビュートを付加した要素に対応する部分を読むコードがJavaクラスとして切り出されます。このクラスはそれを囲む<tt>define/start</tt>エレメントに対応したクラスの内部クラスになるので、外のクラスのインスタンス変数にアクセスすることができます。
+
+<pre>
+&lt;define name="parent"&gt;
+  &lt;c:body&gt;
+  Set _Items = new HashSet();
+  &lt;/c:body&gt;
+  &lt;zeroOrMore <span class="emph-code">c:class="Item" c:alias="item"</span>&gt;
+    &lt;data type="string" c:alias="_uri"/&gt;
+    &lt;data type="string" c:alias="_location"/&gt;
+    &lt;c:java&gt;
+     _Items.add(this);
+    &lt;/c:java&gt;
+  &lt;/zeroOrMore&gt;
+&lt;/define&gt;
+</pre>
+
+<p>　なお、<tt>combine</tt>アトリビュートのついた<tt>define</tt>エレメントについては、結合先の<tt>define</tt>ブロックとマージされてひとつのクラスになるので、<tt>class</tt>アトリビュートは無視されます。</p>
+
+<h3>2.6 <tt>inline</tt>アトリビュート</h3>
+<p>
+　スコープをインライン展開することを指定します。<tt>define</tt>エレメントに記入します。<span style="text-decoration:underline">特にテキストのみからなるスコープは、RelaxNGCCの都合上インライン展開しないと処理がうまくできないので注意が必要です。</span>
+
+</p>
+<pre>
+&lt;define name="block" <span class="emph-code">c:inline="true"</span>&gt;
+...
+</pre>
+
+<h3>2.7 <tt>package</tt>アトリビュート</h3>
+<p>
+　生成するソースコードがどのパッケージに属すかを指定します。<tt>grammar</tt>エレメントに記入します。この宣言は生成されるすべてのクラスにおいて共通です。
+
+</p>
+<pre>
+&lt;grammar ... <span class="emph-code">c:package="com.example.project1"</span>&gt;
+...
+</pre>
+<h3>2.8 <tt>access</tt>アトリビュート</h3>
+<p>
+　生成するソースコードのアクセス修飾子("public final"など)を指定します。このアトリビュートは<tt>define</tt>エレメント、<tt>start</tt>エレメント、<tt>class</tt>アトリビュートを書いたエレメントに書くことができます。
+
+</p>
+<pre>
+&lt;start <span class="emph-code">c:class="sample1"</span> <span class="emph-code">c:access="public final"</span>&gt;
+...
+&lt;/start&gt;
+</pre>
+
+<a name="modes">
+<h2>3 RelaxNGCCの動作モード</h2>
+<p>
+　RelaxNGCCでは、出力するソースコードのスタイルを３通りから選べます。それぞれの比較は次のようになります。
+
+</p>
+<table border="1" width="100%">
+  
+  <tr><th width="25%">&nbsp;</th><th width="25%">MSVモード</th><th width="25%">Typed SAXモード</th><th width="25%">プレーンSAXモード</th></tr>
+  
+  <tr><td>RelaxNGCCの起動オプション</td><td><tt>--msv</tt></td><td><tt>--typedsax</tt></td><td><tt>デフォルトです</tt></td></tr>
+  
+  <tr>
+    <td>概要</td>
+    <td>入力のXML文書はまずMSV(*1)に渡り、次にRelaxNGCCで生成したコードにTypedContentHandlerインタフェース経由で渡ります。</td>
+    <td>データ型チェックのためにMSV内のデータタイプライブラリを使用します。文書はMSVを介さないでSAX2経由で読まれます。</td>
+    <td>データ型のサポートはなく、常にString型として扱われます。文書はMSVを介さないでSAX2経由で読まれます。</td>
+  </tr>
+  
+  <tr><td>必要なライブラリ</td><td>生成したコードの実行にはMSVのフルセットが必要です。</td><td>MSVのうちデータタイプライブラリ(xsdlib.jar)のみが必要です。</td><td>MSVは必要ありません。JAXP準拠のSAXパーサがあれば動作します。</td></tr>
+  
+  <tr><td>文書のバリデーション能力</td><td>文書はMSVがチェックするため、不正な入力を検出できます。</td><td colspan="2">ある程度独自のチェックをしますが、入力によってはinvalidなXML文書を見逃すことがあります。例えば余計なアトリビュートが追加されていても検出はできません。</td></tr>
+  <tr><td>生成したコードの実行時にRELAX NG文法が必要か？</td><td>MSVを使うために必要です。</td><td colspan="2">文法構造は生成したソースコードにとりこまれているので不要です。</td></tr>
+  <tr><td>実行時に必要な<tt>relaxngcc.runtime</tt>パッケージ内のクラス</td><td><tt>NGCCTypedContentHandler</tt></td><td colspan="2"><tt>NGCCPlainHandler</tt></td></tr>
+</table>
+<p>
+(*) MSV: Sun Multi-Schema XML Validator の略。<a href="http://www.sun.com/software/xml/developers/multischema/">http://www.sun.com/software/xml/developers/multischema/</a>からダウンロードできます。
+
+</p>
+<p>
+従って、入力文書がvalidであることがすでに分かっている場合や厳密なバリデーションが不要な場合は、SAXTypeやプレーンSAXを使うことで効率化が図れます。
+
+</p>
+
+<a name="usage">
+<h2>4 生成したコードの使い方</h2>
+<h3>(このセクションはJAXPの知識を仮定しています。)</h3>
+<p>
+　RelaxNGCCが生成したコードをコンパイルしたり実行するには、上記の各動作モードに応じたライブラリが必要です。
+
+</p>
+<p>
+　生成したコードを呼び出すには、もとの文法の<tt>start</tt>エレメントに対応したクラスに付加される<tt>main()</tt>関数およびそこから呼ばれる<tt>getPreparedReader</tt>メソッドを参照してください。それぞれは以下のようになっています。
+
+</p>
+<p>MSVモードでの例</p>
+<pre>
+public static XMLReader getPreparedReader(SAXParserFactory f, Grammar g)
+ throws ParserConfigurationException, SAXException {
+  XMLReader r = f.newSAXParser().getXMLReader();
+  TypeDetecter v = new TypeDetecter(g);
+  r.setContentHandler(v);
+  v.setContentHandler(new sample1(v, null)); //sample1 is the class for the start element
+  return r;
+}
+</pre>
+<p>TypedSAX, プレーンSAXでの例</p>
+<pre>
+public static XMLReader getPreparedReader(SAXParserFactory f)
+ throws ParserConfigurationException, SAXException {
+  XMLReader r = f.newSAXParser().getXMLReader();
+  r.setContentHandler(new sample1(r, null)); //sample1 is the class for the start element
+  return r;
+}
+</pre>
+<p>このgetPreparedReaderにSAXParserFactoryを渡すことで、XMLReaderが得られます。あとはこのXMLReaderに、読ませたいXMLドキュメントが入ったInputSourceをparseメソッドに渡すことでRelaxNGCCで生成されたコードの実行が開始されます。
+
+
+<h3>コンストラクタのカスタマイズ</h2>
+<p>
+　RelaxNGCCで生成されたクラスのコンストラクタに独自の処理を入れるときは、RelaxNGCCの<tt>java-body</tt>エレメントに書いてください。このとき、次の基底クラスのコンストラクタを呼ぶようにしてください。
+
+</p>
+<br>
+MSV mode:<br>
+<tt>protected NGCCTypedContentHandler(TypeDetecter reader)</tt><br>
+<br>
+PlainSAX または TypedSAX mode:<br>
+<tt>protected NGCCPlainHandler(XMLReader reader)</tt><br>
+
+<p>
+引数のreaderは入力データが準備されていなければなりません。
+</p>
+
+<a name="typemap">
+<h2>5 型の対応表</h2>
+<p>
+　文法に書かれた型とJavaの型とのマッピングは次のようになります。これはRELAX NGのdataエレメントにRelaxNGCCのaliasアトリビュートをつけた場合に適用されます。現在、XML Schema Part2のデータ型のみがサポートされています。
+
+</p>
+<table width="70%" border="1" align="center">
+<tr><th>XML Schema Part2の型</th><th>Javaの型</th></tr>
+<tr><td><tt>boolean</tt></td><td><tt>java.lang.Boolean</tt></td></tr>
+<tr><td><tt>byte</tt></td><td><tt>java.lang.Byte</tt></td></tr>
+<tr><td><tt>short, unsignedByte</tt></td><td><tt>java.lang.Short</tt></td></tr>
+<tr><td><tt>int, unsignedShort</tt></td><td><tt>java.lang.Integer</tt></td></tr>
+<tr><td><tt>long, unsignedInt</tt></td><td><tt>java.lang.Long</tt></td></tr>
+<tr><td><tt>unsignedLong</tt></td><td><tt>java.math.BigInteger</tt></td></tr>
+<tr><td><tt>integer</tt></td><td rowspan="5"><tt>java.math.BigInteger</tt></td></tr>
+<tr><td><tt>negativeInteger</tt></td></tr>
+<tr><td><tt>positiveInteger</tt></td></tr>
+<tr><td><tt>nonNegativeInteger</tt></td></tr>
+<tr><td><tt>nonPositiveInteger</tt></td></tr>
+<tr><td><tt>float</tt></td><td><tt>java.lang.Float</tt></td></tr>
+<tr><td><tt>double</tt></td><td><tt>java.lang.Double</tt></td></tr>
+<tr><td><tt>dateTime</tt></td><td rowspan="8"><tt>java.util.GregorianCalendar</tt></td></tr>
+<tr><td><tt>date</tt></td></tr>
+<tr><td><tt>time</tt></td></tr>
+<tr><td><tt>gYear</tt></td></tr>
+<tr><td><tt>gYearMonth</tt></td></tr>
+<tr><td><tt>gMonth</tt></td></tr>
+<tr><td><tt>gMonthDay</tt></td></tr>
+<tr><td><tt>gDay</tt></td></tr>
+<tr><td><tt>base64Binary</tt></td><td rowspan="2">byte[]</tt></td></tr>
+<tr><td><tt>hexBinary</tt></td></tr>
+<tr><td>その他</td><td><tt>java.lang.String</tt></td></tr>
+</table>
+<p>
+　この変換はMSV内のデータタイプライブラリに依存しています。MSVのドキュメントの、<tt>com.sun.msv.datatype.xsd</tt>パッケージの説明もあわせて参照してください。
+
+</p>
+
+<a name="restrictions">
+<h2>6 制約事項</h2>
+<p>
+　RelaxNGCCでは、どんな文法も読み込めるわけではなく、先読み１個で分岐を判断できる文法だけを受け付けます。
+
+</p>
+<pre>
+ &lt;choice&gt;
+   &lt;group&gt;
+     &lt;element name="a"&gt;&lt;text/&gt;&lt;/element&gt;
+     &lt;c:java&gt;System.out.println("a0");&lt;/c:java&gt;
+     &lt;element name="x"&gt;&lt;text/&gt;&lt;/element&gt;
+   &lt;/group&gt;
+   &lt;group&gt;
+     &lt;element name="a"&gt;&lt;text/&gt;&lt;/element&gt;
+     &lt;c:java&gt;System.out.println("a1");&lt;/c:java&gt;
+     &lt;element name="y"&gt;&lt;text/&gt;&lt;/element&gt;
+   &lt;/group&gt;
+ &lt;/choice&gt;
+</pre>
+<p>
+ このようなとき、最初に<tt>a</tt>エレメントをみただけではどちらのchoiceが正しいのかは判定できません。先読みをすれば<tt>x</tt>または<tt>y</tt>がきて判定可能になりますが、RelaxNGCCはこのような判定はできません。次のように書き換える必要があります。
+
+</p>
+<pre>
+&lt;group&gt;
+ &lt;element name="a"&gt;&lt;text/&gt;&lt;/element&gt;
+ &lt;choice&gt;
+   &lt;group&gt;
+     &lt;element name="x"&gt;&lt;text/&gt;&lt;/element&gt;
+     &lt;c:java&gt;System.out.println("a0");&lt;/c:java&gt;
+   &lt;/group&gt;
+   &lt;group&gt;
+     &lt;element name="y"&gt;&lt;text/&gt;&lt;/element&gt;
+     &lt;c:java&gt;System.out.println("a1");&lt;/c:java&gt;
+   &lt;/group&gt;
+ &lt;/choice&gt;
+&lt;/group&gt;
+</pre>
+<p>
+　文法がこの制約を満たさないとき、RelaxNGCCは警告メッセージを発します。特に文法があいまいな場合にはどう変形してもこの制約を逃れることができなくなるので注意が必要です。
+
+</p>
+<p>
+　情報科学の言葉で言えば、<tt>define</tt>や<tt>start</tt>ブロックを、SAXイベントを終端記号とした文脈自由文法として解釈したとき、それがLL(1)であるときに限りRelaxNGCCは取り扱えます。このあたりの議論はコンパイラの教科書に詳しく載っています。
+
+</p>
+
+<a name="tbd">
+<h2>7 未サポート機能</h2>
+<p>
+　RELAX NGの仕様のうち、次の機能はまだサポートされていません。将来のバージョンで徐々に実装するつもりです。
+
+</p>
+<ul>
+<li><tt>externalRef</tt> エレメント</li>
+<li><tt>parentRef</tt> エレメント</li>
+<li>name-classを使ったアトリビュート</li>
+</ul>
+<hr>
+<div align="right"><a href="#top">マニュアルのトップ</a>&nbsp;&nbsp;<a href="index_ja.htm">RelaxNGCCトップ</a></div>
+
+</body>
+</html>

@@ -1,0 +1,164 @@
+<html>
+<head>
+	<title>RelaxNGCC チュートリアル１</title>
+	<link rel="stylesheet" href="ngcc.css">
+	<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; CHARSET=shift_jis">
+</head>
+<body>
+<h1>RelaxNGCC チュートリアル１</h1>
+<p>
+　RelaxNGCCは、RELAX NGスキーマを読んでJavaのソースコードを生成するツールです。生成されたソースコードは、そのスキーマに合ったXML文書を読んだときにユーザがスキーマに埋め込んでおいた動作をします。
+
+</p>
+<p>
+　次のようなXML文書を考えます。これは2001年8月15日のサッカーの試合（日本対オーストラリア）での、日本代表のスターティングメンバーです。
+
+</p>
+<pre>
+&lt;?xml version="1.0" encoding="shift_jis"?&gt;
+&lt;team&gt;
+  &lt;player number="1" &gt;&lt;name&gt;川口能活&lt;/name&gt;&lt;/player&gt;
+  &lt;player number="3" &gt;&lt;name&gt;松田直樹&lt;/name&gt;&lt;/player&gt;
+  &lt;player number="4" &gt;&lt;name&gt;森岡隆三&lt;/name&gt;&lt;/player&gt;
+  &lt;player number="16"&gt;&lt;name&gt;中田浩二&lt;/name&gt;&lt;/player&gt;
+  &lt;player number="21"&gt;&lt;name&gt;波戸康広&lt;/name&gt;&lt;/player&gt;
+  &lt;player number="14"&gt;&lt;name&gt;伊東輝悦&lt;/name&gt;&lt;/player&gt;
+  &lt;player number="17"&gt;&lt;name&gt;戸田和幸&lt;/name&gt;&lt;/player&gt;
+  &lt;player number="6" &gt;&lt;name&gt;服部年弘&lt;/name&gt;&lt;/player&gt;
+  &lt;player number="8" &gt;&lt;name&gt;森島寛晃&lt;/name&gt;&lt;/player&gt;
+  &lt;player number="9" &gt;&lt;name&gt;柳沢敦&lt;/name&gt;&lt;/player&gt;
+  &lt;player number="22"&gt;&lt;name&gt;鈴木隆行&lt;/name&gt;&lt;/player&gt;
+&lt;/team&gt;
+</pre>
+<p>
+　ここには <tt>team</tt> エレメントの中に <tt>player</tt> エレメントがあり、<tt>player</tt> エレメントは <tt>number</tt> アトリビュートと <tt>name</tt> エレメントを持っています。この構造を記述するRELAX NG文法は次のようになります。
+
+</p>
+<pre>
+&lt;?xml version="1.0" encoding="utf-8"?&gt;
+&lt;grammar xmlns="http://relaxng.org/ns/structure/1.0"
+  datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes"
+  xmlns:c="http://www.xml.gr.jp/xmlns/relaxngcc"&gt;
+&lt;start <span class="emph-code">c:class="sample1"</span>&gt;
+
+&lt;element name="team"&gt;
+  &lt;oneOrMore&gt;
+    &lt;element name="player"&gt;
+      &lt;attribute name="number"&gt;
+        &lt;data type="positiveInteger" <span class="emph-code">c:alias="number"</span>/&gt; [1]
+        <span class="emph-code">&lt;c:java&gt;System.out.println(number);&lt;/c:java&gt;</span> [2]
+      &lt;/attribute&gt;
+      &lt;element name="name"&gt;
+        &lt;text <span class="emph-code">c:alias="name"</span>/&gt; [3]
+        <span class="emph-code">&lt;c:java&gt;System.out.println(name);&lt;/c:java&gt;</span> [4]
+      &lt;/element&gt;
+    &lt;/element&gt;
+  &lt;/oneOrMore&gt;
+&lt;/element&gt;
+
+&lt;/start&gt;
+
+&lt;/grammar&gt;
+</pre>
+
+<p>
+　RelaxNGCC固有の追加情報(namespace prefix "c" がついています)は赤いところです。まず、<tt>number</tt>アトリビュートの中身をしめす<tt>data</tt>エレメント[1]に注目してください。ここに<tt>alias</tt>アトリビュートがついています。<tt>alias</tt>アトリビュートは、XML文書中のデータをJavaからアクセスできるようにするためのものです。こうすることでnumberという変数でこのdataエレメント(XMLインスタンスではnumberアトリビュートの値)の値にアクセスできます。同様に、<tt>name</tt>エレメントの中身[3]にも<tt>name</tt>という名前でアクセスできるようにしています。
+
+</p>
+<p>　次に、"<tt>java</tt>"エレメント([2],[4])です。これは、XML文書を読んだときに実行するJavaコード断片を記述したものです。ここでは文書の中身を確認するために<tt>System.out</tt>に出力しています。
+
+</p>
+<p>
+　さらに、これら全体は<tt>oneOrMore</tt>内に入っているので、コードはplayerエレメントの個数だけ繰り返し実行されることになります。
+</p>
+
+<p>　では、これをRelaxNGCCにかけてみます。</p>
+
+<pre class="console">
+$ java -classpath msv.jar;relaxngcc.jar relaxngcc.RelaxNGCC sample1.rxm
+</pre>
+<p>
+そうすると、カレントディレクトリにJavaのソースファイルが出力されます。これの一部は次のようになっています。完全なものは<a href="sample1.java">ここ</a>にあります。
+
+</p>
+<pre>
+import java.math.BigInteger;
+import org.xml.sax.SAXException;
+import org.xml.sax.XMLReader;
+import relaxngcc.runtime.NGCCPlainHandler;
+import javax.xml.parsers.SAXParserFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
+class sample1 extends NGCCPlainHandler {
+public static final String DEFAULT_NSURI = "";
+private int _ngcc_current_state;
+private String name;
+private String number;
+(中略)
+public void enterElement(String uri,String localname,String qname) throws SAXException
+{
+if(_ngcc_current_state==1) {
+if(localname.equals("player") && uri.equals(DEFAULT_NSURI)) {
+_ngcc_current_state=7;
+processAttribute();
+
+}
+(中略)
+public void text(String value) throws SAXException
+{
+if(_ngcc_current_state==4) {
+{
+name=value;System.out.println(name);
+_ngcc_current_state=3;
+
+}
+}
+
+else if(_ngcc_current_state==6) {
+{
+number=value;System.out.println(number);
+_ngcc_current_state=5;
+
+}
+}
+}
+}
+</pre>
+
+これをコンパイルして実行すると、
+
+<pre class="console">
+$ javac -classpath msv.jar:relaxngcc.jar:. sample1.java
+$ java -classpath msv.jar:relaxngcc.jar:. sample1.java sample1.xml
+1
+川口能活
+3
+松田直樹
+4
+森岡隆三
+16
+中田浩二
+21
+波戸康広
+14
+伊東輝悦
+17
+戸田和幸
+6
+服部年弘
+8
+森島寛晃
+9
+柳沢敦
+22
+鈴木隆行
+</pre>
+<p>となります。</p>
+
+<p>　このように最も基本的なRelaxNGCCの使い方は、<tt>data</tt>または<tt>text</tt>エレメントに<tt>alias</tt>アトリビュートを使って名前を付け、<tt>java</tt>エレメントでコードを埋め込むことです。<tt>java</tt>エレメント内からはJavaでできるあらゆることが可能なので、外部のライブラリを呼んだりデータベースにアクセスしたりといったことも簡単です。
+
+</p>
+<hr>
+<p align="right"><a href="index_ja.htm">RelaxNGCC home</a></p>
+</body>
+</html>

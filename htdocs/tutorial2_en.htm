@@ -1,0 +1,122 @@
+<html>
+<head>
+	<title>RelaxNGCC Tutorial 2</title>
+	<link rel="stylesheet" href="ngcc.css">
+	
+</head>
+<body>
+<h1>RelaxNGCC Tutorial 2</h1>
+<p>
+
+ Let's see a little more complex example than the tutorial 1.</p>
+<h2>Explanation of Grammar</h2>
+<p>
+
+ In this tutorial, we use following grammar describing a structure of files and directories. The special mark-ups peculiar to RelaxNGCC are red.
+</p>
+<pre>
+&lt;?xml version="1.0" encoding="utf-8"?&gt;
+&lt;grammar xmlns="http://relaxng.org/ns/structure/1.0"
+  datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes"
+  xmlns:c="http://www.xml.gr.jp/xmlns/relaxngcc"&gt;
+
+<span class="remark">[1]</span>
+<span class="emph-code">&lt;c:java-import&gt;
+import java.util.Set;
+import java.util.HashSet;
+&lt;/c:java-import&gt;</span>
+
+&lt;start <span class="emph-code">c:class="sample2"</span>&gt;
+  <span class="remark">[2]</span>
+  <span class="emph-code">&lt;c:java-body&gt;
+  public Set hiddenfiles;
+  &lt;/c:java-body&gt;</span>
+  &lt;element name="files"&gt;
+    &lt;ref name="file-or-dir" <span class="emph-code">c:alias="child"</span>/&gt;
+    <span class="remark">[3]</span>
+    <span class="emph-code">&lt;c:java&gt;hiddenFiles = new HashSet(child.hiddenFiles);&lt;/c:java&gt;</span>
+  &lt;/element&gt;
+&lt;/start&gt;
+
+<span class="remark">[4]</span>
+&lt;define name="file-or-dir" <span class="emph-code">c:class="FileOrDir"</span>&gt;
+  <span class="emph-code">&lt;c:java-body&gt;
+  public Set hiddenFiles;
+  &lt;/c:java-body&gt;</span>
+  <span class="emph-code">&lt;c:java&gt;hiddenFiles = new HashSet();&lt;/c:java&gt;</span>
+  &lt;oneOrMore&gt;
+    &lt;choice&gt;
+      &lt;element name="file"&gt;
+        &lt;attribute name="name"&gt;
+          &lt;text <span class="emph-code">c:alias="filename"</span>/&gt;
+          <span class="remark">[5]</span>
+          <span class="emph-code">&lt;c:java&gt;if(filename.startsWith(".")) hiddenFiles.add(filename);&lt;/c:java&gt;</span>
+        &lt;/attribute&gt;
+      &lt;/element&gt;
+      &lt;element name="directory"&gt;
+        &lt;attribute name="name"&gt;&lt;text/&gt;&lt;/attribute&gt;
+        &lt;ref name="file-or-dir" <span class="emph-code">c:alias="content"</span>/&gt;
+        <span class="remark">[6]</span>
+        <span class="emph-code">&lt;c:java&gt;hiddenFiles.add(content.hiddenFiles);&lt;/c:java&gt;</span>
+      &lt;/element&gt;
+    &lt;/choice&gt;
+  &lt;/oneOrMore&gt;
+&lt;/define&gt;
+
+&lt;/grammar&gt;
+</pre>
+
+<p>
+
+ This grammar allows <tt>files</tt> element as the root and arbitrary number of <tt>directory</tt> and <tt>file</tt> elements under the <tt>files</tt> element. Also it allows <tt>directory</tt> element under <tt>directory</tt> element.</p>
+<h2>RelaxNGCC Mark-ups</h2>
+<p>
+
+ Now, let's suppose that we want to collect files that begin with a period (in Unix convention, it means "hidden" attribute). Additionaly, suppose that our interest is not directory tree but file names.
+</p>
+
+<p> Then, explanations of each part are following.</p>
+
+<p><span class="remark">[1]</span>
+
+ The content of <tt>java-import</tt> element is copied besides the main class definition of Java. If your code within <tt>java</tt> element or <tt>java-body</tt> element[5] requires classes in external packages, you should write <tt>import</tt> declarations using <tt>java-import</tt> element. Note that <tt>java-import</tt> elements under the root grammar element affect all generated code and they under a <tt>start</tt> or <tt>define</tt> element affect only the corresponding class to the element.
+</p>
+
+<p><span class="remark">[2]</span>
+
+ The content of <tt>java-body</tt> element is copied into the class definition of Java. By using this, you can add bodyary methods and data members to the generated class. In this sample, the <tt>java-body</tt> element declares a data member <tt>hiddenFiles</tt> for storing the file names.
+</p>
+<p><span class="remark">[3]</span>
+
+ The <tt>java</tt> element defines an action to be executed when a corresponding part of the input XML instance comes. In this example, initialize <tt>hiddenFiles</tt> when the <tt>files</tt> element ends.</p>
+
+<p><span class="remark">[4]</span>
+
+ Since RelaxNGCC generates one Java class per a start block or a define block, RelaxNGCC generates 2 files from this grammar. The names of the classes are specified with <tt>c:class</tt> attribute for each <tt>start</tt> and <tt>define</tt> element. Especially the <tt>c:class</tt> attribute for the define element is mandatory because the name <tt>"file-or-dir"</tt> is not valid for a name of Java class.
+</p>
+
+<p><span class="remark">[5]</span>
+
+ At this location, the file name is added if it begins with a period to the <tt>hiddenFiles</tt> collection.</p>
+
+<p><span class="remark">[6]</span>
+
+ This is also <tt>java</tt> element, but be careful that the code fragment of Java refers to the previous <tt>define</tt> block with an <tt>alias</tt> attribute. If you add an <tt>alias</tt> attribute to a <tt>ref</tt> element, the Java object accessed by the given alias is a object corrsponding to the <tt>define</tt> block. In this example, the instance <tt>content</tt> refers to <tt>FileOrDir</tt> object. 
+</p>
+
+<p>
+
+ After you compile and execute the generated code, the <tt>hiddenFiles</tt> member will contain all file names that begins with a period in the input XML instance. The <tt>main()</tt> method generated by RelaxNGCC may be helpful for understanding test procedure.</p>
+
+<h2>Comparison to Relaxer</h2>
+<p>
+
+ Relaxer and RelaxNGCC is same at the point of generating Java source code from a given grammar. But, if you use Relaxer for the case of this tutorial, you may have to traverse the object model includes a directory tree and collect file names that begins with a period. On the other hand, RelaxNGCC is more efficient for this purpose because it obtains the collection through one path via SAX interface.
+</p>
+<p>
+
+ However, there are some features supported by only Relaxer such as a conversion from Java object into XML instance. It is important to select more suitable tool according to your purpose.</p>
+<hr>
+<p align="right"><a href="index_en.htm">RelaxNGCC home</a></p>
+</body>
+</html>
