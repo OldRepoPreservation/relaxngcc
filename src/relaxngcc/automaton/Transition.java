@@ -163,6 +163,8 @@ public final class Transition implements WithOrder
             
             if( target.isNullable() )
                 nextState().head( result, includeEE );
+        } else if(a.isForAction()) {
+        	nextState().head(result, includeEE);
         } else {
             result.add(a);
         }

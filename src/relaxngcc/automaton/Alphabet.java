@@ -366,7 +366,7 @@ public abstract class Alphabet {
         public ForAction() {
             super( FOR_ACTION, null);
         }
-        public ForAction asWildCard() { return this; }
+        public ForAction asForAction() { return this; }
         public int hashCode() { return FOR_ACTION; }
         public String toString() { return "[ACT]"; }
     }
