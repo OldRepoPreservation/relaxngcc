@@ -1,0 +1,82 @@
+<?xml version="1.0"?>
+<project name="XSOM" basedir="." default="jar">
+
+	<!-- run javacc -->
+	<target name="javacc">
+		<javacc
+			target="src/relaxngcc/javabody/JavaBodyParser.jj"
+			outputdirectory="src/relaxngcc/javabody"
+			javacchome="lib/javacc" />
+	</target>
+	
+	
+	<!-- compile Java source files -->
+	<target name="compile" depends="javacc">
+		<mkdir dir="bin"/>
+		<javac
+			srcdir="src"
+			destdir="bin"
+			debug="on"
+			optimize="off"
+			classpath="lib">
+			
+			<classpath>
+				<fileset dir="lib" includes="*.jar"/>
+			</classpath>
+		</javac>
+	</target>
+	
+	<!-- generate javadoc documentation from the working copy -->
+	<target name="javadoc" depends="compile">
+		<mkdir dir="javadoc"/>
+		<javadoc	locale="en_US"
+					sourcepath="src"
+					destdir="javadoc"
+					windowtitle="XML Schema Object Model (XSOM)"
+					public="yes"
+					author="yes"
+					>
+				
+			<package name="com.sun.xml.xsom"/>
+			<package name="com.sun.xml.xsom.impl"/>
+			<classpath>
+				<fileset dir="lib" includes="*.jar"/>
+			</classpath>
+		</javadoc>
+	</target>
+	
+	
+	<target name="jar" depends="compile">
+		<tstamp/>
+		
+<echo file="bin/METAINF.MF"
+>Class-path: dom4j.jar
+Version: ${DSTAMP}
+</echo>
+		<jar jarfile="xsom.jar" compress="false" manifest="bin/METAINF.MF">
+			<fileset dir="src" includes="**/*.properties"/>
+			<fileset dir="bin" includes="**/*.class"/>
+		</jar>
+		<delete file="bin/METAINF.MF"/>
+	</target>
+	
+	<!-- create a distribution package -->
+	<target name="release" depends="jar,javadoc">
+		<tstamp />
+		<property name="stage" value="xsom-${DSTAMP}"/>
+		
+		<!-- creates distribution package -->
+		<mkdir dir="package" />
+		<zip	zipfile="package/${stage}.zip">
+			<zipfileset dir="." includes="xsom.jar" fullpath="${stage}/xsom.jar"/>
+			<zipfileset dir="javadoc" includes="**/*.*" prefix="${stage}/javadoc"/>
+			<zipfileset dir="src" includes="**/*.*" prefix="${stage}/src"/>
+			<zipfileset dir="doc" includes="**/*.*"/>
+		</zip>
+	</target>
+	
+	<target name="clean">
+		<delete dir="javadoc"/>
+		<delete dir="bin"/>
+	</target>
+</project>
