@@ -127,6 +127,7 @@ Class-Path: crimson.jar relaxngDatatype.jar xsdlib.jar msv.jar jaxp-api.jar
 			<zipfileset dir="htdocs" includes="ja/*.*,en/*.*" prefix="${stage}/doc">
 				<exclude name="**/.cvsignore"/>
 			</zipfileset>
+			<zipfileset dir="doc" includes="**/*.*" prefix="${stage}"/>
 			<zipfileset dir="lib" prefix="${stage}">
 				<include name="relaxngDatatype.jar" />
 				<include name="xerces.jar" />
