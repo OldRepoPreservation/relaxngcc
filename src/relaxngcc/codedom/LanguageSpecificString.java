@@ -4,8 +4,11 @@ import java.io.IOException;
 import java.io.Writer;
 
 /**
+ * Unstructured text whose composition we don't care.
+ * 
+ * This can be used either as an expression or a statement.
  */
-public class LanguageSpecificString {
+public class LanguageSpecificString extends Expression implements Statement {
 	
 	private final String[] _Data = new String[Language.LANGUAGE_COUNT];
 	
@@ -26,5 +29,13 @@ public class LanguageSpecificString {
     
     public String getString(int language) {
         return _Data[language];
+    }
+    
+    public void state(Formatter f) throws IOException {
+        f.write(this);
+    }
+    
+    public void express(Formatter f) throws IOException {
+        f.write(this);
     }
 }

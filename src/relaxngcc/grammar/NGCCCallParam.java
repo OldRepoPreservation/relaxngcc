@@ -1,7 +1,7 @@
 package relaxngcc.grammar;
 
 /**
- * 
+ * Parameters attached to a &lt;ref> pattern.
  * 
  * @author Kohsuke Kawaguchi (kk@kohsuke.org)
  */
@@ -12,6 +12,7 @@ public class NGCCCallParam {
     }
     
     private final String alias;
+    
     private String withParams;
     
 	public String getAlias() {

@@ -402,8 +402,7 @@ public class CodeWriter
             
 		if(_Options.debug) {
 			sv.invoke( $runtime, "traceln")
-                    .arg(new LanguageSpecificExpression(
-                        new LanguageSpecificString("\""+eventName + " \"+qname+\" #\" + _ngcc_current_state")));
+                    .arg(new LanguageSpecificString("\""+eventName + " \"+qname+\" #\" + _ngcc_current_state"));
         }
         
 		SwitchBlockInfo bi = new SwitchBlockInfo(type);
@@ -487,7 +486,7 @@ public class CodeWriter
         if(tr.getAlphabet().isEnterElement()) {
         	StatementVector sv = new StatementVector();
             sv.invoke( $runtime, "pushAttributes")
-                    .arg(new LanguageSpecificExpression("attrs"));
+                    .arg(new LanguageSpecificString("attrs"));
             sv.add(buildMoveToStateCode(tr));
             
             return sv;
@@ -498,7 +497,7 @@ public class CodeWriter
             Alphabet.Text ta = tr.getAlphabet().asText();
             String alias = ta.getAlias();
             if(alias!=null)
-                sv.assign(new LanguageSpecificExpression(alias), new LanguageSpecificExpression("___$value"));
+                sv.assign(new LanguageSpecificString(alias), new LanguageSpecificString("___$value"));
             sv.add(buildMoveToStateCode(tr));
             
             return sv;
@@ -544,7 +543,7 @@ public class CodeWriter
                 .arg($runtime)
                 .arg(new ConstantExpression(ref_tr.getUniqueId()));
         if(extraarg.length()>0)
-            oe.arg(new LanguageSpecificExpression(extraarg.substring(1)));
+            oe.arg(new LanguageSpecificString(extraarg.substring(1)));
             
         Expression $h = sv.decl(new TypeDescriptor("NGCCHandler"), "h", oe );
         
@@ -626,7 +625,7 @@ public class CodeWriter
 		
         if(_Options.debug) {
         	sv.invoke( $runtime, "trace" )
-                .arg(new LanguageSpecificExpression(new LanguageSpecificString("\"text '\"+___$value.trim()+\"' #\" + _ngcc_current_state")));
+                .arg(new LanguageSpecificString("\"text '\"+___$value.trim()+\"' #\" + _ngcc_current_state"));
         }
 
 		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.VALUE_TEXT);
@@ -710,7 +709,7 @@ public class CodeWriter
         
         if(_Options.debug) {
         	sv.invoke( $runtime, "traceln" )
-                .arg( new LanguageSpecificExpression("\"onChildCompleted(\"+cookie+\") back to "+_Info.getClassName()+"\""));
+                .arg( new LanguageSpecificString("\"onChildCompleted(\"+cookie+\") back to "+_Info.getClassName()+"\""));
         }
         
         SwitchStatement switchstatement = new SwitchStatement($cookie);
@@ -780,7 +779,7 @@ public class CodeWriter
 		Variable $ai = sv.decl(TypeDescriptor.INTEGER, "ai");
 		if(_Options.debug)
 			sv.invoke( $runtime, "traceln")
-                .arg( new LanguageSpecificExpression("\"processAttribute (\" + runtime.getCurrentAttributes().getLength() + \" atts) #\" + _ngcc_current_state")); 
+                .arg( new LanguageSpecificString("\"processAttribute (\" + runtime.getCurrentAttributes().getLength() + \" atts) #\" + _ngcc_current_state")); 
 		
 		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.ENTER_ATTRIBUTE);
         
@@ -815,7 +814,7 @@ public class CodeWriter
         if(nc instanceof SimpleNameClass) {
             SimpleNameClass snc = (SimpleNameClass)nc;
             
-            Expression condition = new LanguageSpecificExpression(MessageFormat.format(
+            Expression condition = new LanguageSpecificString(MessageFormat.format(
 	            "(ai = runtime.getAttributeIndex(\"{0}\",\"{1}\"))>=0",
 	                new Object[]{
 	                    snc.nsUri, snc.localName})); //chotto sabori gimi

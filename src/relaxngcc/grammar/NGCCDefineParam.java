@@ -1,7 +1,7 @@
 package relaxngcc.grammar;
 
 import relaxngcc.codedom.Expression;
-import relaxngcc.codedom.LanguageSpecificExpression;
+import relaxngcc.codedom.LanguageSpecificString;
 import relaxngcc.codedom.TypeDescriptor;
 
 /**
@@ -22,7 +22,7 @@ public class NGCCDefineParam {
         this.className = _className;
         this.access = _access;
         this.returnType = new TypeDescriptor(_returnType);
-        this.returnValue = new LanguageSpecificExpression(_returnValue);
+        this.returnValue = new LanguageSpecificString(_returnValue);
         this.params = _params;
     }
     

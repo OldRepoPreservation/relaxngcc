@@ -254,7 +254,7 @@ public final class ScopeInfo
                 "action"+uniqueId,
                 new LanguageSpecificString("throws SAXException") );
             
-            method.body().add(new LanguageSpecificStatement(new LanguageSpecificString(codeFragment)));
+            method.body().add(new LanguageSpecificString(codeFragment));
             
         	classdef.addMethod(method);
         }
@@ -508,7 +508,7 @@ public final class ScopeInfo
     
             if(_ThreadCount>0)
                 cotr1.body().assign( SUPER.prop("_ngcc_threaded_state"),
-                    new LanguageSpecificExpression("new int[" + _ThreadCount + "]"));
+                    new LanguageSpecificString("new int[" + _ThreadCount + "]"));
         }        
 		
 		{// external constructor
