@@ -5,6 +5,7 @@
  */
 
 package relaxngcc.dom;
+import java.util.Hashtable;
 import java.util.Vector;
 import java.util.Map;
 import java.util.TreeMap;
@@ -16,14 +17,11 @@ import relaxngcc.NGCCGrammar;
 public class TemporaryElement extends NGCCElement
 {
 	private String _Name;
-	private Vector _Children;
-	private Map _Attributes;
+	private final Vector _Children = new Vector();
+	private final Map _Attributes = new Hashtable();
 	
-    public TemporaryElement(String localname)
-	{
+    public TemporaryElement(String localname) {
 		_Name = localname;
-		_Children = new Vector();
-		_Attributes = new TreeMap();
     }
 	public String getAttribute(String name)
 	{

@@ -68,8 +68,10 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
     public void pushHandler( NGCCHandler handler ) {
         handlerStack.push(handler);
         currentHandler = handler;
+        indent++;
     }
     public void popHandler() {
+        indent--;
         handlerStack.pop();
         currentHandler = (NGCCHandler)handlerStack.peek();
     }
@@ -291,28 +293,24 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
         NGCCHandler h, String uri, String localname, String qname) throws SAXException {
             
         pushHandler(h);
-        indent--;
         currentHandler.enterElement(uri,localname,qname);
     }
     public void spawnChildFromEnterAttribute(
         NGCCHandler h, String uri, String localname, String qname) throws SAXException {
             
         pushHandler(h);
-        indent--;
         currentHandler.enterAttribute(uri,localname,qname);
     }
     public void spawnChildFromLeaveElement(
         NGCCHandler h, String uri, String localname, String qname) throws SAXException {
             
         pushHandler(h);
-        indent++;
         currentHandler.leaveElement(uri,localname,qname);
     }
     public void spawnChildFromLeaveAttribute(
         NGCCHandler h, String uri, String localname, String qname) throws SAXException {
             
         pushHandler(h);
-        indent++;
         currentHandler.leaveAttribute(uri,localname,qname);
     }
     public void spawnChildFromText(
@@ -332,7 +330,6 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
             
         popHandler();
         currentHandler.onChildCompleted(result,cookie);
-        indent--;
         currentHandler.enterElement(uri,local,qname);
     }
     public void revertToParentFromLeaveElement( Object result, int cookie,
@@ -340,7 +337,6 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
             
         popHandler();
         currentHandler.onChildCompleted(result,cookie);
-        indent++;
         currentHandler.leaveElement(uri,local,qname);
     }
     public void revertToParentFromEnterAttribute( Object result, int cookie,
@@ -348,7 +344,6 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
             
         popHandler();
         currentHandler.onChildCompleted(result,cookie);
-        indent--;
         currentHandler.enterAttribute(uri,local,qname);
     }
     public void revertToParentFromLeaveAttribute( Object result, int cookie,
@@ -356,7 +351,6 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
             
         popHandler();
         currentHandler.onChildCompleted(result,cookie);
-        indent++;
         currentHandler.leaveAttribute(uri,local,qname);
     }
     public void revertToParentFromText( Object result, int cookie,
@@ -364,7 +358,6 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
             
         popHandler();
         currentHandler.onChildCompleted(result,cookie);
-        indent++;
         currentHandler.text(text);
     }
 
@@ -374,13 +367,22 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
 // trace functions
 //
 //
-    public int indent=0;
+    private int indent=0;
+    private boolean needIndent=true;
     private void printIndent() {
         for( int i=0; i<indent; i++ )
             System.out.print("  ");
     }
     public void trace( String s ) {
-        printIndent();
-        System.out.println(s);
+        if(needIndent) {
+            needIndent=false;
+            printIndent();
+        }
+        System.out.print(s);
+    }
+    public void traceln( String s ) {
+        trace(s);
+        trace("\n");
+        needIndent=true;
     }
 }

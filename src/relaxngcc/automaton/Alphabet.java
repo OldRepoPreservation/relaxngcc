@@ -23,7 +23,7 @@ import relaxngcc.builder.ScopeInfo;
  * 6. fixed value (&lt;value>)
  *
  */
-public abstract class Alphabet implements Comparable
+public abstract class Alphabet
 {
     // type of alphabets
 	public static final int ENTER_ELEMENT      = 1;
@@ -95,11 +95,9 @@ public abstract class Alphabet implements Comparable
         public int hashCode() {
             return key.hashCode() ^ getType();
         }
-        public int compareTo( Object o ) {
-            int r = super.compareTo(o);
-            if(r!=0)    return r;
-            
-            return key.compareTo(((Markup)o).key);
+        public boolean equals( Object o ) {
+            if(!super.equals(o))    return false;
+            return equals(key,((Markup)o).key);
         }
     }
     
@@ -202,17 +200,13 @@ public abstract class Alphabet implements Comparable
         public int hashCode() {
             return h(_Target)^h(_Alias)^h(_Params);
         }
-        public int compareTo( Object o ) {
-            int r = super.compareTo(o);
-            if(r!=0)    return r;
+        public boolean equals( Object o ) {
+            if(!super.equals(o)) return false;
             
             Ref rhs = (Ref)o;
-            // TODO: alphabets are not comparable!
-            r = _Target.hashCode()-rhs._Target.hashCode();
-            if(r!=0)    return r;
-            r = compare(_Alias,rhs._Alias);
-            if(r!=0)    return r;
-            return compare(_Params,rhs._Params);
+            if(!equals(_Target,rhs._Target))    return false;
+            if(!equals(_Alias, rhs._Alias ))    return false;
+            return equals(_Params,rhs._Params);
         }
     }
     
@@ -232,11 +226,9 @@ public abstract class Alphabet implements Comparable
         private final String alias;
         public String getAlias() { return alias; }   
         
-        public int compareTo( Object o ) {
-            int r = super.compareTo(o);
-            if(r!=0)    return r;
-            
-            return compare(alias,((Text)o).alias);
+        public boolean equals( Object o ) {
+            if(!super.equals(o)) return false;
+            return equals(alias,((Text)o).alias);
         }
     }
     
@@ -255,11 +247,9 @@ public abstract class Alphabet implements Comparable
         
         public String toString() { return "value '"+value+"'"; }
         public int hashCode() { return value.hashCode(); }
-        public int compareTo( Object o ) {
-            int r = super.compareTo(o);
-            if(r!=0)    return r;
-            
-            return compare(value,((ValueText)o).value);
+        public boolean equals( Object o ) {
+            if(!super.equals(o)) return false;
+            return value.equals( ((ValueText)o).value );
         }
     }
     
@@ -276,28 +266,16 @@ public abstract class Alphabet implements Comparable
         
         public String toString() { return "data '"+_DataType.getXSTypeName()+"'"; }
         public int hashCode() { return _DataType.hashCode(); }
-        public int compareTo( Object o ) {
-            int r = super.compareTo(o);
-            if(r!=0)    return r;
-            
-            // TODO: datatype is uncomparable!!
-//            return compare(_DataType,((DataText)o)._DataType);
-            return _DataType.hashCode() - ((DataText)o)._DataType.hashCode();
+        public boolean equals( Object o ) {
+            if(!super.equals(o)) return false;
+            return _DataType.equals( ((DataText)o)._DataType );
         }
     }
 
 
-    public final boolean equals( Object o ) {
-        if( o instanceof Alphabet )
-            return compareTo(o)==0;
-        else
-            return false;
-    }
-    
-    public int compareTo(Object o) {
-        if(!(o instanceof Alphabet)) throw new ClassCastException("not an Alphabet");
-        
-        return _Type-((Alphabet)o)._Type;
+    public  boolean equals( Object o ) {
+        if(!this.getClass().isInstance(o))    return false;
+        return _Type==((Alphabet)o)._Type;
     }
     
     // the hashCode method needs to be implemented properly
@@ -308,12 +286,11 @@ public abstract class Alphabet implements Comparable
         if(o==null) return 0;
         else        return o.hashCode();
     }
-    /** Compares two objects, even if they are null. */
-    protected static int compare( Comparable o1, Comparable o2 ) {
-        if(o1==null && o2==null)    return 0;
-        if(o1==null)                return -1;
-        if(o2==null)                return +1;
-        return o1.compareTo(o2);
+    /** Compares two objects even if some of them are null. */
+    protected static boolean equals( Object o1, Object o2 ) {
+        if(o1==null && o2==null)    return true;
+        if(o1==null || o2==null)    return false;
+        return o1.equals(o2);
     }
     
     /**

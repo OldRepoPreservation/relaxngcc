@@ -12,17 +12,14 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.Vector;
 
+import relaxngcc.NGCCGrammar;
+import relaxngcc.Options;
 import relaxngcc.automaton.Alphabet;
 import relaxngcc.automaton.Head;
 import relaxngcc.automaton.State;
 import relaxngcc.automaton.Transition;
-import relaxngcc.NGCCGrammar;
-import relaxngcc.Options;
-import relaxngcc.MetaDataType;
 
 /**
  * generates Java code that parses XML data via NGCCHandler interface
@@ -80,7 +77,7 @@ public class CodeWriter
             } else
             if(errorHandleMethod!=null) {
                 if(flag) _output.print("else ");
-                _output.println(errorHandleMethod+"(qname);");
+                _output.println(errorHandleMethod);
             }
             
             if(epilogue!=null)
@@ -118,14 +115,12 @@ public class CodeWriter
      */
 	private class SwitchBlockInfo
 	{
-		public Map state2CodeFragment;
+		public Map state2CodeFragment = new HashMap();
 		
 		private int _Type; //one of the constants in Alphabet class
 		public int getType() { return _Type; }
-		public SwitchBlockInfo(int type)
-		{
+		public SwitchBlockInfo(int type) {
 			_Type=type;
-			state2CodeFragment = new TreeMap();
 		}
         
         private CodeAboutState getCAS( State state ) {
@@ -189,7 +184,7 @@ public class CodeWriter
             
             if(errorHandleMethod!=null) {
                 if(!first)    _output.print("else ");
-                _output.println(errorHandleMethod+"(qname);");
+                _output.println(errorHandleMethod);
             }
         }
 	}
@@ -360,13 +355,11 @@ public class CodeWriter
         _output.println("this.qname=qname;");
             
 		if(_Options.debug) {
-            if((type&(Alphabet.LEAVE_ATTRIBUTE|Alphabet.LEAVE_ELEMENT))!=0)
-                _output.println("runtime.indent--;");
-                
-			_output.println("runtime.trace(\""+eventName+" " + _Info.getNameForTargetLang() + ":\" + qname + \",state=\" + _ngcc_current_state);");
-
-            if((type&(Alphabet.ENTER_ATTRIBUTE|Alphabet.ENTER_ELEMENT))!=0)
-                _output.println("runtime.indent++;");
+			_output.println(MessageFormat.format(
+                "runtime.trace(\"{0} \"+qname+\" #\" + _ngcc_current_state);",
+                new Object[]{
+                    eventName
+                }));
         }
         
 		SwitchBlockInfo bi = new SwitchBlockInfo(type);
@@ -400,7 +393,7 @@ public class CodeWriter
         
         
 		
-		bi.output("unexpected"+capitalize(eventName));
+		bi.output("unexpected"+capitalize(eventName)+"(qname);");
 		
 		_output.println("}");   //end of method
 	}
@@ -473,12 +466,12 @@ public class CodeWriter
             
         if(_Options.debug) {
             code.append(MessageFormat.format(
-                "runtime.trace(\"Change Handler to {0} (will back to:{1})\");" + _Options.newline,
+                "runtime.traceln(\"\");\n"+
+                "runtime.traceln(\"Change Handler to {0} (will back to:#{1})\");" + _Options.newline,
                 new Object[]{
                     ref_block.getNameForTargetLang(),
                     new Integer(ref_tr.nextState().getIndex())
                 }));
-            code.append("runtime.indent++;"+_Options.newline);
         }
         code.append(MessageFormat.format(
             "runtime.spawnChildFrom{0}(h,{1});\n",
@@ -522,14 +515,7 @@ public class CodeWriter
         buf.append(tr.invokeEpilogueActions());
         State result = appendStateTransition(buf, nextstate);
         buf.append(_Options.newline);
-        if(_Options.debug)
-        {
-            if(result.getThreadIndex()==-1)
-                buf.append("runtime.trace(\"state " + result.getIndex() + "\");");
-            else
-                buf.append("runtime.trace(\"state [" + result.getThreadIndex() + "]"+ result.getIndex() + "\");");
-            buf.append(_Options.newline);
-        }
+        
         if(_Options.style!=Options.STYLE_MSV)
         {
             if(result.getListMode()==State.LISTMODE_ON)
@@ -540,12 +526,6 @@ public class CodeWriter
         }
         
         boolean in_if_block = false;
-
-        // if necessary, check attribute transitions.
-        if(!nextstate.attHead().isEmpty()) {
-            if(in_if_block) buf.append("else ");
-            buf.append("processAttribute();" + _Options.newline);
-        }
                                 
         return buf.toString();
     }
@@ -561,6 +541,11 @@ public class CodeWriter
 		printSection("text");
 		_output.println("public void text(String ___$value) throws SAXException");
 		_output.println("{");
+
+        if(_Options.debug) {
+            _output.println("runtime.trace(\"text '\"+___$value.trim()+\"' #\" + _ngcc_current_state);");
+        }
+
 		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.VALUE_TEXT);
         
         Iterator states = _Info.iterateAllStates();
@@ -598,29 +583,19 @@ public class CodeWriter
                     buildTransitionCode(tr,"text","___$value"));
         }
         
-		bi.output(null);
+        String errorHandler = null;
+        if(_Options.debug)
+            errorHandler = "runtime.traceln(\" ignored\");";
+		bi.output(errorHandler);
+        
 		_output.println("}");   //end of function
 	}
-    
-    /**
-     * Returns true if the specified state can be reached by
-     * a Ref transition.
-     */
-    private boolean hasReverseRef( State s ) {
-        Iterator i = s.iterateReversalTransitions();
-        while(i.hasNext()) {
-            Transition t = (Transition)i.next();
-            if(t.getAlphabet().getType()==Alphabet.REF_BLOCK)
-                return true;
-        }
-        return false;
-    }
     
     private void writeChildCompletedHandler() {
         printSection("child completed");
         _output.println("public void onChildCompleted(Object result, int cookie) throws SAXException {");
         if(_Options.debug) {
-            _output.println("runtime.indent--;");
+            _output.println("runtime.traceln(\"\");");
             _output.println("runtime.trace(\"onChildCompleted(\"+cookie+\")\");");
         }
         _output.println("switch(cookie) {");
@@ -679,7 +654,7 @@ public class CodeWriter
 		_output.println("{");
 		_output.println("int ai;");
 		if(_Options.debug)
-			_output.println("runtime.trace(\"" + _Info.getNameForTargetLang() + ":processAttribute \" + runtime.getCurrentAttributes().getLength() + \",\" + _ngcc_current_state);"); 
+			_output.println("runtime.traceln(\"processAttribute (\" + runtime.getCurrentAttributes().getLength() + \" atts) #\" + _ngcc_current_state);"); 
 		
 		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.ENTER_ATTRIBUTE);
 		
@@ -728,8 +703,16 @@ public class CodeWriter
 		else
 			buf.append("_ngcc_threaded_state[" + deststate.getThreadIndex() + "]="+ deststate.getIndex());
 		buf.append(";");
+        if(_Options.debug)
+        {
+            if(deststate.getThreadIndex()==-1)
+                buf.append("runtime.traceln(\" -> #" + deststate.getIndex() + "\");");
+            else
+                buf.append("runtime.traceln(\" -> #[" + deststate.getThreadIndex() + "]"+ deststate.getIndex() + "\");");
+            buf.append(_Options.newline);
+        }
 
-        if(deststate.hasTransition(Alphabet.ENTER_ATTRIBUTE))
+        if(!deststate.attHead().isEmpty())
             buf.append("processAttribute();");
 		
 		if(deststate.getMeetingDestination()!=null)

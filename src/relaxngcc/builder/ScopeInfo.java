@@ -14,6 +14,7 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.text.MessageFormat;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Iterator;
@@ -21,8 +22,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 import java.util.StringTokenizer;
-import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.Vector;
 
 import relaxngcc.NGCCGrammar;
@@ -318,7 +317,7 @@ public final class ScopeInfo
 		public Alias(String n, String t, boolean user) { name=n; javatype=t; isUserObject=user; }
 	}
     /** All the aliases indexed by their names. */
-	private final Map aliases = new TreeMap();
+	private final Map aliases = new Hashtable();
 	
 	public ScopeInfo(NGCCGrammar g, int type, String location, boolean inline)
 	{
@@ -330,11 +329,10 @@ public final class ScopeInfo
 		_UsingBigInteger = false;
 		_UsingCalendar = false;
 	
-		_AllStates = new TreeSet();
-		
+		_AllStates = new HashSet();
         _ChildScopes = new HashSet();
         
-		_NSURItoStringConstant = new TreeMap();
+		_NSURItoStringConstant = new HashMap();
 	}
     
     /**
@@ -630,23 +628,13 @@ public final class ScopeInfo
 	public void dump(PrintStream strm)
 	{
 		strm.println("Scope " + _Name);
-/*		strm.print(" FIRST: ");
-		Iterator it = _FirstAlphabet.iterator();
-		while(it.hasNext())
-		{
-			strm.print(((Alphabet)it.next()).toString());
-			strm.print(", ");
+        strm.print("HEAD: ");
+        for (Iterator itr = head().iterator(); itr.hasNext();) {
+			Alphabet a = (Alphabet) itr.next();
+			strm.print(a);
+            strm.print(", ");
 		}
 		strm.println();
-		
-		strm.print(" FOLLOW: ");
-		it = _FollowAlphabet.iterator();
-		while(it.hasNext())
-		{
-			strm.print(((Alphabet)it.next()).toString());
-			strm.print(", ");
-		}
-*/		strm.println();
 	}
     
     
@@ -773,5 +761,15 @@ public final class ScopeInfo
         if(cachedHEAD==null)
             cachedHEAD = getInitialState().head(false);
         result.addAll(cachedHEAD);
+    }
+    
+    /**
+     * Computes the HEAD set of this scope (that doesn't include
+     * EVERYTHING_ELSE token) and returns them in a new set.
+     */
+    public Set head() {
+        Set s = new HashSet();
+        head(s);
+        return s;
     }
 }

@@ -39,13 +39,6 @@ public final class Transition
         return vec;
     }
     
-    /**
-     * creates Transition with user-defined action
-     */
-//    public Transition(Alphabet a, State n, ScopeInfo.Action act) {
-//        this(a,n,createVector(act));
-//    }
-    
     private Transition(Alphabet a, State n, Vector _pro, Vector _epi) {
         _Alphabet=a;
         _NextState=n;

@@ -5,6 +5,7 @@
  */
 
 package relaxngcc.dom;
+import java.util.HashMap;
 import java.util.Vector;
 import java.util.Map;
 import java.util.TreeMap;
@@ -25,7 +26,7 @@ public class NonXmlElement extends NGCCElement
 	
 	private String _LocalName;
 	private int _Type;
-	private Map _Attributes;
+	private final Map _Attributes = new HashMap();
 	private Vector _Children;
 	
 	public NGCCNodeList getChildNodes() { return new NonXmlNodeList(_Children); }
@@ -98,9 +99,8 @@ public class NonXmlElement extends NGCCElement
 		_LocalName = afterColon(e.name);
 		//System.err.println("<E> " + _LocalName);
 		_Type = type; 
-		_Attributes = new TreeMap();
-		for(int i=0; i<e.attributes.size(); i+=2)
-		{
+        
+		for(int i=0; i<e.attributes.size(); i+=2) {
 			String an = (String)e.attributes.get(i);
 			String av = (String)e.attributes.get(i+1);
 			_Attributes.put(afterColon(an), av);
@@ -140,7 +140,6 @@ public class NonXmlElement extends NGCCElement
 	{
 		_LocalName = localName;
 		_Type = type; 
-		_Attributes = new TreeMap();
 		_Children = new Vector();
 		_Children.add(content);
 	}

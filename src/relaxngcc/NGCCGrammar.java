@@ -5,6 +5,8 @@
  */
 
 package relaxngcc;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Vector;
 import java.util.Map;
 import java.util.Set;
@@ -49,10 +51,10 @@ public class NGCCGrammar
 	public static final String RELAXNG_NSURI_10 = "http://relaxng.org/ns/structure/1.0";
 	public static String RELAXNG_NSURI;
 
-	private Map _Scopes; //a map from scope names to ScopeBuilder objects
-	private Map _LambdaScopes;
+	private final Map _Scopes = new HashMap(); //a map from scope names to ScopeBuilder objects
+	private final Map _LambdaScopes = new HashMap();
 	private ScopeBuilder _Root;
-	private Vector _DataTypes;
+	private final Vector _DataTypes = new Vector();
 	private String _Package;
 	private String _GlobalBody;
 	private String _GlobalImport;
@@ -90,9 +92,6 @@ public class NGCCGrammar
 	{
 		_Options = o;
 		NGCCElement e = RelaxNGCC.readNGCCGrammar(o, o.sourcefile);
-		_Scopes = new TreeMap();
-		_LambdaScopes = new TreeMap();
-		_DataTypes = new Vector();
 		_Package = e.attributeNGCC("package","");
         runtimeType = e.attributeNGCC("runtime-type",null);
         if(runtimeType==null) {
@@ -164,7 +163,7 @@ public class NGCCGrammar
 	}
 	private void processInclude(NGCCElement e, GrammarLoadingContext ctx) throws NGCCException
 	{
-		Set excluding_names = new TreeSet(ctx.excluding_names);
+		Set excluding_names = new HashSet(ctx.excluding_names);
 		NGCCNodeList nl = e.getChildNodes(); //e.getElementsByTagNameNS(RELAXNG_NSURI, "define");
 		for(int i=0; i<nl.getLength(); i++)
 		{

@@ -5,13 +5,13 @@
  */
 
 package relaxngcc;
+import java.io.PrintStream;
+import java.util.Hashtable;
+import java.util.Iterator;
+import java.util.Map;
+
 import relaxngcc.dom.NGCCElement;
 import relaxngcc.dom.NGCCNodeList;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.Iterator;
-import java.io.PrintStream;
-import relaxngcc.NGCCUtil;
 
 /**
  * MetaDataType has the ability to generate a code that verifies data types described in original grammar.
@@ -27,7 +27,7 @@ public class MetaDataType
 	{
 		_Index = index;
 		_BaseName = e.getAttribute("type");
-		_Facets = new TreeMap();
+		_Facets = new Hashtable();
 		NGCCNodeList nl = e.getChildNodes(); //e.getElementsByTagName("param");
 		for(int i=0; i<nl.getLength(); i++)
 		{
