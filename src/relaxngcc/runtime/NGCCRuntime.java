@@ -403,6 +403,8 @@ public class NGCCRuntime implements ContentHandler {
         
         // no binding was found.
         if(prefix.equals(""))   return "";  // return the default no-namespace
+        if(prefix.equals("xml"))    // pre-defined xml prefix
+            return "http://www.w3.org/XML/1998/namespace";
         else    return null;    // prefix undefined
     }
 
