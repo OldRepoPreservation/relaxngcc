@@ -2,6 +2,8 @@ package relaxngcc.codedom;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Iterator;
 
 /**
  */
@@ -10,29 +12,34 @@ public class MethodDefinition extends CodeDOMRoot {
 	private LanguageSpecificString _ForwardSpecifier;
 	private TypeDescriptor _ReturnType;
 	private String _Name;
-	private TypeDescriptor[] _ArgTypes;
-	private String[] _Args;
 	private LanguageSpecificString _BackwardSpecifier;
+    /** Parameters to this method. List of VariableDeclaration. */
+    private final ArrayList _Params = new ArrayList();
 	
-	private StatementVector _Body;
+	private final StatementVector _Body = new StatementVector();
 	
-	public MethodDefinition(LanguageSpecificString forwardspecifier, TypeDescriptor returntype, String name, TypeDescriptor[] argtypes, String[] args, LanguageSpecificString backwardspecifier, StatementVector body) {
-		_ForwardSpecifier = forwardspecifier;
+	public MethodDefinition(LanguageSpecificString forwardspecifier,
+        TypeDescriptor returntype, String name,
+        LanguageSpecificString backwardspecifier ) {
+		
+        _ForwardSpecifier = forwardspecifier;
 		_ReturnType = returntype;
 		_Name = name;
-		_ArgTypes = argtypes;
-		_Args = args;
 		_BackwardSpecifier = backwardspecifier;
-		_Body = body;
-		
-		/* debugging
-		if(_ArgTypes!=null) {
-			for(int i=0; i<_ArgTypes.length; i++) {
-				if(_ArgTypes[i]==null) throw new IllegalArgumentException("null type is invlalid");
-			}
-		}
-		*/
 	}
+    
+    /**
+     * Adds a new parameter to this method and returns a reference
+     * to it.
+     */
+    public VariableDeclaration param( TypeDescriptor type, String name ) {
+        VariableDeclaration v = new VariableDeclaration(null,type,name,null);
+        _Params.add(v);
+        return v;
+    }
+    
+    /** Gets a reference to the method body. */
+    public StatementVector body() { return _Body; }
 
     public void writeTo(OutputParameter param, Writer writer) throws IOException {
 
@@ -50,14 +57,14 @@ public class MethodDefinition extends CodeDOMRoot {
     		
     	writer.write(_Name);
 		writer.write("(");
-		if(_ArgTypes!=null) {
-			for(int i=0; i<_ArgTypes.length; i++) {
-				if(i > 0) writer.write(", ");
-				_ArgTypes[i].writeTo(param, writer);
-				writer.write(" ");
-				writer.write(_Args[i]);
-			}
-		}
+        
+        boolean first=true;
+        for (Iterator itr = _Params.iterator(); itr.hasNext();) {
+            if(!first)  writer.write(", ");
+            first = false;
+            VariableDeclaration v = (VariableDeclaration) itr.next();
+            v.declare(param,writer);
+        }
 		writer.write(")");
 		
     	if(_BackwardSpecifier!=null) {
@@ -69,10 +76,9 @@ public class MethodDefinition extends CodeDOMRoot {
     	writer.write(NEWLINE);
     	
     	param.incrementIndent();
-    	if(_Body!=null) {
-   			_Body.writeTo(param, writer);
-    	}
+        _Body.writeTo(param, writer);
     	param.decrementIndent();
+        
     	writeIndent(param, writer);
     	writer.write("}");
     	writer.write(NEWLINE);

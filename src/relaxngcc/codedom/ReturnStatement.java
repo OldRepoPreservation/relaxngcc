@@ -7,7 +7,8 @@ public class ReturnStatement extends CodeDOMRoot implements Statement {
 
 	private Expression _Expression;
 	
-	public ReturnStatement(Expression expr) {
+    /** use StatementVector to create an instance. */
+	ReturnStatement(Expression expr) {
 		_Expression = expr;
 	}
 

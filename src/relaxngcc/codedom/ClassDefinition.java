@@ -26,9 +26,22 @@ public class ClassDefinition extends CodeDOMRoot {
 		_LanguageSpecificStrings = new Vector();
 	}
 
-	public void addMember(MemberDefinition memberdef) {
-		_Members.add(memberdef);
+    /** Adds a new member declaration. */
+	public VariableDeclaration addMember(
+        LanguageSpecificString modifier,
+        TypeDescriptor type, String name, Expression initialValue) {
+            
+        VariableDeclaration var = new VariableDeclaration(modifier,type,name,initialValue);
+		_Members.add(var);
+        return var;
 	}
+
+    public VariableDeclaration addMember(
+        LanguageSpecificString modifier, TypeDescriptor type, String name) {
+        
+        return addMember(modifier,type,name,null);
+    }
+
 	public void addMethod(MethodDefinition methoddef) {
 		_Methods.add(methoddef);
 	}
@@ -63,7 +76,7 @@ public class ClassDefinition extends CodeDOMRoot {
     	
     	if(_Members!=null) {
     		for(int i=0; i<_Members.size(); i++) {
-    			((MemberDefinition)_Members.get(i)).writeTo(param, writer);
+    			((VariableDeclaration)_Members.get(i)).state(param, writer);
     		}
     	}
     	writer.write(NEWLINE);

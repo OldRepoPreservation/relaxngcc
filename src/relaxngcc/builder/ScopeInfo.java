@@ -41,12 +41,12 @@ import relaxngcc.codedom.AssignStatement;
 import relaxngcc.codedom.ReturnStatement;
 import relaxngcc.codedom.LanguageSpecificStatement;
 import relaxngcc.codedom.Expression;
+import relaxngcc.codedom.VariableDeclaration;
 import relaxngcc.codedom.VariableExpression;
 import relaxngcc.codedom.ConstantExpression;
 import relaxngcc.codedom.MethodInvokeExpression;
 import relaxngcc.codedom.LanguageSpecificExpression;
 import relaxngcc.codedom.TypeDescriptor;
-import relaxngcc.codedom.MemberDefinition;
 import relaxngcc.codedom.MethodDefinition;
 import relaxngcc.codedom.LanguageSpecificString;
 
@@ -266,8 +266,15 @@ public final class ScopeInfo
         
         /** Generates the action function. */
         void generate( ClassDefinition classdef ) {
-        	classdef.addMethod(new MethodDefinition(new LanguageSpecificString("private"), TypeDescriptor.VOID, "action"+uniqueId, null, null, new LanguageSpecificString("throws SAXException"),
-        		new StatementVector(new LanguageSpecificStatement(new LanguageSpecificString(codeFragment)))));
+            MethodDefinition method = new MethodDefinition(
+                new LanguageSpecificString("private"),
+                TypeDescriptor.VOID,
+                "action"+uniqueId,
+                new LanguageSpecificString("throws SAXException") );
+            
+            method.body().add(new LanguageSpecificStatement(new LanguageSpecificString(codeFragment)));
+            
+        	classdef.addMethod(method);
         }
     }
     
@@ -441,15 +448,25 @@ public final class ScopeInfo
         ClassDefinition classdef = new ClassDefinition(new LanguageSpecificString[]{ new LanguageSpecificString(buf.toString()) }, new LanguageSpecificString(param.access), param.className, new LanguageSpecificString("extends NGCCHandler"));
 		//NSURI constants
 		Iterator uris = _NSURItoStringConstant.entrySet().iterator();
-		while(uris.hasNext())
-		{
+		while(uris.hasNext()) {
 			Map.Entry e = (Map.Entry)uris.next();
-			classdef.addMember(new MemberDefinition(new LanguageSpecificString("public static final"), TypeDescriptor.STRING, (String)e.getValue(), new ConstantExpression((String)e.getKey())));
+			classdef.addMember(
+                new LanguageSpecificString("public static final"),
+                TypeDescriptor.STRING,
+                (String)e.getValue(),
+                new ConstantExpression((String)e.getKey()));
 		}
 		//data member
-		classdef.addMember(new MemberDefinition(new LanguageSpecificString("private"), TypeDescriptor.INTEGER, "_ngcc_current_state"));
+		classdef.addMember(
+            new LanguageSpecificString("private"),
+            TypeDescriptor.INTEGER,
+            "_ngcc_current_state");
+            
 		if(_ThreadCount>0)
-			classdef.addMember(new MemberDefinition(new LanguageSpecificString("private"), new TypeDescriptor("int[]"), "_ngcc_threaded_state"));
+			classdef.addMember(
+                new LanguageSpecificString("private"),
+                new TypeDescriptor("int[]"),
+                "_ngcc_threaded_state");
         
         // aliases
         Iterator itr = aliases.values().iterator();
@@ -462,70 +479,84 @@ public final class ScopeInfo
                 continue;
                 
 			if(/*options.style==Options.STYLE_PLAIN_SAX &&*/ !a.isUserObject)
-				classdef.addMember(new MemberDefinition(new LanguageSpecificString("private"), TypeDescriptor.STRING, a.name));
+				classdef.addMember(new LanguageSpecificString("private"), TypeDescriptor.STRING, a.name);
 			else
-				classdef.addMember(new MemberDefinition(new LanguageSpecificString("private"), new TypeDescriptor(a.javatype), a.name));
+				classdef.addMember(new LanguageSpecificString("private"), new TypeDescriptor(a.javatype), a.name);
 		}
         
-        // constructor 1
-        TypeDescriptor[] argTypes = new TypeDescriptor[3 + constructorParams.length];
-        String[] argParams = new String[3 + constructorParams.length];
-		argTypes[0] = new TypeDescriptor("NGCCHandler");
-		argTypes[1] = new TypeDescriptor(grammar.getRuntimeTypeShortName());
-		argTypes[2] = TypeDescriptor.INTEGER;
-		argParams[0] = "parent";
-		argParams[1] = "_runtime";
-		argParams[2] = "cookie";
-		
-        StatementVector argAssigns = new StatementVector();   // constructor aguments assignments
-        argAssigns.invoke("super")
-            .arg(new VariableExpression("parent"))
-            .arg(new VariableExpression("cookie"));
-        argAssigns.add(new AssignStatement(new VariableExpression("runtime"), new VariableExpression("_runtime")));
-        {// build up constructor arguments
+        
+        {// internal constructor
+            MethodDefinition cotr1 = new MethodDefinition(
+                new LanguageSpecificString("public"),
+                null, param.className, null );
+            classdef.addMethod(cotr1);
+            
+            // add three parameters (parent,runtime,cookie) and call the super class initializer.
+            VariableDeclaration $parent = cotr1.param( new TypeDescriptor("NGCCHandler"), "_parent" );
+            VariableDeclaration $runtime = cotr1.param( new TypeDescriptor(grammar.getRuntimeTypeShortName()), "_runtime" );
+            VariableDeclaration $cookie = cotr1.param( TypeDescriptor.INTEGER, "_cookie" );
+            cotr1.body().invoke("super").arg($parent).arg($cookie);
+            cotr1.body().assign(new VariableExpression("runtime"),$runtime);
+            
+            // append additional constructor arguments
             for( int i=0; i<constructorParams.length; i++ ) {
-                argTypes[3+i] = new TypeDescriptor(constructorParams[i].javatype); //TODO: plimitive type support
-                argParams[3+i] = "_"+(constructorParams[i].name);
-
-                argAssigns.add(new AssignStatement(new VariableExpression(constructorParams[i].name), new VariableExpression(argParams[3+i]))); 
+                VariableDeclaration v = cotr1.param(
+                    new TypeDescriptor(constructorParams[i].javatype),
+                    '_'+constructorParams[i].name);
+                cotr1.body().assign(
+                    new VariableExpression("runtime"),
+                    v );
             }
             
-        }
-        
-		argAssigns.add(new AssignStatement(new VariableExpression("_ngcc_current_state"), new ConstantExpression(_InitialState.getIndex())));
-        if(_ThreadCount>0)
-			argAssigns.add(new AssignStatement(new VariableExpression("_ngcc_threaded_state"), new LanguageSpecificExpression("new int[" + _ThreadCount + "]")));
-            
-		classdef.addMethod(new MethodDefinition(new LanguageSpecificString("public"), null, param.className, argTypes, argParams, null, argAssigns));
+            // move to the initial state
+            cotr1.body().assign( new VariableExpression("_ngcc_current_state"),
+                new ConstantExpression(_InitialState.getIndex()) );
+    
+            if(_ThreadCount>0)
+                cotr1.body().assign( new VariableExpression("_ngcc_threaded_state"),
+                    new LanguageSpecificExpression("new int[" + _ThreadCount + "]"));
+        }        
 		
-		//constructor 2(invoked by external)
-		TypeDescriptor[] argTypes2 = new TypeDescriptor[1 + constructorParams.length];
-		String[] argParams2 = new String[1 + constructorParams.length];
-		argTypes2[0] = new TypeDescriptor(grammar.getRuntimeTypeShortName());
-		argParams2[0] = "_runtime";
-		System.arraycopy(argTypes, 3, argTypes2, 1, argTypes.length-3);
-		System.arraycopy(argParams, 3, argParams2, 1, argParams.length-3);
+		{// external constructor
+            MethodDefinition cotr2 = new MethodDefinition(
+                    new LanguageSpecificString("public"),
+                    null, param.className, null );
+            classdef.addMethod(cotr2);
 
-        {
-            StatementVector body = new StatementVector();
-    		classdef.addMethod(new MethodDefinition(new LanguageSpecificString("public"), null, param.className, argTypes2, argParams2, null, 
-    			body ));
-                
-            MethodInvokeExpression sc = body.invoke("this")
+            VariableDeclaration $runtime = cotr2.param( new TypeDescriptor(grammar.getRuntimeTypeShortName()), "_runtime" );
+            
+            // call the primary constructor
+            MethodInvokeExpression callThis = cotr2.body().invoke("this")
                 .arg( ConstantExpression.NULL )
-                .arg( new VariableExpression("_runtime") )
+                .arg( $runtime )
                 .arg( new ConstantExpression(-1) );
-            for( int i=0; i<constructorParams.length; i++ )
-                sc.arg(new VariableExpression('_'+constructorParams[i].name));
+            
+            // append additional constructor arguments
+            for( int i=0; i<constructorParams.length; i++ ) {
+                VariableDeclaration v = cotr2.param(
+                    new TypeDescriptor(constructorParams[i].javatype),
+                    '_'+constructorParams[i].name);
+                callThis.arg(v);
+            }
         }
+
 
         String runtimeBaseName = "relaxngcc.runtime.NGCCRuntime";
         if(options.usePrivateRuntime) runtimeBaseName = "NGCCRuntime";
+
         
-        classdef.addMember(new MemberDefinition(new LanguageSpecificString("protected final"), new TypeDescriptor(grammar.getRuntimeTypeShortName()), "runtime"));
-        classdef.addMethod(new MethodDefinition(new LanguageSpecificString("public final"), new TypeDescriptor(runtimeBaseName), "getRuntime", null, null, null,
-        	new StatementVector(new ReturnStatement(new VariableExpression("runtime")))));
-		
+        classdef.addMember(new LanguageSpecificString("protected final"), new TypeDescriptor(grammar.getRuntimeTypeShortName()), "runtime");
+        
+        {
+            MethodDefinition getRuntime = new MethodDefinition(
+                new LanguageSpecificString("public final"),
+                new TypeDescriptor(runtimeBaseName),
+                "getRuntime", null );
+            classdef.addMethod(getRuntime);
+            
+            getRuntime.body()._return(new VariableExpression("runtime"));
+        }
+        		
         // action functions
         for( int i=0; i<actions.size(); i++ )
             ((Action)actions.get(i)).generate(classdef);
@@ -556,6 +587,8 @@ public final class ScopeInfo
         return classdef;
 
 	}
+
+    
 
 	public void printTailSection(ClassDefinition classdef, String globalbody)
 	{

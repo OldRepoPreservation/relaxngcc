@@ -32,7 +32,7 @@ import relaxngcc.codedom.SwitchStatement;
 import relaxngcc.codedom.AssignStatement;
 import relaxngcc.codedom.ReturnStatement;
 import relaxngcc.codedom.LanguageSpecificStatement;
-import relaxngcc.codedom.VariableDeclarationStatement;
+import relaxngcc.codedom.VariableDeclaration;
 import relaxngcc.codedom.Expression;
 import relaxngcc.codedom.VariableExpression;
 import relaxngcc.codedom.ConstantExpression;
@@ -44,7 +44,6 @@ import relaxngcc.codedom.CastExpression;
 import relaxngcc.codedom.BinaryOperatorExpression;
 import relaxngcc.codedom.LanguageSpecificExpression;
 import relaxngcc.codedom.TypeDescriptor;
-import relaxngcc.codedom.MemberDefinition;
 import relaxngcc.codedom.MethodDefinition;
 import relaxngcc.codedom.LanguageSpecificString;
 
@@ -281,9 +280,9 @@ public class CodeWriter
 	{
 		ClassDefinition classdef = _Info.createClassCode(_Options, _Grammar.globalImportDecls);
         
-        classdef.addMember(new MemberDefinition(new LanguageSpecificString("private"), TypeDescriptor.STRING, "uri"));
-        classdef.addMember(new MemberDefinition(new LanguageSpecificString("private"), TypeDescriptor.STRING, "localName"));
-        classdef.addMember(new MemberDefinition(new LanguageSpecificString("private"), TypeDescriptor.STRING, "qname"));
+        classdef.addMember(new LanguageSpecificString("private"), TypeDescriptor.STRING, "uri");
+        classdef.addMember(new LanguageSpecificString("private"), TypeDescriptor.STRING, "localName");
+        classdef.addMember(new LanguageSpecificString("private"), TypeDescriptor.STRING, "qname");
         
         classdef.addMethod(createAcceptedMethod());
         
@@ -353,7 +352,9 @@ public class CodeWriter
         
         if(statecheckexpression==null) statecheckexpression = new ConstantExpression(false);
         
-        return new MethodDefinition(new LanguageSpecificString("public"), TypeDescriptor.BOOLEAN, "accepted", null, null, null, new StatementVector(new ReturnStatement(statecheckexpression)));
+        MethodDefinition m = new MethodDefinition(new LanguageSpecificString("public"), TypeDescriptor.BOOLEAN, "accepted",null);
+        m.body()._return(statecheckexpression);
+        return m;
     }
 
     private MethodDefinition writeEventHandler( TransitionTable table, int type, String eventName ) {
@@ -363,9 +364,21 @@ public class CodeWriter
     /**
      * Writes event handlers for (enter|leave)(Attribute|Element) methods.
      */
-    private MethodDefinition writeEventHandler( TransitionTable table, int type, String eventName, TypeDescriptor[] additionaltypes, String[] additionalargs ) {
+    private MethodDefinition writeEventHandler( TransitionTable table, int type, String eventName,
+        TypeDescriptor[] additionalTypes, String[] additionalArgs ) {
+
+        MethodDefinition method = new MethodDefinition(
+            new LanguageSpecificString("public"),
+            TypeDescriptor.VOID, eventName,
+            new LanguageSpecificString("throws SAXException") );
         
-        StatementVector sv = new StatementVector();
+        method.param( TypeDescriptor.STRING, "uri" );
+        method.param( TypeDescriptor.STRING, "local" );
+        method.param( TypeDescriptor.STRING, "qname" );
+        for( int i=0; i<additionalTypes.length; i++ )
+            method.param( additionalTypes[i], additionalArgs[i] );
+        
+        StatementVector sv = method.body();
 		//printSection(eventName);
             
         // QUICK HACK
@@ -385,12 +398,12 @@ public class CodeWriter
         }
         
 		SwitchBlockInfo bi = new SwitchBlockInfo(type);
-		Expression[] arguments = new Expression[3 + additionalargs.length];
+		Expression[] arguments = new Expression[3 + additionalArgs.length];
 		arguments[0] = new VariableExpression("uri");
 		arguments[1] = new VariableExpression("localName");
 		arguments[2] = new VariableExpression("qname");
-		for(int i=0; i<additionalargs.length; i++)
-			arguments[3+i] = new VariableExpression(additionalargs[i]);
+		for(int i=0; i<additionalArgs.length; i++)
+			arguments[3+i] = new VariableExpression(additionalArgs[i]);
 		
         Iterator states = _Info.iterateAllStates();
 		while(states.hasNext()) {
@@ -423,20 +436,8 @@ public class CodeWriter
                 .arg(new VariableExpression("qname"));
 		sv.add(bi.output(eh));
 
-		TypeDescriptor[] types = new TypeDescriptor[3 + additionaltypes.length];
-		types[0] = TypeDescriptor.STRING;
-		types[1] = TypeDescriptor.STRING;
-		types[2] = TypeDescriptor.STRING;
-		System.arraycopy(additionaltypes, 0, types, 3, additionaltypes.length);
 		
-		String[] args = new String[3 + additionalargs.length];
-		args[0] = "uri";
-		args[1] = "localName";
-		args[2] = "qname";
-		System.arraycopy(additionalargs, 0, args, 3, additionalargs.length);
-		
-		return new MethodDefinition(new LanguageSpecificString("public"), TypeDescriptor.VOID, eventName, types, args, new LanguageSpecificString("throws SAXException"), sv);
-		
+		return method;
 		//_output.println(MessageFormat.format(
         //    "public void {0}(String uri,String localName,String qname{1}) throws SAXException '{'",
         //    new Object[]{eventName,argumentsWithTypes}));
@@ -538,7 +539,7 @@ public class CodeWriter
         if(extraarg.length()>0)
             oe.arg(new LanguageSpecificExpression(extraarg.substring(1)));
             
-        sv.add(new VariableDeclarationStatement(new TypeDescriptor("NGCCHandler"), "h", oe ));
+        sv.decl(new TypeDescriptor("NGCCHandler"), "h", oe );
         
         
         if(_Options.debug) {
@@ -605,8 +606,16 @@ public class CodeWriter
 	//outputs text consumption handler. this handler branches by output method
 	private MethodDefinition writeTextHandler(TransitionTable table) {
 		//printSection("text");
+
+        MethodDefinition method = new MethodDefinition(
+            new LanguageSpecificString("public"),
+            TypeDescriptor.VOID,
+            "text",
+            new LanguageSpecificString("throws SAXException"));
 		
-		StatementVector sv = new StatementVector();
+        method.param( TypeDescriptor.STRING, "___$value" );
+        
+		StatementVector sv = method.body();
 		
         if(_Options.debug) {
         	sv.invoke( new VariableExpression("runtime"), "trace")
@@ -658,11 +667,8 @@ public class CodeWriter
         
 		//_output.println("public void text(String ___$value) throws SAXException");
 		//_output.println("{");
-		TypeDescriptor[] types = new TypeDescriptor[] { TypeDescriptor.STRING };
-		String[] args = new String[] { "___$value" };
-		return new MethodDefinition(new LanguageSpecificString("public"), TypeDescriptor.VOID, "text", types, args, new LanguageSpecificString("throws SAXException"), sv);
 
-        
+        return method;
 	}
     
     private static final String[] boxTypes = {
@@ -684,8 +690,18 @@ public class CodeWriter
     
     private MethodDefinition writeChildCompletedHandler() {
         //printSection("child completed");
+        MethodDefinition method = new MethodDefinition(
+            new LanguageSpecificString("public"),
+            TypeDescriptor.VOID,
+            "onChildCompleted",
+            new LanguageSpecificString("throws SAXException") );
+
+        method.param( new TypeDescriptor("Object"), "result" );
+        method.param( TypeDescriptor.INTEGER, "cookie" );
+        method.param( TypeDescriptor.BOOLEAN, "needAttCheck" );
         
-        StatementVector sv = new StatementVector();
+        StatementVector sv = method.body();
+        
         if(_Options.debug) {
         	sv.invoke(new VariableExpression("runtime"), "traceln" )
                 .arg( new LanguageSpecificExpression("\"onChildCompleted(\"+cookie+\") back to "+_Info.getClassName()+"\""));
@@ -743,18 +759,23 @@ public class CodeWriter
         //_output.println("    throw new InternalError();");
         
         //_output.println("public void onChildCompleted(Object result, int cookie,boolean needAttCheck) throws SAXException {");
-        TypeDescriptor[] types = new TypeDescriptor[] { new TypeDescriptor("Object"), TypeDescriptor.INTEGER, TypeDescriptor.BOOLEAN };
-        String[] args = new String[] { "result", "cookie", "needAttCheck" };
-        return new MethodDefinition(new LanguageSpecificString("public"), TypeDescriptor.VOID, "onChildCompleted", types, args, new LanguageSpecificString("throws SAXException"), sv);
+        return method;
     }
     
     
 	private MethodDefinition writeAttributeHandler() {
 		//printSection("attribute");
 		//_output.println("public void processAttribute() throws SAXException");
+
+        MethodDefinition method = new MethodDefinition(
+            new LanguageSpecificString("public"),
+            TypeDescriptor.VOID,
+            "processAttribute",
+            new LanguageSpecificString("throws SAXException") );
 		
-		StatementVector sv = new StatementVector();
-		sv.add(new VariableDeclarationStatement(TypeDescriptor.INTEGER, "ai"));
+		StatementVector sv = method.body();
+        
+		sv.decl(TypeDescriptor.INTEGER, "ai");
 		if(_Options.debug)
 			sv.invoke(new VariableExpression("runtime"), "traceln")
                 .arg( new LanguageSpecificExpression("\"processAttribute (\" + runtime.getCurrentAttributes().getLength() + \" atts) #\" + _ngcc_current_state")); 
@@ -769,7 +790,7 @@ public class CodeWriter
         
         sv.add(bi.output(null));
         
-        return new MethodDefinition(new LanguageSpecificString("public"), TypeDescriptor.VOID, "processAttribute", null, null, new LanguageSpecificString("throws SAXException"), sv);
+        return method;
     }
     
     private void writeAttributeHandler( SwitchBlockInfo bi, State source, State current ) {

@@ -28,6 +28,8 @@ public class StatementVector extends CodeDOMRoot {
 	public void add(StatementVector sv) {
 		_Statements.addAll(sv._Statements);
 	}
+    
+    /** Adds a new method invocation. */
     public MethodInvokeExpression invoke( Expression obj, String method ) {
         MethodInvokeExpression e = new MethodInvokeExpression(obj,method);
         add(e);
@@ -38,6 +40,28 @@ public class StatementVector extends CodeDOMRoot {
         add(e);
         return e;
     }
+    /** Adds a new variable declaration. */
+    public VariableDeclaration decl(TypeDescriptor type, String name) {
+        VariableDeclaration d = new VariableDeclaration(null,type,name,null);
+        add(d);
+        return d;
+    }
+    public VariableDeclaration decl(TypeDescriptor type, String name, Expression init ) {
+        VariableDeclaration d = new VariableDeclaration(null,type,name,init);
+        add(d);
+        return d;
+    }
+    /** Adds a new assignment. */
+    public AssignStatement assign( Expression lhs, Expression rhs ) {
+        AssignStatement a = new AssignStatement(lhs,rhs);
+        add(a);
+        return a;
+    }
+    /** Adds a new return statement. */
+    public void _return( Expression val ) {
+        add(new ReturnStatement(val));
+    }
+    
 
 	public int size() { return _Statements.size(); }
 	
