@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<grammar xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes" xmlns:c="http://www.xml.gr.jp/xmlns/relaxngcc">
+<c:java-import>
+</c:java-import>
+<c:java-body>
+private void echo(String s) { System.err.println(s); System.err.flush(); }
+</c:java-body>
+<start c:class="Test">
+  <element name="root">
+    <oneOrMore><element name="test-optional" ><ref name="optional"/></element></oneOrMore>
+    <element name="test-oneormore"><ref name="oneormore"/></element>
+    <element name="test-zeroormore"><ref name="zeroormore"/></element>
+    <element name="test-group"><ref name="group"/></element>
+    <element name="test-choice"><ref name="choice"/></element>
+    <element name="test-interleave"><ref name="interleave"/></element>
+  </element>
+</start>
+
+<define name="optional">
+  <c:java>echo("optional-start");</c:java>
+  <optional>
+    <c:java>echo("optional-1");</c:java>
+    <element name="foo"><text/></element>
+    <c:java>echo("optional-2");</c:java>
+  </optional>
+  <c:java>echo("optional-end");</c:java>
+</define>
+
+<define name="oneormore">
+  <c:java>echo("oneormore-start");</c:java>
+  <oneOrMore>
+    <c:java>echo("oneormore-1");</c:java>
+    <element name="foo"><text/></element>
+    <c:java>echo("oneormore-2");</c:java>
+  </oneOrMore>
+  <c:java>echo("oneormore-end");</c:java>
+</define>
+
+<define name="zeroormore">
+  <c:java>echo("zeroormore-start");</c:java>
+  <zeroOrMore>
+    <c:java>echo("zeroormore-1");</c:java>
+    <element name="foo"><text/></element>
+    <c:java>echo("zeroormore-2");</c:java>
+  </zeroOrMore>
+  <c:java>echo("zeroormore-end");</c:java>
+</define>
+
+<define name="group">
+  <c:java>echo("group-start");</c:java>
+  <group>
+    <c:java>echo("group-1");</c:java>
+    <element name="foo"><text/></element>
+    <c:java>echo("group-2");</c:java>
+    <element name="foo"><text/></element>
+    <c:java>echo("group-3");</c:java>
+  </group>
+  <c:java>echo("group-end");</c:java>
+</define>
+
+<define name="choice">
+  <c:java>echo("choice-start");</c:java>
+  <choice>
+    <c:java>echo("choice-1");</c:java>
+    <element name="foo1"><text/></element>
+    <c:java>echo("choice-2");</c:java>
+    <element name="foo2"><text/></element>
+    <c:java>echo("choice-3");</c:java>
+  </choice>
+  <c:java>echo("choice-end");</c:java>
+</define>
+
+<define name="interleave">
+  <c:java>echo("interleave-start");</c:java>
+  <interleave>
+    <c:java>echo("interleave-1");</c:java>
+    <element name="foo1"><text/></element>
+    <c:java>echo("interleave-2");</c:java>
+    <element name="foo2"><text/></element>
+    <c:java>echo("interleave-3");</c:java>
+  </interleave>
+  <c:java>echo("interleave-end");</c:java>
+</define>
+
+</grammar>
