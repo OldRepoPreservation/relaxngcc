@@ -19,6 +19,16 @@
 			<produces dir="src/relaxngcc/parser/automata" includes="*.gif"/>
 			<produces dir="src/relaxngcc/parser/state" includes="*.java"/>
 		</relaxngcc>
+		
+		<mkdir dir="src/relaxngcc/datatype/parser" />
+		
+		<relaxngcc source="src/relaxngcc/datatype/datatype.rng"
+			targetdir="src/relaxngcc/datatype/parser">
+			
+			<!-- up-to-date check parameters -->
+			<depends  dir="src/relaxngcc/datatype" includes="datatype.rng"/>
+			<produces dir="src/relaxngcc/datatype/parser" includes="*.java"/>
+		</relaxngcc>
 	</target>
 	
 	<!-- compile Java source files -->

@@ -1,0 +1,99 @@
+<?xml version="1.0" ?>
+<grammar datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes"
+         ns="http://relaxng.org/ns/structure/1.0"
+         xmlns="http://relaxng.org/ns/structure/1.0"
+         xmlns:cc="http://www.xml.gr.jp/xmlns/relaxngcc"
+         
+         cc:runtime-type="relaxngcc.datatype.ParserRuntime"
+         cc:package="relaxngcc.datatype.parser">
+  
+  <cc:java-import>
+  	import relaxngcc.datatype.*;
+  </cc:java-import>
+  
+  <start cc:class="Start" cc:access="public">
+  	<element name="datatypeLibrary">
+  		<attribute name="uri">
+  			uri = <data type="anyURI"/>
+  			$runtime.setURI(uri);
+  		</attribute>
+  		
+  		<zeroOrMore>
+  			<ref name="resource"/>
+  		</zeroOrMore>
+  		
+  		<zeroOrMore>
+  			<ref name="datatype"/>
+  		</zeroOrMore>
+  	</element>
+  </start>
+  
+  <!-- resource definition -->
+  <define name="resource">
+    <element name="resource">
+    	
+    	Macro m = new Macro();
+    	
+    	<attribute name="name">
+    		name = <data type="token"/>
+    	</attribute>
+    	
+    	m = <ref name="macro" />
+    	
+			$runtime.createResource(name,m);
+    </element>
+  </define>
+  
+  <!-- datatype definition -->
+  <define name="datatype">
+  	<cc:java-body>
+	  	java.util.ArrayList resources = new java.util.ArrayList();
+  	</cc:java-body>
+  	
+  	<element name="datatype">
+  		<attribute name="name">
+  			name = <data type="token"/>
+  		</attribute>
+  		<attribute name="javaType">
+  			javaType = <data type="token"/>
+  		</attribute>
+  		
+  		<zeroOrMore>
+  			<element name="useResource">
+  				<attribute name="name">
+  					resName = <data type="token"/>
+  				</attribute>
+  				resources.add( $runtime.getResource(resName) );
+  			</element>
+  		</zeroOrMore>
+  		
+  		m = <ref name="macro" />
+  	</element>
+		$runtime.createDatatype(name,javaType,resources,m);
+	</define>
+  
+  <!-- macro body -->
+  <define name="macro"
+  	cc:return-type="Macro"
+  	cc:return-value="m">
+		
+  	<cc:java-body>
+			Macro m = new Macro();
+		</cc:java-body>
+		
+  	<zeroOrMore>
+  		<choice>
+  			<group>
+  				t=<text/>
+  				m.add(t);
+  			</group>
+  			<element>
+  				<nsName />
+  				<empty />
+  				m.add(new Macro.Variable($localName,$runtime.getLocator()));
+  			</element>
+  		</choice>
+  	</zeroOrMore>
+  </define>
+	
+</grammar>
