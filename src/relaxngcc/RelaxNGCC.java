@@ -5,10 +5,15 @@
  */
 
 package relaxngcc;
+import java.io.File;
 import java.io.PrintStream;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.SAXParserFactory;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.transform.stream.StreamSource;
 
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
@@ -20,17 +25,17 @@ import relaxngcc.parser.RootParserRuntime;
  */
 public class RelaxNGCC
 {
-	private static final DocumentBuilderFactory _DOMFactory;
-	private static final SAXParserFactory _SAXFactory;
+	private static final DocumentBuilderFactory _domFactory;
+	private static final SAXParserFactory _saxFactory;
     
     static {
-        _DOMFactory = DocumentBuilderFactory.newInstance();
-        _DOMFactory.setNamespaceAware(true);
-        _DOMFactory.setValidating(false);
+        _domFactory = DocumentBuilderFactory.newInstance();
+        _domFactory.setNamespaceAware(true);
+        _domFactory.setValidating(false);
         
-        _SAXFactory = SAXParserFactory.newInstance();
-        _SAXFactory.setNamespaceAware(true);
-        _SAXFactory.setValidating(false);
+        _saxFactory = SAXParserFactory.newInstance();
+        _saxFactory.setNamespaceAware(true);
+        _saxFactory.setValidating(false);
     }	
     
 	public static void main(String[] args) throws Exception {
@@ -51,6 +56,11 @@ public class RelaxNGCC
      * Executes RelaxNGCC with the specified options.
      */
     public static void run( Options o ) throws Exception {
+        
+        if(o._purifiedSchema!=null) {
+            purify( o.sourcefile, o._purifiedSchema );
+            return;
+        }
         
         // TODO: this code should be moved to somewhere else.
         try {// debug
@@ -84,7 +94,17 @@ public class RelaxNGCC
         }
 	}
 
-    
+    /**
+     * Removes RelaxNGCC annotations from the source schema
+     * and write to the specified file.
+     */
+    public static void purify( File in, File out ) throws Exception {
+        TransformerFactory factory = TransformerFactory.newInstance();
+        Transformer transformer = factory.newTransformer(new StreamSource(
+            RelaxNGCC.class.getClassLoader().getResourceAsStream("purify.xsl")));
+            
+        transformer.transform(new StreamSource(in),new StreamResult(out));
+    }    
     
     
     
@@ -135,6 +155,8 @@ public class RelaxNGCC
 //        s.println("   generates code that depends on only SAX2 parser. This is the most simple case but no datatypes are supported.");
         s.println(" --target <dir>");
         s.println("   specifies the source code output location.");
+        s.println(" --purify <outFileName>");
+        s.println("   removes RelaxNGCC annotation from the grammar file and write to this file.");
         s.println(" --uptodatecheck");
         s.println("   don't generate files if they are up-to-date.");
         s.println(" --debug");

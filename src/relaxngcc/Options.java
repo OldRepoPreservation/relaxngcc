@@ -45,6 +45,10 @@ public class Options
     /** Don't overwrite files when the Java files are up-to-date. */
     public boolean smartOverwrite=false;
     
+    /** If not null, outputs a "purified" schema file into this file. */
+    public File _purifiedSchema = null;
+    
+    
     /** Creates Options filled by the default values. */
     public Options() {}
     
@@ -77,6 +81,8 @@ public class Options
                     noCodeGeneration = true;
                 else if(args[i].equals("--uptodatecheck"))
                     smartOverwrite = true;
+                else if(args[i].equals("--purify"))
+                    _purifiedSchema = new File(args[++i]);
     			else
                     throw new CommandLineException(
                         "[Warning] Unknown option "+args[i]);
