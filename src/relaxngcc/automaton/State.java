@@ -375,6 +375,9 @@ public final class State implements Comparable
                 if(a.asFork().isNullable())
                     t.nextState().AFollow(result, checked_state);
             }
+            else if(a.isForAction()) {
+                t.nextState().AFollow(result,checked_state);
+            }
         }
         
         if(isAcceptable()) result.add(Head.EVERYTHING_ELSE);
