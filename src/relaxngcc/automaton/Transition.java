@@ -93,7 +93,7 @@ public final class Transition
     private static StatementVector invokeActions(Vector vec) {
         StatementVector sv = new StatementVector();
         for( int i=0; i<vec.size(); i++ )
-            sv.addStatement(((ScopeInfo.Action)vec.get(i)).invoke());
+            sv.add(((ScopeInfo.Action)vec.get(i)).invoke());
         return sv;
     }
     /** Returns true if this transition has any associated action. */

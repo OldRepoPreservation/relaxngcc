@@ -6,7 +6,7 @@ import java.util.Iterator;
 
 /**
  */
-public class ObjectCreateExpression extends Expression {
+public class ObjectCreateExpression extends Expression implements Statement {
     
     private final TypeDescriptor _ClassName;
     private final ArrayList _Args = new ArrayList();
@@ -20,7 +20,7 @@ public class ObjectCreateExpression extends Expression {
         return this;
     }
 
-    public void writeTo(OutputParameter param, Writer writer) throws IOException {
+    public void express(OutputParameter param, Writer writer) throws IOException {
     	writer.write("new ");
     	_ClassName.writeTo(param, writer);
     	writer.write("(");
@@ -31,11 +31,15 @@ public class ObjectCreateExpression extends Expression {
             first = false;
             
             Expression arg = (Expression) itr.next();
-            arg.writeTo(param,writer);
+            arg.express(param,writer);
         }
         
     	writer.write(")");
-    	
+    }
+
+    public void state(OutputParameter param, Writer writer) throws IOException {
+        express(param,writer);
+        writer.write(';');
     }
     
 }

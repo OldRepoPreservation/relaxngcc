@@ -15,8 +15,8 @@ public class PropertyReferenceExpression extends Expression {
 		_PropertyName = propertyname;
 	}
 
-    public void writeTo(OutputParameter param, Writer writer) throws IOException {
-    	_Object.writeTo(param, writer);
+    public void express(OutputParameter param, Writer writer) throws IOException {
+    	_Object.express(param, writer);
     	writer.write(".");
     	writer.write(_PropertyName);
     }

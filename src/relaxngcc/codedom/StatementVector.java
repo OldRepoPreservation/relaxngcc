@@ -21,14 +21,11 @@ public class StatementVector extends CodeDOMRoot {
 		_Statements.add(s);
 	}
 	
-	public void addStatement(Statement s) {
+	public void add(Statement s) {
 		if(s==null) throw new IllegalArgumentException("parameter is null");
 		_Statements.add(s);
 	}
-    public void add(Expression e) {
-        addStatement(new ExpressionStatement(e));
-    }
-	public void addStatement(StatementVector sv) {
+	public void add(StatementVector sv) {
 		_Statements.addAll(sv._Statements);
 	}
     public MethodInvokeExpression invoke( Expression obj, String method ) {
@@ -46,7 +43,7 @@ public class StatementVector extends CodeDOMRoot {
 	
 	public void writeTo(OutputParameter param, Writer writeTo) throws IOException {
 		for(int i=0; i<_Statements.size(); i++) {
-			((Statement)_Statements.get(i)).writeTo(param, writeTo);
+			((Statement)_Statements.get(i)).state(param, writeTo);
 		}
 	}
 }

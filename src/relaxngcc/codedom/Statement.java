@@ -8,6 +8,9 @@ import java.io.Writer;
  * 
  * @author Daisuke OKAJIMA
  */
-public abstract class Statement extends CodeDOMRoot {
-
+public interface Statement {
+    /**
+     * Prints itself as a statement.
+     */
+    void state( OutputParameter param, Writer writer ) throws IOException;
 }

@@ -16,7 +16,7 @@ public class LanguageSpecificExpression extends Expression {
 		_Content = new LanguageSpecificString(content);
 	}
 
-    public void writeTo(OutputParameter param, Writer writer) throws IOException {
+    public void express(OutputParameter param, Writer writer) throws IOException {
     	_Content.writeTo(param, writer);
     }
 

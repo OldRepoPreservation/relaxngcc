@@ -7,13 +7,14 @@ import java.util.Iterator;
 
 /**
  */
-public class MethodInvokeExpression extends Expression {
+public class MethodInvokeExpression extends Expression implements Statement {
 
 	private final Expression _Object;
 	private final String _MethodName;
     private final ArrayList _Args = new ArrayList();
 
-	public MethodInvokeExpression(Expression obj, String methodname) {
+    // use the invoke method on Expression.
+	protected MethodInvokeExpression(Expression obj, String methodname) {
 		_Object = obj;
 		_MethodName = methodname;
 	}
@@ -34,11 +35,15 @@ public class MethodInvokeExpression extends Expression {
         return this;
     }
 	
+    public void state(OutputParameter param, Writer writer) throws IOException {
+        express(param,writer);
+        writer.write(';');
+    }
 
-    public void writeTo(OutputParameter param, Writer writer) throws IOException {
+    public void express(OutputParameter param, Writer writer) throws IOException {
     	
     	if(_Object != null) {
-	    	_Object.writeTo(param, writer);
+	    	_Object.express(param, writer);
     		writer.write(".");
     	}
     	writer.write(_MethodName);
@@ -51,7 +56,7 @@ public class MethodInvokeExpression extends Expression {
             first = false;
             
             Expression arg = (Expression) itr.next();
-			arg.writeTo(param, writer);
+			arg.express(param, writer);
 		}
         
     	writer.write(")");

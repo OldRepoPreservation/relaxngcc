@@ -6,7 +6,7 @@ import java.util.Vector;
 
 /**
  */
-public class SwitchStatement extends Statement {
+public class SwitchStatement extends CodeDOMRoot implements Statement {
 
 	private class Block {
 		ConstantExpression _Expr;
@@ -36,11 +36,11 @@ public class SwitchStatement extends Statement {
 		_DefaultBlock = statements;
 	}
 
-    public void writeTo(OutputParameter param, Writer writer) throws IOException {
+    public void state(OutputParameter param, Writer writer) throws IOException {
 
         writeIndent(param, writer);
         writer.write("switch(");
-        _CheckValue.writeTo(param, writer);
+        _CheckValue.express(param, writer);
         writer.write(") {");
         writer.write(NEWLINE);
         param.incrementIndent();
@@ -49,7 +49,7 @@ public class SwitchStatement extends Statement {
 	    	Block block = (Block)_Blocks.get(i);
 	    	writeIndent(param, writer);
 	    	writer.write("case ");
-	    	block._Expr.writeTo(param, writer);
+	    	block._Expr.express(param, writer);
 	    	writer.write(":");
 	    	writer.write(NEWLINE);
 	    	

@@ -30,7 +30,6 @@ import relaxngcc.codedom.Statement;
 import relaxngcc.codedom.IfStatement;
 import relaxngcc.codedom.SwitchStatement;
 import relaxngcc.codedom.AssignStatement;
-import relaxngcc.codedom.ExpressionStatement;
 import relaxngcc.codedom.ReturnStatement;
 import relaxngcc.codedom.LanguageSpecificStatement;
 import relaxngcc.codedom.VariableDeclarationStatement;
@@ -71,7 +70,7 @@ public class CodeWriter
         public StatementVector output(Statement errorHandleMethod) {
         	StatementVector sv = new StatementVector();
         	
-            if(prologue!=null) sv.addStatement(prologue);
+            if(prologue!=null) sv.add(prologue);
             
             //elsecode, null‚È‚çerrorHandleMethod‚Å•Â‚¶‚é
             
@@ -79,19 +78,19 @@ public class CodeWriter
             	if(conditionalCodes!=null)
 	            	conditionalCodes.closeClause(elsecode);
 	            else
-	            	sv.addStatement(elsecode);
+	            	sv.add(elsecode);
             } else if(errorHandleMethod!=null) {
             	if(conditionalCodes!=null)
 	            	conditionalCodes.closeClause(new StatementVector(errorHandleMethod));
 	            else
-	            	sv.addStatement(errorHandleMethod);
+	            	sv.add(errorHandleMethod);
             }
             
            	if(conditionalCodes!=null)
-	            sv.addStatement(conditionalCodes);
+	            sv.add(conditionalCodes);
             
             if(epilogue!=null)
-                sv.addStatement(epilogue);
+                sv.add(epilogue);
                 
             return sv;
         }
@@ -155,7 +154,7 @@ public class CodeWriter
 			if(cas.elsecode==null)
 				cas.elsecode = code;
 			else
-				cas.elsecode.addStatement(code);
+				cas.elsecode.add(code);
 		}
         
 		public void addPrologue(State state, Statement code) {
@@ -163,7 +162,7 @@ public class CodeWriter
 			if(cas.prologue==null)
 				cas.prologue = new StatementVector(code);
 			else
-				cas.prologue.addStatement(code);
+				cas.prologue.add(code);
 		}
         
         public void addEpilogue(State state, Statement code) {
@@ -171,7 +170,7 @@ public class CodeWriter
             if(cas.epilogue==null)
                 cas.epilogue = new StatementVector(code);
             else
-                cas.epilogue.addStatement(code);
+                cas.epilogue.add(code);
         }
 
         private StatementVector output(Statement errorHandleMethod) {
@@ -202,7 +201,7 @@ public class CodeWriter
             	if(ifblock!=null) ifblock.closeClause(new StatementVector(errorHandleMethod));
             }
             
-            if(ifblock!=null) sv.addStatement(ifblock);
+            if(ifblock!=null) sv.add(ifblock);
             return sv;
         }
 	}
@@ -374,9 +373,9 @@ public class CodeWriter
         // accessed from action functions.
         // we should better not keep them at Runtime, because
         // this makes it impossible to emulate events.
-        sv.addStatement(new AssignStatement(new PropertyReferenceExpression(new VariableExpression("this"), "uri"), new VariableExpression("uri")));
-        sv.addStatement(new AssignStatement(new PropertyReferenceExpression(new VariableExpression("this"), "localName"), new VariableExpression("localName")));
-        sv.addStatement(new AssignStatement(new PropertyReferenceExpression(new VariableExpression("this"), "qname"), new VariableExpression("qname")));
+        sv.add(new AssignStatement(new PropertyReferenceExpression(new VariableExpression("this"), "uri"), new VariableExpression("uri")));
+        sv.add(new AssignStatement(new PropertyReferenceExpression(new VariableExpression("this"), "localName"), new VariableExpression("localName")));
+        sv.add(new AssignStatement(new PropertyReferenceExpression(new VariableExpression("this"), "qname"), new VariableExpression("qname")));
             
 		if(_Options.debug) {
 			sv.invoke(
@@ -420,10 +419,9 @@ public class CodeWriter
                     buildTransitionCode(st,tr,eventName,arguments));
 		}
         
-        Statement eh = new ExpressionStatement(
-            new MethodInvokeExpression("unexpected"+capitalize(eventName))
-                .arg(new VariableExpression("qname")));
-		sv.addStatement(bi.output(eh));
+        Statement eh = new MethodInvokeExpression("unexpected"+capitalize(eventName))
+                .arg(new VariableExpression("qname"));
+		sv.add(bi.output(eh));
 
 		TypeDescriptor[] types = new TypeDescriptor[3 + additionaltypes.length];
 		types[0] = TypeDescriptor.STRING;
@@ -482,7 +480,7 @@ public class CodeWriter
         	StatementVector sv = new StatementVector();
             sv.invoke( new VariableExpression("runtime"), "pushAttributes")
                     .arg(new VariableExpression("attrs"));
-            sv.addStatement(buildMoveToStateCode(tr));
+            sv.add(buildMoveToStateCode(tr));
             
             return sv;
         }
@@ -492,8 +490,8 @@ public class CodeWriter
             Alphabet.Text ta = tr.getAlphabet().asText();
             String alias = ta.getAlias();
             if(alias!=null)
-                sv.addStatement(new AssignStatement(new VariableExpression(alias), new VariableExpression("___$value")));
-            sv.addStatement(buildMoveToStateCode(tr));
+                sv.add(new AssignStatement(new VariableExpression(alias), new VariableExpression("___$value")));
+            sv.add(buildMoveToStateCode(tr));
             
             return sv;
         }
@@ -524,7 +522,7 @@ public class CodeWriter
         Alphabet.Ref alpha = ref_tr.getAlphabet().asRef();
         ScopeInfo ref_block = alpha.getTargetScope();
         
-        sv.addStatement(ref_tr.invokePrologueActions());
+        sv.add(ref_tr.invokePrologueActions());
         
         /* Caution
          *  alpha.getParams() may return more than one argument concatinated by ','.
@@ -540,7 +538,7 @@ public class CodeWriter
         if(extraarg.length()>0)
             oe.arg(new LanguageSpecificExpression(extraarg.substring(1)));
             
-        sv.addStatement(new VariableDeclarationStatement(new TypeDescriptor("NGCCHandler"), "h", oe ));
+        sv.add(new VariableDeclarationStatement(new TypeDescriptor("NGCCHandler"), "h", oe ));
         
         
         if(_Options.debug) {
@@ -570,7 +568,7 @@ public class CodeWriter
     {
         StatementVector sv = new StatementVector();
         
-        sv.addStatement(tr.invokePrologueActions());
+        sv.add(tr.invokePrologueActions());
         State nextstate = tr.nextState();
         
         if(tr.getDisableState()!=null) {
@@ -579,7 +577,7 @@ public class CodeWriter
                 dest = new VariableExpression("_ngcc_current_state");
             else
                 dest = new ArrayElementReferenceExpression(new VariableExpression("_ngcc_threaded_state"), new ConstantExpression(tr.getDisableState().getThreadIndex()));
-            sv.addStatement(new AssignStatement(dest, new ConstantExpression(-1)));
+            sv.add(new AssignStatement(dest, new ConstantExpression(-1)));
         }
         
         if(tr.getEnableState()!=null) {
@@ -589,11 +587,11 @@ public class CodeWriter
             else
                 dest = new ArrayElementReferenceExpression(new VariableExpression("_ngcc_threaded_state"), new ConstantExpression(tr.getEnableState().getThreadIndex()));
         
-            sv.addStatement(new AssignStatement(dest, new ConstantExpression(tr.getEnableState().getIndex())));
+            sv.add(new AssignStatement(dest, new ConstantExpression(tr.getEnableState().getIndex())));
         }
         
         State result = appendStateTransition(sv, nextstate);
-        sv.addStatement(tr.invokeEpilogueActions());
+        sv.add(tr.invokeEpilogueActions());
         
         return sv;
     }
@@ -638,8 +636,8 @@ public class CodeWriter
                 StatementVector code = buildTransitionCode(st,tr,"text",new Expression[]{ new VariableExpression("___$value") });
                 if(a.isValueText())
                     bi.addConditionalCode(st, 
-                    new MethodInvokeExpression( new VariableExpression("___$value"), "equals" )
-                        .arg( new ConstantExpression(a.asValueText().getValue())), code);
+                        new VariableExpression("___$value").invoke("equals")
+                            .arg( new ConstantExpression(a.asValueText().getValue())), code);
                 else {
                     dataPresent = true;
                     bi.addElseCode(st, code);
@@ -654,10 +652,9 @@ public class CodeWriter
         
         Statement errorHandler = null;
         if(_Options.debug)
-            errorHandler = new ExpressionStatement(
-                new MethodInvokeExpression(new VariableExpression("runtime"), "traceln")
-                .arg(new ConstantExpression("ignored")));
-		sv.addStatement(bi.output(errorHandler));
+            errorHandler = new VariableExpression("runtime").invoke("traceln")
+                    .arg(new ConstantExpression("ignored"));
+		sv.add(bi.output(errorHandler));
         
 		//_output.println("public void text(String ___$value) throws SAXException");
 		//_output.println("{");
@@ -722,18 +719,16 @@ public class CodeWriter
                             rhs = new CastExpression(
                                 new TypeDescriptor(returnType), new VariableExpression("result"));
                         else
-                            rhs = new MethodInvokeExpression(
-                                new CastExpression( new TypeDescriptor(boxType),
-                                new VariableExpression("result")),
-                                returnType+"Value");
+                            rhs = new CastExpression( new TypeDescriptor(boxType),
+                                new VariableExpression("result")).invoke(returnType+"Value");
                             
-                        block.addStatement(new AssignStatement(
+                        block.add(new AssignStatement(
                         	new PropertyReferenceExpression(new VariableExpression("this"), alias),
                         	rhs));
                                 
                     }
                     
-                    block.addStatement(tr.invokeEpilogueActions());
+                    block.add(tr.invokeEpilogueActions());
 
                     appendStateTransition(block, tr.nextState(), "needAttCheck");
                         
@@ -741,7 +736,7 @@ public class CodeWriter
                 }
             }
         }
-        sv.addStatement(switchstatement);
+        sv.add(switchstatement);
         
         // TODO: assertion failed
         //_output.println("default:");
@@ -759,7 +754,7 @@ public class CodeWriter
 		//_output.println("public void processAttribute() throws SAXException");
 		
 		StatementVector sv = new StatementVector();
-		sv.addStatement(new VariableDeclarationStatement(TypeDescriptor.INTEGER, "ai"));
+		sv.add(new VariableDeclarationStatement(TypeDescriptor.INTEGER, "ai"));
 		if(_Options.debug)
 			sv.invoke(new VariableExpression("runtime"), "traceln")
                 .arg( new LanguageSpecificExpression("\"processAttribute (\" + runtime.getCurrentAttributes().getLength() + \" atts) #\" + _ngcc_current_state")); 
@@ -772,7 +767,7 @@ public class CodeWriter
             writeAttributeHandler(bi,st,st);
         }
         
-        sv.addStatement(bi.output(null));
+        sv.add(bi.output(null));
         
         return new MethodDefinition(new LanguageSpecificString("public"), TypeDescriptor.VOID, "processAttribute", null, null, new LanguageSpecificString("throws SAXException"), sv);
     }
@@ -833,7 +828,7 @@ public class CodeWriter
 		else
 			statevariable = new ArrayElementReferenceExpression(new VariableExpression("_ngcc_threaded_state"), new ConstantExpression(deststate.getThreadIndex()));
 		
-		sv.addStatement(new AssignStatement(statevariable, new ConstantExpression(deststate.getIndex())));
+		sv.add(new AssignStatement(statevariable, new ConstantExpression(deststate.getIndex())));
 		
 		if(_Options.debug)
         {
@@ -850,11 +845,11 @@ public class CodeWriter
 
         if(!deststate.attHead().isEmpty()) {
         	
-        	Statement processAttribute = new ExpressionStatement(new MethodInvokeExpression("processAttribute"));
+        	Statement processAttribute = new MethodInvokeExpression("processAttribute");
             if(flagVarName!=null)
-                sv.addStatement(new IfStatement(new VariableExpression(flagVarName), new StatementVector(processAttribute)));
+                sv.add(new IfStatement(new VariableExpression(flagVarName), new StatementVector(processAttribute)));
             else
-	            sv.addStatement(processAttribute);
+	            sv.add(processAttribute);
         }
 		
 		if(deststate.getMeetingDestination()!=null)
@@ -876,9 +871,9 @@ public class CodeWriter
 			StatementVector whentrue = new StatementVector();
 			State t = appendStateTransition(whentrue, deststate.getMeetingDestination());
 			if(condition==null)
-				sv.addStatement(whentrue);
+				sv.add(whentrue);
 			else
-				sv.addStatement(new IfStatement(condition, whentrue));
+				sv.add(new IfStatement(condition, whentrue));
 			return t;
 		}
 		else

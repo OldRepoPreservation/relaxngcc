@@ -6,7 +6,7 @@ import java.util.Vector;
 
 /**
  */
-public class IfStatement extends Statement {
+public class IfStatement extends CodeDOMRoot implements Statement {
 	
 	private class Block {
 		Expression _Expr;
@@ -38,13 +38,13 @@ public class IfStatement extends Statement {
 	}
 	
 	
-    public void writeTo(OutputParameter param, Writer writer) throws IOException {
+    public void state(OutputParameter param, Writer writer) throws IOException {
 
     	for(int i=0; i<_Blocks.size(); i++) {
 	    	writeIndent(param, writer);
 	    	writer.write(i==0? "if(" : "else if(");
 	    	Block block = (Block)_Blocks.get(i);
-	    	block._Expr.writeTo(param, writer);
+	    	block._Expr.express(param, writer);
             // not writing '{' causes ambiguity if the only statement
             // inside it is another IfStatement.
             // consider

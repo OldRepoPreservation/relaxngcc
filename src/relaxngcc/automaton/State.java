@@ -42,7 +42,7 @@ public final class State implements Comparable
 	public StatementVector invokeActionsOnExit() {
         StatementVector sv = new StatementVector();
         for( int i=0; i<actionsOnExit.size(); i++ )
-            sv.addStatement(((ScopeInfo.Action)actionsOnExit.get(i)).invoke());
+            sv.add(((ScopeInfo.Action)actionsOnExit.get(i)).invoke());
         return sv;
     }
     

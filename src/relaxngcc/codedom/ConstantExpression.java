@@ -33,7 +33,7 @@ public class ConstantExpression extends Expression {
 		NULL._Type = TypeDescriptor.TYPE_OBJECT;
 	}
 
-    public void writeTo(OutputParameter param, Writer writer) throws IOException {
+    public void express(OutputParameter param, Writer writer) throws IOException {
     	switch(_Type) {
     		case TypeDescriptor.TYPE_OBJECT:
     		   	writer.write("null");

@@ -31,10 +31,10 @@ public class BinaryOperatorExpression extends Expression {
     	return new BinaryOperatorExpression(OR, left, right);
     }
 
-    public void writeTo(OutputParameter param, Writer writer) throws IOException {
+    public void express(OutputParameter param, Writer writer) throws IOException {
     	//TODO: eliminate excessive brackets
         writer.write("(");
-        _Left.writeTo(param, writer);
+        _Left.express(param, writer);
         switch(_Type) {
         	case AND:
         	    writer.write(" && ");
@@ -46,7 +46,7 @@ public class BinaryOperatorExpression extends Expression {
         	    writer.write(" == "); //TODO: string support
         	    break;
         }
-        _Right.writeTo(param, writer);
+        _Right.express(param, writer);
         writer.write(")");
     }
 

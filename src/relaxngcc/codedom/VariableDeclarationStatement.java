@@ -5,7 +5,7 @@ import java.io.Writer;
 
 /**
  */
-public class VariableDeclarationStatement extends Statement {
+public class VariableDeclarationStatement extends CodeDOMRoot implements Statement {
 
 	private TypeDescriptor _Type;
 	private String _Name;
@@ -23,14 +23,14 @@ public class VariableDeclarationStatement extends Statement {
 	}
 	
 
-    public void writeTo(OutputParameter param, Writer writer) throws IOException {
+    public void state(OutputParameter param, Writer writer) throws IOException {
     	writeIndent(param, writer);
     	_Type.writeTo(param, writer);
     	writer.write(" ");
     	writer.write(_Name);
     	if(_InitialValue != null) {
 	    	writer.write(" = ");
-    		_InitialValue.writeTo(param, writer);
+    		_InitialValue.express(param, writer);
     	}
     	writer.write(";");
     	writer.write(NEWLINE);

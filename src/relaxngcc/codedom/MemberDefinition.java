@@ -39,7 +39,7 @@ public class MemberDefinition extends CodeDOMRoot {
     	
     	if(_Initializer!=null) {
     		writer.write(" = ");
-    		_Initializer.writeTo(param, writer);
+    		_Initializer.express(param, writer);
     	}
     	writer.write(";");
     	writer.write(NEWLINE);

@@ -13,7 +13,7 @@ public class VariableExpression extends Expression {
     	_Name = name;
     }
     
-    public void writeTo(OutputParameter param, Writer writer) throws IOException {
+    public void express(OutputParameter param, Writer writer) throws IOException {
     	writer.write(_Name);
     }
 

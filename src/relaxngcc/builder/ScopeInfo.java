@@ -38,7 +38,6 @@ import relaxngcc.codedom.ClassDefinition;
 import relaxngcc.codedom.StatementVector;
 import relaxngcc.codedom.Statement;
 import relaxngcc.codedom.AssignStatement;
-import relaxngcc.codedom.ExpressionStatement;
 import relaxngcc.codedom.ReturnStatement;
 import relaxngcc.codedom.LanguageSpecificStatement;
 import relaxngcc.codedom.Expression;
@@ -258,7 +257,7 @@ public final class ScopeInfo
         
         /** Gets the code to invoke this action. */
         public Statement invoke() {
-        	return new ExpressionStatement(new MethodInvokeExpression("action"+uniqueId));
+        	return new MethodInvokeExpression("action"+uniqueId);
         }
         
         /** ID number that uniquely identifies this fragment. */
@@ -482,20 +481,20 @@ public final class ScopeInfo
         argAssigns.invoke("super")
             .arg(new VariableExpression("parent"))
             .arg(new VariableExpression("cookie"));
-        argAssigns.addStatement(new AssignStatement(new VariableExpression("runtime"), new VariableExpression("_runtime")));
+        argAssigns.add(new AssignStatement(new VariableExpression("runtime"), new VariableExpression("_runtime")));
         {// build up constructor arguments
             for( int i=0; i<constructorParams.length; i++ ) {
                 argTypes[3+i] = new TypeDescriptor(constructorParams[i].javatype); //TODO: plimitive type support
                 argParams[3+i] = "_"+(constructorParams[i].name);
 
-                argAssigns.addStatement(new AssignStatement(new VariableExpression(constructorParams[i].name), new VariableExpression(argParams[3+i]))); 
+                argAssigns.add(new AssignStatement(new VariableExpression(constructorParams[i].name), new VariableExpression(argParams[3+i]))); 
             }
             
         }
         
-		argAssigns.addStatement(new AssignStatement(new VariableExpression("_ngcc_current_state"), new ConstantExpression(_InitialState.getIndex())));
+		argAssigns.add(new AssignStatement(new VariableExpression("_ngcc_current_state"), new ConstantExpression(_InitialState.getIndex())));
         if(_ThreadCount>0)
-			argAssigns.addStatement(new AssignStatement(new VariableExpression("_ngcc_threaded_state"), new LanguageSpecificExpression("new int[" + _ThreadCount + "]")));
+			argAssigns.add(new AssignStatement(new VariableExpression("_ngcc_threaded_state"), new LanguageSpecificExpression("new int[" + _ThreadCount + "]")));
             
 		classdef.addMethod(new MethodDefinition(new LanguageSpecificString("public"), null, param.className, argTypes, argParams, null, argAssigns));
 		
