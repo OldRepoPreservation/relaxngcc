@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE datatypeLibrary [
+  <!ENTITY converter "XmlSchemaDatatypeConverter">
+  <!ENTITY resource  "&converter;.java">
+]>
+<datatypeLibrary uri="http://www.w3.org/2001/XMLSchema-datatypes">
+  <!-- Conversion code for non-trivial datatypes -->
+  <resource name="&resource;">
+    <packageDecl/>
+    import org.xml.sax.*;
+    
+    /**
+     * Datatype converters for XML Schema Part 2.
+     */
+    public final class &converter;
+    {
+      private &converter;() {} // no instanciation allowed
+      
+      public static boolean parseBoolean( String text, NGCCRuntime runtime ) throws SAXException {
+        text = text.trim();
+        if( text.equals("1") || text.equals("true") )   return true;
+        if( text.equals("0") || text.equals("false") )  return false;
+        throw new SAXParseException("'"+text+"' is not a valid boolean value",runtime.getLocator());
+      }
+    }
+  </resource>
+  
+  <datatype name="boolean" javaType="boolean">
+    <useResource name="&resource;" />
+    
+    &converter;.parseBoolean(<value/>,$runtime)
+  </datatype>
+</datatypeLibrary>

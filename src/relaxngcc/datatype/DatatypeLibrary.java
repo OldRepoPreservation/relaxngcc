@@ -47,8 +47,12 @@ public final class DatatypeLibrary {
             return Datatype.NOOP;
     }
 
-    void addDatatype(String name, Datatype datatype) {
-        datatypes.put( name, datatype );
+    /**
+     * 
+     * @return true if the datatype is already registered.
+     */
+    boolean addDatatype(String name, Datatype datatype) {
+        return datatypes.put( name, datatype )!=null;
     }
 
 }

@@ -9,6 +9,7 @@ import org.xml.sax.SAXParseException;
 
 import relaxngcc.codedom.CDType;
 import relaxngcc.datatype.parser.NGCCRuntime;
+import relaxngcc.datatype.parser.Start;
 
 /**
  * Parses a datatype definition file.
@@ -26,33 +27,28 @@ public final class ParserRuntime extends NGCCRuntime {
      */
     private final Map resources = new HashMap();
     
-    /**
-     * Macro definitions for resource files.
-     */
-    private final Map resourceMacroDefs = new HashMap();
-    
     ParserRuntime( DatatypeLibraryManager _owner ) {
         this.owner = _owner; 
         
-        // build definition dictionary
-        resourceMacroDefs.put("packageDecl","package "+owner.grammar.packageName+";");
+        // set the root handler
+        setRootHandler(new Start(this));
     }
     
+    
+    
+    
+    
+    
     public void setURI( String uri ) {
-        library = new DatatypeLibrary(uri);
-        owner.addLibrary(library);
+        library = owner.getOrCreateLibrary(uri);
     }
 
     /**
      * Creates a new Resource object.
      */
     public void createResource(String name, Macro m) throws SAXException {
-        try {
-            resources.put( name,
-                new Resource( owner, name, m.toString(resourceMacroDefs).getBytes() ));
-        } catch (NoDefinitionException e) {
-            throw new SAXParseException(e.getMessage(), e.locator );
-        }
+        resources.put( name,
+            new Resource( owner, name, m ) );
     }
 
     /**
@@ -74,9 +70,15 @@ public final class ParserRuntime extends NGCCRuntime {
         String name,
         String javaType,
         ArrayList resources,
-        Macro m) {
+        Macro m) throws SAXException {
         
-        library.addDatatype( name, new Datatype( new CDType(javaType), m,
+        boolean r = library.addDatatype( name, new Datatype(
+            name,
+            new CDType(javaType),
+            m,
             (Resource[]) resources.toArray(new Resource[resources.size()]) ));
+        
+        if(r)
+            throw new SAXParseException("duplicate definition of datatype '"+name+"'", getLocator() );
     }
 }

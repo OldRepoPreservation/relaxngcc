@@ -3,6 +3,7 @@ package relaxngcc.datatype;
 import java.io.IOException;
 import java.util.HashMap;
 
+import relaxngcc.NGCCGrammar;
 import relaxngcc.codedom.CDExpression;
 import relaxngcc.codedom.CDLanguageSpecificString;
 import relaxngcc.codedom.CDType;
@@ -18,6 +19,7 @@ public final class Datatype {
     
     private final CDType returnType;
     private final Macro macro;
+    private final String name;
     
     /**
      * Resources that need to be generated when this converter is used.
@@ -30,7 +32,8 @@ public final class Datatype {
      */
     public static final Datatype NOOP;
     
-    protected Datatype(CDType _returnType, Macro _macro,Resource[] _resources) {
+    protected Datatype(String _name, CDType _returnType, Macro _macro,Resource[] _resources) {
+        this.name = _name;
         this.returnType = _returnType;
         this.macro = _macro;
         this.requiredResources = _resources;
@@ -39,11 +42,14 @@ public final class Datatype {
     /**
      * Generates the expression that parses the specified string
      * into a target language value type.
+     * 
+     * @param grammar
+     *      This datatype is used for this grammar.
      */
-    public CDExpression generate( CDVariable $text ) throws NoDefinitionException, IOException {
+    public CDExpression generate( NGCCGrammar grammar, CDVariable $text ) throws NoDefinitionException, IOException {
         // let resources know that they are used.
         for (int i = 0; i < requiredResources.length; i++)
-            requiredResources[i].use();
+            requiredResources[i].use(grammar);
         
         HashMap dic = new HashMap();
         dic.put("value",$text.getName());
@@ -58,10 +64,20 @@ public final class Datatype {
         return returnType;
     }
     
+    /**
+     * Gets the display name of this datatype.
+     * Usually this is the datatype name, but not always.
+     * 
+     * @return      a non-null valid string.
+     */
+    public String displayName() {
+        return name;
+    }
+    
     static {
         // create a datatype with no-transformation.
         Macro m = new Macro();
         m.add(new Macro.Variable("value",null));
-        NOOP = new Datatype( CDType.STRING, m, new Resource[0] );
+        NOOP = new Datatype( "string", CDType.STRING, m, new Resource[0] );
     }
 }

@@ -1,8 +1,12 @@
 package relaxngcc.datatype;
 
 import java.io.File;
-import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
+import relaxngcc.NGCCGrammar;
 
 /**
  * "Resource" is a file used by datatype conversion routine.
@@ -23,7 +27,7 @@ class Resource {
     /**
      * Contents of the resource.
      */
-    private final byte[] contents;
+    private final Macro contents;
     
     /**
      * A flag for avoiding duplicate generation.
@@ -32,7 +36,7 @@ class Resource {
     private boolean used = false;
     
     
-    Resource(DatatypeLibraryManager _owner, String _name, byte[] _contents) {
+    Resource(DatatypeLibraryManager _owner, String _name, Macro _contents) {
         this.owner = _owner;
         this.name = _name;
         this.contents = _contents;
@@ -41,17 +45,28 @@ class Resource {
     
     /**
      * Called by the datatype conversion routine to indicate
-     * that this resource is in use.
+     * that this resource is in use for the given gramamr.
      */
-    public void use() throws IOException {
+    public void use( NGCCGrammar grammar ) throws IOException, NoDefinitionException {
         if( !used ) {
             // generate resource
-            FileOutputStream fos = new FileOutputStream(
+            FileWriter fos = new FileWriter(
                 new File( owner.options.targetdir, name ) );
-            fos.write(contents);
+                
+            Map resourceMacroDefs = new HashMap();
+            resourceMacroDefs.put("packageDecl",getPackageDecl(grammar));
+            fos.write(contents.toString(resourceMacroDefs));
             fos.close();
         }
         used = true;
+    }
+
+
+    public String getPackageDecl(NGCCGrammar grammar) {
+        if( grammar.packageName.length()==0 )
+            return "";
+        else
+            return "package "+grammar.packageName+";";
     }
 
 }
