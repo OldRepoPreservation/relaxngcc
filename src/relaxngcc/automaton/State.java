@@ -45,9 +45,7 @@ public final class State implements Comparable
     }
     
 	public void addActionOnExit(ScopeInfo.Action act) {
-        // in the original code, code was added in front of the existing code.
-        // is this order significant?
-        actionsOnExit.add(0,act);
+       actionsOnExit.add(0,act);
     }
 	 
 	//for interleave support
