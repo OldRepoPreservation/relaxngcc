@@ -30,10 +30,10 @@ public class NameTestBuilder implements NameClassFunction {
 
 	public Object nsName(String ns, NameClass except) {
         if(except==null)
-            return MessageFormat.format("({0}.equals(\"{1}\")",
+            return MessageFormat.format("({0}.equals(\"{1}\"))",
                 new Object[]{ uriVar, ns });
         else
-	        return MessageFormat.format("({0}.equals(\"{1}\")&& !({2})",
+	        return MessageFormat.format("({0}.equals(\"{1}\")&& !({2}))",
 	            new Object[]{ uriVar, ns, except.apply(this) });
 	}
 
