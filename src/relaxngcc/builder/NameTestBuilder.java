@@ -2,6 +2,10 @@ package relaxngcc.builder;
 
 import java.text.MessageFormat;
 
+import relaxngcc.codedom.BinaryOperatorExpression;
+import relaxngcc.codedom.ConstantExpression;
+import relaxngcc.codedom.Expression;
+import relaxngcc.codedom.Variable;
 import relaxngcc.grammar.NameClass;
 import relaxngcc.grammar.NameClassFunction;
 
@@ -15,39 +19,41 @@ import relaxngcc.grammar.NameClassFunction;
  */
 public class NameTestBuilder implements NameClassFunction {
     
-    public NameTestBuilder( String _uriVar, String _localNameVar ) {
-        this.uriVar = _uriVar;
-        this.localNameVar = _localNameVar;
+    public NameTestBuilder( Variable _uriVar, Variable _localNameVar ) {
+        this.$uriVar = _uriVar;
+        this.$localNameVar = _localNameVar;
     }
     
-    private final String uriVar;
-    private final String localNameVar;
+    private final Variable $uriVar;
+    private final Variable $localNameVar;
     
 	public Object choice(NameClass nc1, NameClass nc2) {
-        return MessageFormat.format("({0})||({1})",
-            new Object[]{ nc1.apply(this), nc2.apply(this) });
+        return BinaryOperatorExpression.OR(
+            (Expression)nc1.apply(this),
+            (Expression)nc2.apply(this));
 	}
 
 	public Object nsName(String ns, NameClass except) {
-        if(except==null)
-            return MessageFormat.format("({0}.equals(\"{1}\"))",
-                new Object[]{ uriVar, ns });
-        else
-	        return MessageFormat.format("({0}.equals(\"{1}\")&& !({2}))",
-	            new Object[]{ uriVar, ns, except.apply(this) });
+        Expression exp = $uriVar.invoke("equals").arg(new ConstantExpression(ns));
+        
+        if(except!=null)
+            exp = BinaryOperatorExpression.AND( exp,
+                ((Expression)except.apply(this)).not() );
+        
+        return exp;
 	}
 
 	public Object anyName(NameClass except) {
         if(except==null)
-            return "true";
+            return new ConstantExpression(true);
         else
-            return MessageFormat.format("!({0})",
-                new Object[]{ except.apply(this) });
+            return ((Expression)except.apply(this)).not();
 	}
 
 	public Object name(String ns, String local) {
-        return MessageFormat.format("({0}.equals(\"{1}\") && {2}.equals(\"{3}\"))",
-            new Object[]{ uriVar, ns, localNameVar, local });
+        return BinaryOperatorExpression.AND(
+            $uriVar.invoke("equals").arg(new ConstantExpression(ns)),
+            $localNameVar.invoke("equals").arg(new ConstantExpression(local)) );
 	}
 
 }

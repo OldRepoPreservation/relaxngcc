@@ -33,6 +33,15 @@ public abstract class Expression {
             }
         };
     }
+    
+    /** Creates !exp */
+    public Expression not() {
+        return new Expression() {
+            public void express(Formatter f) throws IOException {
+                f.p('!').express(Expression.this);
+            }
+        };
+    }
 
     /** Prints itself as an expression. */
     protected abstract void express( Formatter f ) throws IOException;

@@ -380,9 +380,9 @@ public class CodeWriter
             TypeDescriptor.VOID, eventName,
             new LanguageSpecificString("throws SAXException") );
         
-        Expression $uri = method.param( TypeDescriptor.STRING, "uri" );
-        Expression $localName = method.param( TypeDescriptor.STRING, "local" );
-        Expression $qname = method.param( TypeDescriptor.STRING, "qname" );
+        Variable $uri = method.param( TypeDescriptor.STRING, "uri" );
+        Variable $localName = method.param( TypeDescriptor.STRING, "local" );
+        Variable $qname = method.param( TypeDescriptor.STRING, "qname" );
         
         Variable[] additionalVars = new Variable[additionalTypes.length];
         for( int i=0; i<additionalTypes.length; i++ )
@@ -430,7 +430,8 @@ public class CodeWriter
                     continue;   // we are not interested in this attribute now.
                 
 				bi.addConditionalCode(st,
-                    new LanguageSpecificExpression((String)a.asMarkup().getKey().apply(new NameTestBuilder("uri","localName"))),
+                    (Expression)a.asMarkup().getKey().apply(
+                        new NameTestBuilder($uri,$localName)),
 					buildTransitionCode(st,tr,eventName,arguments));
 			}
 
