@@ -266,14 +266,17 @@ public final class State implements Comparable
      */
     public Set head( boolean includeEE ) {
         Set s = new HashSet();
-        head(s,includeEE);
+        head(s, new HashSet(), includeEE);
         return s;
     }
     
     /**
      * Internal function to compute HEAD.
      */
-    void head( Set result, boolean includeEE ) {
+    void head( Set result, Set checked_state, boolean includeEE ) {
+
+		if(checked_state.contains(this)) return;
+		checked_state.add(this);
         
         if(isAcceptable() && includeEE )
             result.add(Head.EVERYTHING_ELSE);
@@ -281,7 +284,7 @@ public final class State implements Comparable
         Iterator itr = iterateTransitions();
         while(itr.hasNext()) {
             Transition t = (Transition)itr.next();
-            t.head( result, includeEE );
+            t.head( result, checked_state, includeEE );
         }
     }
     

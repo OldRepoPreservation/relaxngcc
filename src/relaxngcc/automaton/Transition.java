@@ -36,7 +36,7 @@ public final class Transition implements WithOrder
     
     public static Transition createActionOnlyTransition(State next, ScopeInfo.Action act) {
         Transition t = new Transition(new Alphabet.ForAction(), next, Integer.MAX_VALUE); //_order of ActionOnlyTransition must be biggest
-        t.insertEpilogueAction(act);
+        if(act!=null) t.insertEpilogueAction(act);
         return t;
     }
 
@@ -138,7 +138,7 @@ public final class Transition implements WithOrder
      */
     public Set head( boolean includeEE ) {
         Set s = new HashSet();
-        head(s,includeEE);
+        head(s, new HashSet(), includeEE);
         return s;
     }
     
@@ -149,22 +149,22 @@ public final class Transition implements WithOrder
      *      If true, the return set will include EVERYTHING_ELSE
      *      when appropriate.
      */
-    void head( Set result, boolean includeEE ) {
+    void head( Set result, Set checked_state, boolean includeEE ) {
         Alphabet a = getAlphabet();
         if(a.isFork()) {
             Alphabet.Fork fork = a.asFork();
             for( int i=0; i<fork._subAutomata.length; i++ )
-                fork._subAutomata[i].head( result, false );
+                fork._subAutomata[i].head( result, checked_state, false );
             if(fork.isNullable())
-                nextState().head( result, includeEE );
+                nextState().head( result, checked_state, includeEE );
         } else if(a.isRef()) {
             ScopeInfo target = a.asRef().getTargetScope();
             target.head( result );
             
             if( target.isNullable() )
-                nextState().head( result, includeEE );
+                nextState().head( result, checked_state, includeEE );
         } else if(a.isForAction()) {
-        	nextState().head(result, includeEE);
+        	nextState().head(result, checked_state, includeEE);
         } else {
             result.add(a);
         }

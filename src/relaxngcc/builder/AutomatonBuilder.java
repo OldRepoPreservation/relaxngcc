@@ -134,7 +134,9 @@ public class AutomatonBuilder implements PatternFunction
         // if a special flag is specified by the user,
         // do NOT treat it as an optional attribute
         State head = createState(pattern);
+        //State head = orgdest;
         head.addTransition(ts);
+        _destination = orgdest;
         return head;
     }
 
@@ -242,13 +244,33 @@ public class AutomatonBuilder implements PatternFunction
         // a branch could be empty, in that case head could be returned
         // as the head of a branch. This would cause a weird effect.
         // so we should better create a new state.
-        State head = createState(pattern);
         
-        _destination = tail;
-        processChoiceBranch(head,pattern.p2);
-        _destination = tail;
-        processChoiceBranch(head,pattern.p1);
+        State head;
+        /* if this choice pattern originates in an <optional> element, 
+         * the use of ACTION_ONLY transition reduces the size of automaton rather than the merge of transition.
+         */
+        if(pattern.p1 instanceof EmptyPattern) {
+        	head = createState(pattern);
+	        _destination = tail;
+	        processChoiceBranch(head,pattern.p2);
+	        head.addTransition(Transition.createActionOnlyTransition(tail, null));
+	        if(tail.isAcceptable()) head.setAcceptable(true);
+        }
+        else if(pattern.p2 instanceof EmptyPattern) {
+        	head = createState(pattern);
+	        _destination = tail;
+	        processChoiceBranch(head,pattern.p1);
+	        head.addTransition(Transition.createActionOnlyTransition(tail, null));
+	        if(tail.isAcceptable()) head.setAcceptable(true);
+        }
+        else {
+        	head = createState(pattern);
         
+	        _destination = tail;
+	        processChoiceBranch(head,pattern.p2);
+	        _destination = tail;
+	        processChoiceBranch(head,pattern.p1);
+		}        
         return head;
     }
     

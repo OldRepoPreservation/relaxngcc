@@ -67,6 +67,15 @@ public class NullableChecker {
                             nullableScopes.add(ns.getContainer());
                     }
                 }
+                
+                jtr = ss[i].iterateTransitions(Alphabet.FOR_ACTION);
+                while(jtr.hasNext()) {
+                	State ns = ((Transition)jtr.next()).nextState();
+                	erStates.add(ns);
+                	if(ns.isAcceptable())
+                        nullableScopes.add(ns.getContainer());
+                }
+                	
             }
             // repeat this process while erStates grow.
         } while( oldSize != erStates.size() );
