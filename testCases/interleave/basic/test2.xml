@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!--
+expected output:
+	start foo
+	start branch1
+	child1
+	end branch1
+	start branch3
+	meta
+	start branch2
+	bar
+	end branch2
+	meta
+	end branch3
+	end foo
+-->
+<foo zot="abc">
+	<child1/>
+	<meta/>
+	<meta/>
+</foo>

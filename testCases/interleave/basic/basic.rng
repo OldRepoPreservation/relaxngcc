@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<grammar xmlns="http://relaxng.org/ns/structure/1.0">
+	<start>
+		<element name="foo">
+			System.out.println("start foo");
+			<optional>
+				<attribute name="att1"/>
+				System.out.println("@att1");
+			</optional>
+			<interleave>
+				<group>
+					System.out.println("start branch1");
+					<element name="child1">
+						System.out.println("child1");
+						<empty/>
+					</element>
+					System.out.println("end branch1");
+				</group>
+				<group>
+					System.out.println("start branch2");
+					<optional>
+						System.out.println("bar");
+						<element name="bar">
+							<empty/>
+						</element>
+					</optional>
+					<attribute name="zot"/>
+					System.out.println("end branch2");
+				</group>
+				<group>
+					System.out.println("start branch3");
+					<zeroOrMore>
+						<element name="meta">
+							<text/>
+							System.out.println("meta");
+						</element>
+					</zeroOrMore>
+					System.out.println("end branch3");
+				</group>
+			</interleave>
+			System.out.println("end foo");
+		</element>
+	</start>
+</grammar>

@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<grammar xmlns="http://relaxng.org/ns/structure/1.0">
+	<start>
+		System.out.println("start root");
+		<ref name="body"/>
+		System.out.println("end root");
+	</start>
+	
+	<define name="body">
+		<element name="root">
+			System.out.println("before loop");
+			<oneOrMore>
+				<interleave>
+					<group>
+						System.out.println("start abc");
+						<element name="abc"><empty/></element>
+						System.out.println("end abc");
+					</group>
+					<group>
+						System.out.println("start def");
+						<element name="def"><empty/></element>
+						System.out.println("end def");
+					</group>
+				</interleave>
+				System.out.println("repeat loop");
+			</oneOrMore>
+			System.out.println("after loop");
+		</element>
+	</define>
+</grammar>
