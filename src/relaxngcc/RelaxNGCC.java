@@ -62,8 +62,8 @@ public class RelaxNGCC
 		grm.calcFirstAndFollow();
         
 		// for debug
-		if(o.printFirstFollow)  grm.dump(System.err);
-        if(o.printAutomata)     grm.dumpAutomata(new File("."));
+		if(o.printFirstFollow)    grm.dump(System.err);
+        if(o.printAutomata!=null) grm.dumpAutomata(o.printAutomata);
         
         if(!o.noCodeGeneration) grm.output();
 	}
@@ -95,47 +95,41 @@ public class RelaxNGCC
 		{ throw new NGCCException(e); }
 	}
 	
-	public static NGCCElement readNGCCGrammar(Options o, String location) throws NGCCException
-	{
-		if(o.input==Options.NORMAL)
-			return new W3CDOMElement(readGrammar(o, location).getDocumentElement());
-		else
-		{
-			try
-			{
-				NonXmlSyntax parser = new NonXmlSyntax(new InputStreamReader(new FileInputStream(location)));
+	public static NGCCElement readNGCCGrammar(Options o, String location)
+		throws NGCCException {
+		if (o.input == Options.NORMAL)
+			return new W3CDOMElement(
+				readGrammar(o, location).getDocumentElement());
+		else {
+			try {
+				NonXmlSyntax parser =
+					new NonXmlSyntax(
+						new InputStreamReader(new FileInputStream(location)));
 				SchemaBuilderImpl sb = new SchemaBuilderImpl();
 				parser.Input(sb);
-				return NonXmlElement.create(sb.finish(parser.getPreferredNamespace()));
-			}
-			catch(Exception e)
-			{
+				return NonXmlElement.create(
+					sb.finish(parser.getPreferredNamespace()));
+			} catch (Exception e) {
 				e.printStackTrace();
 				throw new NGCCException(e);
 			}
 		}
 	}
 	
-	private static boolean checkDependencies(Options o)
-	{
-		try
-		{
+	private static boolean checkDependencies(Options o) {
+		try {
 			Class.forName("javax.xml.parsers.DocumentBuilderFactory");
-		}
-		catch(ClassNotFoundException e)
-		{
-			System.err.println("[Error] JAXP library is not found. Please check your classpath to use XML parser via JAXP.");
+		} catch (ClassNotFoundException e) {
+			System.err.println("[Error] JAXP is not in your classpath.");
 			return false;
 		}
-		
-		try
-		{
+
+		try {
 			Class.forName("com.sun.msv.grammar.Grammar");
 			o.msv_available = true;
-		}
-		catch(ClassNotFoundException e)
-		{
-			System.err.println("[Warning] MSV(Multi Schema Validator) is not found. If the input RELAX NG grammar is wrong syntactically and MSV is not available, RelaxNGCC terminates with Exception. ");
+		} catch (ClassNotFoundException e) {
+			System.err.println(
+				"[Warning] MSV(Multi Schema Validator) is not found. If the input RELAX NG grammar is wrong syntactically and MSV is not available, RelaxNGCC terminates with Exception. ");
 		}
 
 		return true;

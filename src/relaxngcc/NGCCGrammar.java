@@ -220,14 +220,15 @@ public class NGCCGrammar
 		}
 		//step2 scopes
 		Iterator it = _Scopes.values().iterator();
-		while(it.hasNext())
-		{
+		while(it.hasNext()) {
 			ScopeInfo si = ((ScopeBuilder)it.next()).getScopeInfo();
-			if(!si.isLambda() && !si.isInline())
-			{
+			if(!si.isLambda() && !si.isInline()) {
 				CodeWriter w = new CodeWriter(this, si, _Options);
-				w.output(new PrintStream(new FileOutputStream(
-                    new File(_Options.targetdir, si.getNameForTargetLang() + ".java"))));
+                File f = new File(_Options.targetdir, si.getNameForTargetLang() + ".java");
+                PrintStream out = new PrintStream(new FileOutputStream(f));
+				w.output(out);
+                out.close();
+                f.setReadOnly();
 			}
 		}
         // copy runtime code if necessary

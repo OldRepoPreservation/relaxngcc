@@ -30,8 +30,11 @@ public class Options
 	public boolean debug;
 	public String newline;
 	
-    /** Print automata. A debug option. */
-    public boolean printAutomata;
+    /**
+     * Directory to write automata gif files. A debug option.
+     * If null, we won't generate automata dumps.
+     */
+    public File printAutomata;
     
     /** Print FIRST and FOLLOW. A debug option. */
     public boolean printFirstFollow;
@@ -66,7 +69,7 @@ public class Options
     			else if(args[i].equals("-d"))
     				debug = true;
                 else if(args[i].equals("--print-automata"))
-                    printAutomata = true;
+                    printAutomata = new File(args[++i]);
                 else if(args[i].equals("--print-first-follow"))
                     printFirstFollow = true;
                 else if(args[i].equals("--no-code"))
