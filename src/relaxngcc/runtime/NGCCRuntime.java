@@ -180,7 +180,7 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
     
     public void endPrefixMapping( String prefix ) throws SAXException {
         if(redirect!=null)
-            endPrefixMapping(prefix);
+            redirect.endPrefixMapping(prefix);
         else {
 	        namespaces.remove(namespaces.size()-1);
 	        namespaces.remove(namespaces.size()-1);
