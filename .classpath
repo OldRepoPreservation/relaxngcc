@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+    <classpathentry kind="src" path="src"/>
+    <classpathentry kind="src" path="docgen"/>
+    <classpathentry kind="src" path="test"/>
+    <classpathentry kind="var" path="JRE_LIB" sourcepath="JRE_SRC"/>
+    <classpathentry kind="lib" path="lib/msv.jar"/>
+    <classpathentry kind="lib" path="lib/jaxp-api.jar"/>
+    <classpathentry kind="lib" path="lib/isorelax.jar"/>
+    <classpathentry kind="lib" path="lib/relaxngDatatype.jar"/>
+    <classpathentry kind="lib" path="lib/crimson.jar"/>
+    <classpathentry kind="lib" path="lib/xsdlib.jar"/>
+    <classpathentry kind="lib" path="lib/ant.jar"/>
+    <classpathentry kind="output" path="bin"/>
+</classpath>
