@@ -45,7 +45,7 @@ public abstract class NGCCInterleaveFilter implements NGCCEventSource, NGCCEvent
 //
 //
     /**
-     * Receiver that receives all the events.
+     * Receiver that is being locked and therefore receives all the events.
      * <pre><xmp>
      * <interleave>
      *   <element name="foo"/>
@@ -57,7 +57,7 @@ public abstract class NGCCInterleaveFilter implements NGCCEventSource, NGCCEvent
      * When processing inside the bar element, this receiver is
      * "locked" so that it can correctly receive its child foo element.
      */
-    private NGCCEventReceiver lockedReceiver;
+    private int lockedReceiver;
     /**
      * Nest level. Lock will be release when the lockCount becomes 0.
      */
@@ -70,14 +70,14 @@ public abstract class NGCCInterleaveFilter implements NGCCEventSource, NGCCEvent
         
         if(lockCount++==0) {
             lockedReceiver = findReceiverOfElement(uri,localName);
-            if(lockedReceiver==null) {
+            if(lockedReceiver==-1) {
                 // we can't process this token. join.
                 joinByEnterElement(null,uri,localName,qname,atts);
                 return;
             }
         }
         
-        lockedReceiver.enterElement(uri,localName,qname,atts);
+        _receivers[lockedReceiver].enterElement(uri,localName,qname,atts);
     }
     public void leaveElement(String uri, String localName, String qname) throws SAXException {
         if(isJoining)   return; // ignore any token if we are joining. See joinByXXXX.
@@ -85,21 +85,21 @@ public abstract class NGCCInterleaveFilter implements NGCCEventSource, NGCCEvent
         if( lockCount-- == 0 )
             joinByLeaveElement(null,uri,localName,qname);
         else
-            lockedReceiver.leaveElement(uri,localName,qname);
+            _receivers[lockedReceiver].leaveElement(uri,localName,qname);
     }
     public void enterAttribute(String uri, String localName, String qname) throws SAXException {
         if(isJoining)   return; // ignore any token if we are joining. See joinByXXXX.
         
         if(lockCount++==0) {
             lockedReceiver = findReceiverOfAttribute(uri,localName);
-            if(lockedReceiver==null) {
+            if(lockedReceiver==-1) {
                 // we can't process this token. join.
                 joinByEnterAttribute(null,uri,localName,qname);
                 return;
             }
         }
                 
-        lockedReceiver.enterAttribute(uri,localName,qname);
+        _receivers[lockedReceiver].enterAttribute(uri,localName,qname);
     }
     public void leaveAttribute(String uri, String localName, String qname) throws SAXException {
         if(isJoining)   return; // ignore any token if we are joining. See joinByXXXX.
@@ -107,16 +107,16 @@ public abstract class NGCCInterleaveFilter implements NGCCEventSource, NGCCEvent
         if( lockCount-- == 0 )
             joinByLeaveAttribute(null,uri,localName,qname);
         else
-            lockedReceiver.leaveAttribute(uri,localName,qname);
+            _receivers[lockedReceiver].leaveAttribute(uri,localName,qname);
     }
     public void text(String value) throws SAXException {
         if(isJoining)   return; // ignore any token if we are joining. See joinByXXXX.
         
         if(lockCount!=0)
-            lockedReceiver.text(value);
+            _receivers[lockedReceiver].text(value);
         else {
-            NGCCEventReceiver receiver = findReceiverOfText();
-            if(receiver!=null)  receiver.text(value);
+            int receiver = findReceiverOfText();
+            if(receiver!=-1)    _receivers[receiver].text(value);
             else                joinByText(null,value);
         }
     }
@@ -127,20 +127,21 @@ public abstract class NGCCInterleaveFilter implements NGCCEventSource, NGCCEvent
      * Implemented by the generated code to determine the handler
      * that can receive the given element.
      * 
-     * @return null
-     *      If none of the receiver can handle this event.
+     * @return
+     *      Thread ID of the receiver that can handle this event,
+     *      or -1 if none.
      */
-    protected abstract NGCCEventReceiver findReceiverOfElement( String uri, String local );
+    protected abstract int findReceiverOfElement( String uri, String local );
     
     /**
      * Returns the handler that can receive the given attribute, or null.
      */
-    protected abstract NGCCEventReceiver findReceiverOfAttribute( String uri, String local );
+    protected abstract int findReceiverOfAttribute( String uri, String local );
     
     /**
      * Returns the handler that can receive text events, or null.
      */
-    protected abstract NGCCEventReceiver findReceiverOfText();
+    protected abstract int findReceiverOfText();
 
 
 

@@ -675,17 +675,17 @@ public class CodeBuilder
         {// [RESULT] protected NGCCEventReceiver findReceiverOfText();
             CDMethod method = new CDMethod(
                 new CDLanguageSpecificString("protected "),
-                new CDType("NGCCEventReceiver"), "findReceiverOfText", null );
+                CDType.INTEGER, "findReceiverOfText", null );
             classDef.addMethod(method);
             
             int i;
             for( i=0; i<fork.canConsumeText.length; i++ )
                 if( fork.canConsumeText[i] ) {
-                    method.body()._return($super.prop("_receivers").arrayRef(i));
+                    method.body()._return(new CDConstant(i));
                     break;
                 }
             if(i==fork.canConsumeText.length)
-                method.body()._return(CDConstant.NULL);
+                method.body()._return(new CDConstant(-1));
         }
         
         return classDef;
@@ -694,7 +694,7 @@ public class CodeBuilder
     private CDMethod createFindReceiverMethod( String name, NameClass[] nameClasses ) {
         CDMethod method = new CDMethod(
             new CDLanguageSpecificString("protected "),
-            new CDType("NGCCEventReceiver"), name, null );
+            CDType.INTEGER, name, null );
         CDVariable $uri = method.param(CDType.STRING,"uri");
         CDVariable $local = method.param(CDType.STRING,"local");
         
@@ -703,14 +703,14 @@ public class CodeBuilder
         for( int i=0; i<nameClasses.length; i++ ) {
             if( nameClasses[i]!=null) {
                 CDBlock then = new CDBlock();
-                then._return($super.prop("_receivers").arrayRef(i));
+                then._return(new CDConstant(i));
                 body.add(new CDIfStatement(
                     NameTestBuilder.build(nameClasses[i],$uri,$local),
                     then ));
             }
         }
         
-        body._return(CDConstant.NULL);
+        body._return(new CDConstant(-1));
         
         return method;
     }
@@ -935,7 +935,7 @@ public class CodeBuilder
         CDObjectCreateExpression oe = 
             new CDType(ref_block.getClassName())._new()
                 .arg($this)
-                .arg($runtime)
+                .arg($source)
                 .arg($runtime)
                 .arg(new CDConstant(ref_tr.getUniqueId()));
         if(extraarg.length()>0)
