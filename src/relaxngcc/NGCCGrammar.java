@@ -11,12 +11,21 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.Iterator;
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileWriter;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.IOException;
 import java.io.FileOutputStream;
+import java.io.PrintWriter;
+
 import relaxngcc.dom.NGCCElement;
 import relaxngcc.dom.NGCCNodeList;
+import relaxngcc.runtime.NGCCRuntime;
 import relaxngcc.util.ConcatIterator;
 
 import org.w3c.dom.Document;
@@ -85,7 +94,17 @@ public class NGCCGrammar
 		_LambdaScopes = new TreeMap();
 		_DataTypes = new Vector();
 		_Package = e.attributeNGCC("package","");
-        runtimeType = e.attributeNGCC("runtime-type","relaxngcc.runtime.NGCCRuntime");
+        runtimeType = e.attributeNGCC("runtime-type",null);
+        if(runtimeType==null) {
+            if(o.usePrivateRuntime) {
+                if(_Package.length()!=0)
+                    runtimeType = _Package + ".NGCCRuntime";
+                else
+                    runtimeType = "NGCCRuntime";
+            } else {
+                runtimeType = "relaxngcc.runtime.NGCCRuntime";
+            }
+        }
 		_DefaultNSURI = e.getAttribute("ns");
 		_GlobalBody = "";
 		_GlobalImport = "";
@@ -190,12 +209,13 @@ public class NGCCGrammar
         _LambdaScopes.put(b.getName(), b);
     }
     
-	public void output(String targetdir) throws IOException
+	public void output() throws IOException
 	{
 		//step1 datatypes
 		if(_Options.style==Options.STYLE_TYPED_SAX && _DataTypes.size() > 0)
 		{
-			PrintStream s = new PrintStream(new FileOutputStream(new File(targetdir, "DataTypes.java")));
+			PrintStream s = new PrintStream(new FileOutputStream(
+                new File(_Options.targetdir, "DataTypes.java")));
 			printDataTypes(s);
 		}
 		//step2 scopes
@@ -206,10 +226,47 @@ public class NGCCGrammar
 			if(!si.isLambda() && !si.isInline())
 			{
 				CodeWriter w = new CodeWriter(this, si, _Options);
-				w.output(new PrintStream(new FileOutputStream(new File(targetdir, si.getNameForTargetLang() + ".java"))));
+				w.output(new PrintStream(new FileOutputStream(
+                    new File(_Options.targetdir, si.getNameForTargetLang() + ".java"))));
 			}
 		}
+        // copy runtime code if necessary
+        if(_Options.usePrivateRuntime) {
+            copyResourceAsFile("NGCCHandler.java");
+            copyResourceAsFile("AttributesImpl.java");
+            copyResourceAsFile("NGCCRuntime.java");
+        }
 	}
+    
+    /**
+     * Copies a resource file to the target directory.
+     */
+    private void copyResourceAsFile( String file ) throws IOException {
+        File out = new File(_Options.targetdir,file);
+        
+        if(!out.exists()) {
+            System.out.println(file+" doesn't exist. Generating.");
+            BufferedReader in = new BufferedReader(
+                new InputStreamReader(NGCCRuntime.class.getResourceAsStream(file)));
+                
+            PrintWriter os = new PrintWriter(new FileWriter(out));
+            byte[] buf = new byte[256];
+            
+            String s;
+            while((s=in.readLine())!=null) {
+                if(s.startsWith("package ")) {
+                    if(getPackageName().length()!=0)
+                        s = "package "+getPackageName()+";";
+                    else
+                        s="";
+                }
+                os.println(s);
+            }
+            
+            in.close();
+            os.close();
+        }
+    }
 	
 	public void buildAutomaton() throws NGCCException
 	{
@@ -280,6 +337,12 @@ public class NGCCGrammar
 		output.println("}");
 	}
 	
+    /**
+     * Gets the package name to store generated classes.
+     * "" is used to denote the root package.
+     * 
+     * @return      non-null vaild string.
+     */
 	public String getPackageName() { return _Package; }
 	public String getGlobalBody() { return _GlobalBody; }
 	public String getGlobalImport() { return _GlobalImport; }

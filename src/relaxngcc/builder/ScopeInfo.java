@@ -453,9 +453,11 @@ public final class ScopeInfo
 
             output.println("import org.xml.sax.SAXException;");
             output.println("import org.xml.sax.XMLReader;");
-            output.println("import relaxngcc.runtime.NGCCHandler;");
+            
+            if(!options.usePrivateRuntime)
+                output.println("import relaxngcc.runtime.NGCCHandler;");
             output.println("import "+_Grammar.getRuntimeTypeFullName()+";");
-
+            
             if(_Root)
             {
                 output.println("import javax.xml.parsers.SAXParserFactory;");
@@ -552,10 +554,15 @@ public final class ScopeInfo
                 argList, argParam }
         ));
 
+        String runtimeBaseName = "relaxngcc.runtime.NGCCRuntime";
+        if(options.usePrivateRuntime) runtimeBaseName = "NGCCRuntime";
+        
         output.println(MessageFormat.format(
             "    protected final {0} runtime;\n"+
-            "    public final relaxngcc.runtime.NGCCRuntime getRuntime() '{' return runtime; '}'",
-            new Object[]{ _Grammar.getRuntimeTypeShortName() }
+            "    public final {1} getRuntime() '{' return runtime; '}'",
+            new Object[]{
+                _Grammar.getRuntimeTypeShortName(),
+                runtimeBaseName }
         ));
 		
         // action functions

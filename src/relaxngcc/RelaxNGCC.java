@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.io.BufferedInputStream;
+import java.text.ParseException;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -37,11 +38,15 @@ public class RelaxNGCC
 	
 	public static void main(String[] args) throws Exception
 	{
-		if(args.length==0 || args[0].equals("--help") || args[0].equals("-h") || args[0].equals("/?"))
-		{ printUsage(); return; }
+        Options o;
+        try {
+            o = new Options(args);
+        } catch( CommandLineException e ) {
+            printUsage(e.getMessage());
+            return;
+        }
 		
-		Options o = new Options(args);
-		if(!checkDependencies(o)) return;
+        if(!checkDependencies(o)) return;
 		
 		_DOMFactory = DocumentBuilderFactory.newInstance();
 		_DOMFactory.setNamespaceAware(true);
@@ -50,17 +55,17 @@ public class RelaxNGCC
 		_SAXFactory = SAXParserFactory.newInstance();
 		_SAXFactory.setNamespaceAware(true);
 		_SAXFactory.setValidating(false);
-
+        
 		NGCCGrammar grm = new NGCCGrammar(o);
         
 		grm.buildAutomaton();
 		grm.calcFirstAndFollow();
         
-		//for debug
+		// for debug
 		if(o.printFirstFollow)  grm.dump(System.err);
         if(o.printAutomata)     grm.dumpAutomata(new File("."));
-            
-		grm.output(o.targetdir);
+        
+		grm.output();
 	}
 
 	
@@ -111,35 +116,6 @@ public class RelaxNGCC
 		}
 	}
 	
-	private static void printUsage()
-	{
-		PrintStream s = System.err;
-		s.println("RELAX NG Compiler Compiler 0.7");
-		s.println("   Copyright(c) Daisuke Okajima 2001-2002x");
-		s.println();
-		s.println("[Usage]");
-		s.println("java [java-options] relaxngcc.RelaxNGCC [options] <grammarfile>");
-		s.println();
-		s.println("[Options]");
-		s.println(" --msv");
-		s.println("   generates code based on TypedContentHandler interface of MSV.");
-		s.println(" --typedsax");
-		s.println("   generates code that depends on only XML Schema Datatype Library, not MSV.");
-		s.println(" --nonxml");
-		s.println("   declares that the input grammar is written in the non-XML syntax.");
-		s.println(" --plainsax(default)");
-		s.println("   generates code that depends on only SAX2 parser. This is the most simple case but no datatypes are supported.");
-		s.println(" --target <dir>");
-		s.println("   specifies the source code output location.");
-		s.println();
-		s.println("[Dependency]");
-		s.println(" * To use RelaxNGCC, an XML parser must be available via JAXP interface.");
-		s.println(" * MSV is not mandatory, but recommended to get detailed error report.");
-		s.println();
-		s.println(" For more information, see http://homepage2.nifty.com/okajima/relaxngcc/ ");
-		s.println();
-	}
-	
 	private static boolean checkDependencies(Options o)
 	{
 		try
@@ -164,4 +140,36 @@ public class RelaxNGCC
 
 		return true;
 	}
+
+    
+    private static void printUsage( String msg )
+    {
+        PrintStream s = System.err;
+        
+        if(msg==null)       s.println(msg);
+        s.println("RELAX NG Compiler Compiler 0.7");
+        s.println("   Copyright(c) Daisuke Okajima 2001-2002x");
+        s.println();
+        s.println("[Usage]");
+        s.println("java [java-options] relaxngcc.RelaxNGCC [options] <grammarfile>");
+        s.println();
+        s.println("[Options]");
+        s.println(" --msv");
+        s.println("   generates code based on TypedContentHandler interface of MSV.");
+        s.println(" --typedsax");
+        s.println("   generates code that depends on only XML Schema Datatype Library, not MSV.");
+        s.println(" --nonxml");
+        s.println("   declares that the input grammar is written in the non-XML syntax.");
+        s.println(" --plainsax(default)");
+        s.println("   generates code that depends on only SAX2 parser. This is the most simple case but no datatypes are supported.");
+        s.println(" --target <dir>");
+        s.println("   specifies the source code output location.");
+        s.println();
+        s.println("[Dependency]");
+        s.println(" * To use RelaxNGCC, an XML parser must be available via JAXP interface.");
+        s.println(" * MSV is not mandatory, but recommended to get detailed error report.");
+        s.println();
+        s.println(" For more information, see http://homepage2.nifty.com/okajima/relaxngcc/ ");
+        s.println();
+    }
 }

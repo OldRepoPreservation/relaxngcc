@@ -231,8 +231,15 @@ public class CodeWriter
         _output.println("this.localName=localName;");
         _output.println("this.qname=qname;");
             
-		if(_Options.debug)
+		if(_Options.debug) {
+            if((type&(Alphabet.LEAVE_ATTRIBUTE|Alphabet.LEAVE_ELEMENT))!=0)
+                _output.println("runtime.indent--;");
+                
 			_output.println("runtime.trace(\""+eventName+" " + _Info.getNameForTargetLang() + ":\" + qname + \",state=\" + _ngcc_current_state);");
+
+            if((type&(Alphabet.ENTER_ATTRIBUTE|Alphabet.ENTER_ELEMENT))!=0)
+                _output.println("runtime.indent++;");
+        }
         
 		SwitchBlockInfo bi = new SwitchBlockInfo(type);
 		
@@ -350,13 +357,15 @@ public class CodeWriter
                 alpha.getParams(),
                 _Options.newline}));
             
-        if(_Options.debug)
+        if(_Options.debug) {
             code.append(MessageFormat.format(
                 "runtime.trace(\"Change Handler to {0} (will back to:{1})\");" + _Options.newline,
                 new Object[]{
                     ref_block.getNameForTargetLang(),
                     new Integer(ref_tr.nextState().getIndex())
                 }));
+            code.append("runtime.indent++;"+_Options.newline);
+        }
         code.append(MessageFormat.format(
             "runtime.spawnChildFrom{0}(h,{1});\n",
             new Object[]{
@@ -442,8 +451,10 @@ public class CodeWriter
     private void writeChildCompletedHandler() {
         printSection("child completed");
         _output.println("public void onChildCompleted(Object result, int cookie) throws SAXException {");
-        if(_Options.debug)
+        if(_Options.debug) {
+            _output.println("runtime.indent--;");
             _output.println("runtime.trace(\"onChildCompleted(\"+cookie+\")\");");
+        }
         _output.println("switch(cookie) {");
         
         
@@ -513,20 +524,25 @@ public class CodeWriter
 			State st = (State)states.next();
 			if(!needToCheckAttribute(st)) continue;
 			
-			Iterator transitions = st.iterateTransitions(Alphabet.ENTER_ATTRIBUTE);
+			Iterator transitions = st.iterateTransitions(
+                Alphabet.ENTER_ATTRIBUTE|Alphabet.REF_BLOCK);
+                
 			while(transitions.hasNext())
 			{
 				Transition tr = (Transition)transitions.next();
-				Alphabet.EnterAttribute a = tr.getAlphabet().asEnterAttribute();
-				
-				
-                bi.addConditionalCode(st,
-                    MessageFormat.format(
-                    "(ai = runtime.getAttributeIndex({0},\"{1}\"))>=0",
-                        new Object[]{
-                            _Info.getNSStringConstant(a.getKey().getNSURI()),
-                            a.getKey().getName()}),
-                    "runtime.consumeAttribute(ai);" + _Options.newline);
+                
+                if(tr.getAlphabet().isEnterAttribute()) {
+                    writeAttributeHandlerBlock( bi, st,
+    				    tr.getAlphabet().asEnterAttribute() );
+                } else {
+                    Alphabet.Ref a = tr.getAlphabet().asRef();
+                    
+                    Iterator jtr = a.getTargetScope().iterateFirstAlphabets(
+                        Alphabet.ENTER_ATTRIBUTE);
+                    while(jtr.hasNext())
+                        writeAttributeHandlerBlock( bi, st,
+                            ((Alphabet)jtr.next()).asEnterAttribute() );
+                }
 			}
 		}
 		
@@ -537,6 +553,17 @@ public class CodeWriter
 		_output.println("}");   //end of function
 	}
 
+    private void writeAttributeHandlerBlock( SwitchBlockInfo bi, State st, 
+        Alphabet.EnterAttribute a ) {
+            
+        bi.addConditionalCode(st,
+            MessageFormat.format(
+            "(ai = runtime.getAttributeIndex({0},\"{1}\"))>=0",
+                new Object[]{
+                    _Info.getNSStringConstant(a.getKey().getNSURI()),
+                    a.getKey().getName()}),
+            "runtime.consumeAttribute(ai);" + _Options.newline);
+    }
 	
 	private String transitionCode(Transition tr/*, boolean output_process_attribute*/)
 	{
@@ -600,15 +627,25 @@ public class CodeWriter
 								
 		return buf.toString();
 	}
+    
+    /**
+     * Returns true if we need to check the attribute transitions from
+     * the given state.
+     */
     private boolean needToCheckAttribute(State s)
     {
+        // if the state has any transition by enterAttribute,
+        // we sure need to check them.
     	if(s.hasTransition(Alphabet.ENTER_ATTRIBUTE)) return true;
-    	Iterator it = s.iterateTransitions(Alphabet.REF_BLOCK);
+    	
+        // the other possibility is that we can spawn a new child,
+        // which in turn starts with the enterAttribute transition.
+        Iterator it = s.iterateTransitions(Alphabet.REF_BLOCK);
     	while(it.hasNext())
     	{
     		Transition tr = (Transition)it.next();
 			ScopeInfo sc = tr.getAlphabet().asRef().getTargetScope();
-            if(sc.hasFirstAlphabet(Alphabet.LEAVE_ATTRIBUTE)) return true;
+            if(sc.hasFirstAlphabet(Alphabet.ENTER_ATTRIBUTE)) return true;
     	}
     	return false;
     }
