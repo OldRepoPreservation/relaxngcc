@@ -7,21 +7,22 @@ import java.io.Writer;
  */
 public class CDConstant extends CDExpression {
 
-	private int _Type; //one of the constants in CDType
+    /** Type of this constant. */
+	private final CDType _type;
 	private int _IntVal;
 	private boolean _BooleanVal;
 	private String _StringVal;
 	
 	public CDConstant(int value) {
-		_Type = CDType.TYPE_INTEGER;
+		_type = CDType.INTEGER;
 		_IntVal = value;
 	}
 	public CDConstant(boolean value) {
-		_Type = CDType.TYPE_BOOLEAN;
+		_type = CDType.BOOLEAN;
 		_BooleanVal = value;
 	}
 	public CDConstant(String value) {
-		_Type = CDType.TYPE_STRING;
+		_type = CDType.STRING;
 		_StringVal = value;
 	}
     
@@ -40,19 +41,19 @@ public class CDConstant extends CDExpression {
     public static final CDExpression SUPER = new Atom("super");
 	
     public void express(CDFormatter f) throws IOException {
-    	switch(_Type) {
-    		case CDType.TYPE_INTEGER:
-    		   	f.p(Integer.toString(_IntVal));
-    		   	break;
-    		case CDType.TYPE_BOOLEAN:
-    		   	f.p(_BooleanVal? "true" : "false");
-    		   	break;
-    		case CDType.TYPE_STRING:
-    		   	f.p('"'+_StringVal+'"');
-    		   	break;
-            default:
-                throw new InternalError();
-    	}
+        if(_type==CDType.INTEGER) {
+		   	f.p(Integer.toString(_IntVal));
+		   	return;
+        }
+        if(_type==CDType.BOOLEAN) {
+		   	f.p(_BooleanVal? "true" : "false");
+            return;
+        }
+        if(_type==CDType.STRING) {
+		   	f.p('"'+_StringVal+'"');
+            return;
+        }
+        throw new InternalError();
     }
 
 }

@@ -32,6 +32,12 @@ public final class State implements Comparable
 	public void setAcceptable(boolean newvalue) { _Acceptable=newvalue; }
 	public boolean isAcceptable() { return _Acceptable; }
 	
+//    // joinable or not.
+//    // TODO: probably we don't need to distinguish final states and join states.
+//    private boolean _join=false;
+//    public void markAsJoin() { _join=true; }
+//    public boolean isJoinState() { return _join; }
+    
     /** Actions that get executed when the execution leaves this state. */
 	private final Vector actionsOnExit = new Vector();
     
@@ -54,10 +60,6 @@ public final class State implements Comparable
             addActionOnExit(act[i]);
     }
 	 
-	//for interleave support
-	private State _MeetingDestination;
-	private Set _StateForWait;
-
     /** ScopeInfo that owns this state. */
 	private final ScopeInfo _Container;
     public ScopeInfo getContainer() { return _Container; }
@@ -65,9 +67,6 @@ public final class State implements Comparable
 	//index identifies this state in a scope as an integer
 	public int getIndex() { return _Index; }
 	private int _Index;
-	
-	public int getThreadIndex() { return _ThreadIndex; }
-	private int _ThreadIndex;
 	
     /** Pattern from which this state was created. */
     public final Pattern locationHint;
@@ -77,14 +76,13 @@ public final class State implements Comparable
      * @param location
      *      Indicates the pattern object from which this state is created.
      */
-    public State(ScopeInfo container, int thread, int index, Pattern location )
+    public State(ScopeInfo container, int index, Pattern location )
 	{
 		_Container = container;
 		_AllTransitions = new HashSet();
         
 		_Acceptable = false;
 		_Index = index;
-		_ThreadIndex = thread;
         this.locationHint = location;
     }
 
@@ -236,24 +234,23 @@ public final class State implements Comparable
 //		s.print(_Container.getLocation());
 	}
 
-
-	//for interleave support
-	public void setMeetingDestination(State s) { _MeetingDestination=s; }
-	public State getMeetingDestination() { return _MeetingDestination; }
-	public void addStateForWait(State s) {
-		if(_StateForWait==null) _StateForWait = new HashSet();
-		_StateForWait.add(s);
-	}
-	public Iterator iterateStatesForWait() {
-        if(_StateForWait==null)     return emptyIterator;
-        else                        return _StateForWait.iterator();
+    /**
+     * Gets all the states reachable from this state.
+     */
+    public State[] getReachableStates() {
+        HashSet s = new HashSet();
+        getReachableStates(s);
+        return (State[]) s.toArray(new State[s.size()]);
     }
     
-    private static final Iterator emptyIterator = new Iterator() {
-        public void remove() { throw new UnsupportedOperationException(); }
-        public boolean hasNext() { return false; }
-        public Object next() { throw new NoSuchElementException(); }
-    };
+    private void getReachableStates( Set r ) {
+        r.add(this);
+        for (Iterator itr = iterateTransitions(); itr.hasNext();) {
+            Transition t = (Transition) itr.next();
+            if(r.add(t.nextState()))
+                t.nextState().getReachableStates(r);
+        }
+    }
     
     
     /**
@@ -308,6 +305,12 @@ public final class State implements Comparable
                 // ref[X] itself will be included in ATTHEAD
                 result.add(a);
                 if(a.asRef().getTargetScope().isNullable())
+                    t.nextState().attHead(result);
+            }
+            else
+            if(a.isFork()) {
+                result.add(a);
+                if(a.asFork().isNullable())
                     t.nextState().attHead(result);
             }
         }

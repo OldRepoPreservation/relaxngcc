@@ -170,5 +170,6 @@ Class-Path: crimson.jar relaxngDatatype.jar xsdlib.jar msv.jar jaxp-api.jar
 		<delete dir="javadoc"/>
 		<delete dir="bin"/>
 		<delete dir="src/relaxngcc/parser/state" includes="*.java" />
+		<delete dir="testCases" includes="**/*.java, **/*.class, **/*.gif"/>
 	</target>
 </project>

@@ -13,7 +13,7 @@ public class CDReturnStatement implements CDStatement {
 	}
 
     public void state(CDFormatter f) throws IOException {
-        f.p("return").express(_Expression).eos().nl();
+        f.p("return").p('(').express(_Expression).p(')').eos().nl();
     }
 
 }

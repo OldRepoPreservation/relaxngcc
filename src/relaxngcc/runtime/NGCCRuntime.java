@@ -26,12 +26,35 @@ import org.xml.sax.SAXParseException;
  * 
  *  <li>TODO: provide support for interleaving.
  * 
+ * @version $Id: NGCCRuntime.java,v 1.14 2002/08/18 23:39:12 kkawa Exp $
  * @author Kohsuke Kawaguchi (kk@kohsuke.org)
  */
-public class NGCCRuntime implements ContentHandler {
+public class NGCCRuntime implements ContentHandler, NGCCEventSource {
     
     public NGCCRuntime() {
         reset();
+    }
+    
+    /**
+     * Sets the root handler, which will be used to parse the
+     * root element.
+     * <p>
+     * This method can be called right after the object is created
+     * or the reset method is called. You can't replace the root
+     * handler while parsing is in progress.
+     * <p>
+     * Usually a generated class that corresponds to the &lt;start>
+     * pattern will be used as the root handler, but any NGCCHandler
+     * can be a root handler.
+     * 
+     * @exception IllegalStateException
+     *      If this method is called but it doesn't satisfy the
+     *      pre-condition stated above.
+     */
+    public void setRootHandler( NGCCHandler rootHandler ) {
+        if(currentHandler!=null)
+            throw new IllegalStateException();
+        currentHandler = rootHandler;
     }
     
     
@@ -45,7 +68,6 @@ public class NGCCRuntime implements ContentHandler {
         attStack.clear();
         currentAtts = null;
         currentHandler = null;
-        handlerStack.clear();
         indent=0;
         locator = null;
         namespaces.clear();
@@ -95,28 +117,15 @@ public class NGCCRuntime implements ContentHandler {
     
     
     
-    /** NGCCHandler stack */
-    private final Stack handlerStack = new Stack();
     /** The current NGCCHandler. Always equals to handlerStack.peek() */
-    private NGCCHandler currentHandler;
+    private NGCCEventReceiver currentHandler;
     
-    /**
-     * Pushes the new NGCCHandler object on top of the stack so that
-     * it will receive objects.
-     */
-    public void pushHandler( NGCCHandler handler ) {
-        handlerStack.push(handler);
-        currentHandler = handler;
-        indent++;
-    }
-    /**
-     * A NGCCHandler pops itself when it finishes its work.
-     * So the applications shouldn't call this method directly.
-     */
-    public void popHandler() {
-        indent--;
-        handlerStack.pop();
-        currentHandler = (NGCCHandler)handlerStack.peek();
+    public int replace( NGCCEventReceiver o, NGCCEventReceiver n ) {
+        if(o!=currentHandler)
+            throw new InternalError();  // bug of RelaxNGCC
+        currentHandler = n;
+        
+        return 0;   // we only have one thread.
     }
     
     /**
@@ -212,6 +221,10 @@ public class NGCCRuntime implements ContentHandler {
     }
     
     /**
+     * Called by the generated handler code when an enter element
+     * event is consumed.
+     * 
+     * <p>
      * Pushes a new attribute set.
      * 
      * <p>
@@ -222,8 +235,20 @@ public class NGCCRuntime implements ContentHandler {
      * This method will be called from one of handlers when it truely
      * consumes the enterElement event.
      */
-    public void pushAttributes( Attributes atts ) {
+    public void onEnterElementConsumed(
+        String uri, String localName, String qname,Attributes atts) throws SAXException {
         attStack.push(currentAtts=new AttributesImpl(atts));
+        nsEffectiveStack.push( new Integer(nsEffectivePtr) );
+        nsEffectivePtr = namespaces.size();
+    }
+    
+    public void onLeaveElementConsumed(String uri, String localName, String qname) throws SAXException {
+        attStack.pop();
+        if(attStack.isEmpty())
+            currentAtts = null;
+        else
+            currentAtts = (AttributesImpl)attStack.peek();
+        nsEffectivePtr = ((Integer)nsEffectiveStack.pop()).intValue();
     }
     
     public void endElement(String uri, String localname, String qname)
@@ -249,12 +274,6 @@ public class NGCCRuntime implements ContentHandler {
         
         currentHandler.leaveElement(uri, localname, qname);
 //        System.out.println("endElement:"+localname);
-        Attributes a = (Attributes)attStack.pop();
-        if(a.getLength()!=0) {
-            // when debugging, it's useful to set a breakpoint here.
-            ;
-        }
-        currentAtts = (AttributesImpl)attStack.peek();
     }
     
     public void characters(char[] ch, int start, int length) throws SAXException {
@@ -315,7 +334,7 @@ public class NGCCRuntime implements ContentHandler {
     }
     
     /** Impossible token. This value can never be a valid XML name. */
-    private static final String IMPOSSIBLE = "\u0000";
+    static final String IMPOSSIBLE = "\u0000";
     
     public void endDocument() throws SAXException {
         // consume the special "end document" token so that all the handlers
@@ -337,6 +356,43 @@ public class NGCCRuntime implements ContentHandler {
         reset();
     }
     public void startDocument() {}
+
+
+
+
+//
+//
+// event dispatching methods
+//
+//
+    
+    public void sendEnterAttribute( int threadId,
+        String uri, String local, String qname) throws SAXException {
+        
+        currentHandler.enterAttribute(uri,local,qname);
+    }
+
+    public void sendEnterElement( int threadId,
+        String uri, String local, String qname, Attributes atts) throws SAXException {
+        
+        currentHandler.enterElement(uri,local,qname,atts);
+    }
+
+    public void sendLeaveAttribute( int threadId,
+        String uri, String local, String qname) throws SAXException {
+        
+        currentHandler.leaveAttribute(uri,local,qname);
+    }
+
+    public void sendLeaveElement( int threadId,
+        String uri, String local, String qname) throws SAXException {
+        
+        currentHandler.leaveElement(uri,local,qname);
+    }
+
+    public void sendText(int threadId, String value) throws SAXException {
+        currentHandler.text(value);
+    }
 
 
 //
@@ -395,9 +451,34 @@ public class NGCCRuntime implements ContentHandler {
      * namespaces[2n  ] := prefix
      * namespaces[2n+1] := namespace URI */
     private final ArrayList namespaces = new ArrayList();
+    /**
+     * Index on the namespaces array, which points to
+     * the top of the effective bindings. Because of the
+     * timing difference between the startPrefixMapping method
+     * and the execution of the corresponding actions,
+     * this value can be different from <code>namespaces.size()</code>.
+     * <p>
+     * For example, consider the following schema:
+     * <pre><xmp>
+     *  <oneOrMore>
+     *   <element name="foo"><empty/></element>
+     *  </oneOrMore>
+     *  code fragment X
+     *  <element name="bob"/>
+     * </xmp></pre>
+     * Code fragment X is executed after we see a startElement event,
+     * but at this time the namespaces variable already include new
+     * namespace bindings declared on "bob".
+     */
+    private int nsEffectivePtr=0;
+    
+    /**
+     * Stack to preserve old nsEffectivePtr values.
+     */
+    private final Stack nsEffectiveStack = new Stack();
     
     public String resolveNamespacePrefix( String prefix ) {
-        for( int i = namespaces.size()-2; i>=0; i-=2 )
+        for( int i = nsEffectivePtr-2; i>=0; i-=2 )
             if( namespaces.get(i).equals(prefix) )
                 return (String)namespaces.get(i+1);
         
@@ -421,89 +502,6 @@ public class NGCCRuntime implements ContentHandler {
     }
 
 
-//
-//
-// spawns a new child object from event handlers.
-//
-//
-    public void spawnChildFromEnterElement(
-        NGCCHandler h, String uri, String localname, String qname, Attributes atts) throws SAXException {
-            
-        pushHandler(h);
-        currentHandler.enterElement(uri,localname,qname,atts);
-    }
-    public void spawnChildFromEnterAttribute(
-        NGCCHandler h, String uri, String localname, String qname) throws SAXException {
-            
-        pushHandler(h);
-        currentHandler.enterAttribute(uri,localname,qname);
-    }
-    public void spawnChildFromLeaveElement(
-        NGCCHandler h, String uri, String localname, String qname) throws SAXException {
-            
-        pushHandler(h);
-        currentHandler.leaveElement(uri,localname,qname);
-    }
-    public void spawnChildFromLeaveAttribute(
-        NGCCHandler h, String uri, String localname, String qname) throws SAXException {
-            
-        pushHandler(h);
-        currentHandler.leaveAttribute(uri,localname,qname);
-    }
-    public void spawnChildFromText(
-        NGCCHandler h, String value) throws SAXException {
-            
-        pushHandler(h);
-        currentHandler.text(value);
-    }
-    
-//
-//
-// reverts to the parent object from the child handler
-//
-//
-    public void revertToParentFromEnterElement( Object result, int cookie,
-        String uri,String local,String qname, Attributes atts ) throws SAXException {
-            
-        popHandler();
-        currentHandler.onChildCompleted(result,cookie,true);
-        currentHandler.enterElement(uri,local,qname,atts);
-    }
-    public void revertToParentFromLeaveElement( Object result, int cookie,
-        String uri,String local,String qname ) throws SAXException {
-        
-        if(uri==IMPOSSIBLE && local==IMPOSSIBLE && qname==IMPOSSIBLE
-        && handlerStack.size()==1)
-            // all the handlers are properly finalized.
-            // quit now, because we don't have any more NGCCHandler.
-            // see the endDocument handler for detail
-            return;
-        
-        popHandler();
-        currentHandler.onChildCompleted(result,cookie,true);
-        currentHandler.leaveElement(uri,local,qname);
-    }
-    public void revertToParentFromEnterAttribute( Object result, int cookie,
-        String uri,String local,String qname ) throws SAXException {
-            
-        popHandler();
-        currentHandler.onChildCompleted(result,cookie,false);
-        currentHandler.enterAttribute(uri,local,qname);
-    }
-    public void revertToParentFromLeaveAttribute( Object result, int cookie,
-        String uri,String local,String qname ) throws SAXException {
-            
-        popHandler();
-        currentHandler.onChildCompleted(result,cookie,false);
-        currentHandler.leaveAttribute(uri,local,qname);
-    }
-    public void revertToParentFromText( Object result, int cookie,
-        String text ) throws SAXException {
-            
-        popHandler();
-        currentHandler.onChildCompleted(result,cookie,true);
-        currentHandler.text(text);
-    }
 
 
 //

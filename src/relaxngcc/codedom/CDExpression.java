@@ -38,6 +38,16 @@ public abstract class CDExpression {
     public CDExpression not() {
         return CDOp.not(this);
     }
+    
+    /** Casts to another type. */
+    public CDExpression castTo( CDType t ) {
+        return new CDCastExpression(t,this);
+    }
+    
+    /** Creates a new instance of an inner class from this expression. */
+    public CDObjectCreateExpression _new(CDType type) {
+        return new CDObjectCreateExpression(this,type);
+    }
 
     /** Prints itself as an expression. */
     protected abstract void express( CDFormatter f ) throws IOException;

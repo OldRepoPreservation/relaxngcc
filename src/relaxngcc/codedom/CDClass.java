@@ -2,28 +2,39 @@ package relaxngcc.codedom;
 
 import java.io.IOException;
 import java.io.Writer;
-import java.util.Vector;
+import java.util.ArrayList;
 
 /**
  */
-public class CDClass {
+public class CDClass extends CDType {
 
 	private CDLanguageSpecificString[] _PrecedingDeclarations;
 	private CDLanguageSpecificString _PreModifier;
     private CDLanguageSpecificString _PostModifier;
 	private String _ClassName;
     
-	private final Vector _Members = new Vector();
-	private final Vector _Methods = new Vector();
+	private final ArrayList _Members = new ArrayList();
+	private final ArrayList _Methods = new ArrayList();
 	
-    private final Vector _AdditionalBody = new Vector();
+    private final ArrayList _AdditionalBody = new ArrayList();
+    
+    private final ArrayList _innerClasses = new ArrayList();
 
-	public CDClass(CDLanguageSpecificString[] declarations, CDLanguageSpecificString fs, String name, CDLanguageSpecificString bs) {
-		_PrecedingDeclarations = declarations;
+    public CDClass( String className ) {
+        this(null,null,className,null);
+    }
+
+	public CDClass(
+        CDLanguageSpecificString[] declarations, CDLanguageSpecificString fs,
+        String name, CDLanguageSpecificString bs) {
+		
+        super(name);
+        _PrecedingDeclarations = declarations;
 		_PreModifier = fs;
 		_ClassName = name;
 		_PostModifier = bs;
 	}
+    
 
     /** Adds a new member declaration. */
 	public CDVariable addMember(
@@ -47,6 +58,17 @@ public class CDClass {
 	public void addLanguageSpecificString(CDLanguageSpecificString content) {
 		_AdditionalBody.add(content);
 	}
+    
+    /**
+     * Adds a new inner class.
+     */
+    public void addInnerClass( CDClass innerClass ) {
+        _innerClasses.add(innerClass);
+    }
+
+    public void writeType( CDFormatter f ) throws IOException {
+        f.p(_ClassName);
+    }
 
     public void writeTo( CDFormatter f ) throws IOException {
 
@@ -77,8 +99,14 @@ public class CDClass {
 		for(int i=0; i<_AdditionalBody.size(); i++)
 			f.write((CDLanguageSpecificString)_AdditionalBody.get(i));
     	
+        for(int i=0; i<_innerClasses.size(); i++) {
+            f.nl();
+            ((CDClass)_innerClasses.get(i)).writeTo(f);
+            f.nl();
+        }
+        
     	f.out();
-        f.nl().p('}');
+        f.nl().p('}').nl().nl();
     }
 
 }

@@ -65,7 +65,7 @@ public class RelaxNGCC
         // TODO: this code should be moved to somewhere else.
         try {// debug
             RootParserRuntime parser = new RootParserRuntime();
-            parser.parse(o.sourcefile.getPath());
+            parser.parse(o.sourcefile.toURL().toExternalForm());
             NGCCGrammar grammar = parser.getResult();
             
             grammar.buildAutomaton();

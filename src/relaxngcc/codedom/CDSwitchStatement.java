@@ -31,10 +31,14 @@ public class CDSwitchStatement implements CDStatement {
 		if(_DefaultBlock!=null) throw new IllegalStateException("this SwitchStatement is closed already");
 		_Blocks.add(new Block(expr, statements));
 	}
-	public void setDefaultCase(CDBlock statements) {
-		if(_DefaultBlock!=null) throw new IllegalStateException("this SwitchStatement is closed already");
-		_DefaultBlock = statements;
-	}
+//	public void setDefaultCase(CDBlock statements) {
+//		if(_DefaultBlock!=null) throw new IllegalStateException("this SwitchStatement is closed already");
+//		_DefaultBlock = statements;
+//	}
+    public CDBlock defaultCase() {
+        if(_DefaultBlock==null) _DefaultBlock = new CDBlock();
+        return _DefaultBlock;
+    }
 
     public void state(CDFormatter f) throws IOException {
 

@@ -42,34 +42,18 @@ import relaxngcc.grammar.ValuePattern;
  */
 public class AutomatonBuilder implements PatternFunction
 {
-	private int _ThreadCount;
-
-	class Context {
-	    private State _InterleaveBranchRoot;
-	    private int _CurrentThreadIndex;
-	    
-		public Context() {
-			_CurrentThreadIndex = -1;
-		}
-		public Context(Context ctx) {
-			_InterleaveBranchRoot = ctx._InterleaveBranchRoot;
-			_CurrentThreadIndex = ctx._CurrentThreadIndex;
-		}
-        
-	    public int getCurrentThreadIndex() { return _CurrentThreadIndex; }
-	    public void setCurrentThreadIndex(int n) { _CurrentThreadIndex = n; }
-	    
-	    public State getInterleaveBranchRoot() { return _InterleaveBranchRoot; }
-	    public void  setInterleaveBranchRoot(State s) { _InterleaveBranchRoot = s; }
-	}
 
     /**
      * Used to give order numbers to EnterAttribute alphabets.
      */
     private int _OrderCounter;
     
-    /** actions are added to this buffer until it is processed */
-    private StringBuffer preservedAction = new StringBuffer();
+    /**
+     * Actions are added to this buffer until it is processed.
+     * Note that we can't use StringBuffer bcause we need to
+     * add *in front*, not at the end.
+     */
+    private String preservedAction="";
 
 	
 	
@@ -87,7 +71,6 @@ public class AutomatonBuilder implements PatternFunction
     private final ScopeInfo _ScopeInfo;
     
 	public void build() {
-		ctx = new Context();
 		//starts from final state
 	    destination = createState(null);
 		destination.setAcceptable(true);
@@ -101,8 +84,6 @@ public class AutomatonBuilder implements PatternFunction
 //		else
 //			initial = processRelaxNGNode(_Root, ctx, finalstate);
 		
-        _ScopeInfo.setThreadCount(_ThreadCount);
-        
 		_ScopeInfo.setInitialState(initial);
         
         _ScopeInfo.copyAttributeHandlers();
@@ -111,7 +92,6 @@ public class AutomatonBuilder implements PatternFunction
 	}
 	
 
-    private Context ctx;
     private State destination;
     
     public Object element( ElementPattern pattern ) {
@@ -121,26 +101,16 @@ public class AutomatonBuilder implements PatternFunction
         Transition te = createTransition(
             new Alphabet.LeaveElement(nc,pattern.startLocator), destination);
         addAction(te,false);
-        if(ctx.getInterleaveBranchRoot()!=null) te.setEnableState(ctx.getInterleaveBranchRoot());
         tail.addTransition(te);
         
-        // start a new context
-        Context oldContext = ctx;
-        ctx = new Context(ctx);
-        
-        ctx.setInterleaveBranchRoot(null);
-
         // process descendants
         destination = tail;
         State middle = (State)pattern.body.apply(this);
-        
-        oldContext = ctx;
         
         State head = createState(pattern);
         Transition ts = createTransition(
             new Alphabet.EnterElement(nc,pattern.endLocator), middle);
         addAction(ts,true);
-        if(ctx.getInterleaveBranchRoot()!=null) ts.setDisableState(ctx.getInterleaveBranchRoot());
         head.addTransition(ts);
         
         return head;
@@ -262,7 +232,11 @@ public class AutomatonBuilder implements PatternFunction
     
 
     public Object javaBlock( JavaBlock block ) {
-        preservedAction.append(block.code);
+        // because we traverse the grammar backward, we need
+        // to add new code in front of the existing ones.
+        // it's also safe to add NL because the new code might
+        // contain a comment at its end.
+        preservedAction = block.code+"\n"+preservedAction;
         return destination;
     }
     
@@ -323,31 +297,44 @@ public class AutomatonBuilder implements PatternFunction
 	
 
     public Object interleave( InterleavePattern pattern ) {
-        Context oldContext = ctx;
         
-        State tail = addAction(destination,true);
+        State join = destination;
+        
+        // add pending actions to a dummy transition so that
+        // we can add these actions later as the epilogue action
+        // of the join.
+        Transition dummy = new Transition(null,null);
+        addAction(dummy,false);
+        
+        Pattern[] children = pattern.getChildPatterns();
+        State[] subAutomata = new State[children.length];
+        NameClass[] elemNC = new NameClass[children.length];
+        NameClass[] attNC = new NameClass[children.length];
+        boolean[] text = new boolean[children.length];
+        
+        for( int i=children.length-1; i>=0; i-- ) {
+            // create sub-automaton for each branch
+            destination = createState(pattern); 
+            destination.setAcceptable(true); // mark as the join state
+            State member = (State)children[i].apply(this);
+            member = addAction(member,true);
+            
+            subAutomata[i] = member;
+            elemNC[i] = ElementNameCollector.collect(children[i]);
+            attNC[i]  = AttributeNameCollector.collect(children[i]);
+            text[i]   = TextCollector.collect(children[i]);
+        }
         
         State head = createState(pattern);
-        ctx = new Context(ctx);
-        ctx.setInterleaveBranchRoot(head);
-
-        tail.addStateForWait(processInterleaveBranch(pattern.p2,head));
-        tail.addStateForWait(processInterleaveBranch(pattern.p1,head));
+        Transition forkTr = new Transition(
+            new Alphabet.Fork(subAutomata,elemNC,attNC,text,
+                null/*TODO:locator*/,_OrderCounter++),
+            join );
+        head.addTransition(forkTr);
         
-        head = addAction(head,true);
-        ctx = oldContext;
+        forkTr.insertEpilogueActions(dummy.getEpilogueActions());
+        
         return head;
-    }
-
-    private State processInterleaveBranch( Pattern child, State head ) {
-        ctx.setCurrentThreadIndex(_ThreadCount++);
-        State meetingspot = createState(child);
-        meetingspot.setMeetingDestination(destination);
-        
-        destination = meetingspot;
-        head.mergeTransitions( (State)child.apply(this) );
-        
-        return meetingspot;
     }
 
 
@@ -398,7 +385,7 @@ public class AutomatonBuilder implements PatternFunction
 	
     
 	private State createState(Pattern source) {
-		State s = new State(_ScopeInfo, ctx.getCurrentThreadIndex(), _ScopeInfo.getStateCount(), source);
+		State s = new State(_ScopeInfo, _ScopeInfo.getStateCount(), source);
 		_ScopeInfo.addState(s);
 		return s;
 	}
@@ -412,7 +399,7 @@ public class AutomatonBuilder implements PatternFunction
 		if(preservedAction.length()==0)   return;
         
         ScopeInfo.Action action = _ScopeInfo.createAction(preservedAction);
-        preservedAction = new StringBuffer();
+        preservedAction = "";
         
         if(prologue)    t.insertPrologueAction(action);
         else            t.insertEpilogueAction(action);
@@ -448,7 +435,7 @@ public class AutomatonBuilder implements PatternFunction
         if(preservedAction.length()==0) return s;
         
         ScopeInfo.Action act = _ScopeInfo.createAction(preservedAction);
-        preservedAction = new StringBuffer();
+        preservedAction = "";
         
         State ss = createState(s.locationHint);
         ss.mergeTransitions(s);

@@ -6,13 +6,15 @@ import org.xml.sax.SAXException;
 /**
  * 
  * 
+ * @version $Id: NGCCHandler.java,v 1.8 2002/08/18 23:39:12 kkawa Exp $
  * @author Kohsuke Kawaguchi (kk@kohsuke.org)
  */
-public abstract class NGCCHandler {
-    protected NGCCHandler(
+public abstract class NGCCHandler implements NGCCEventReceiver {
+    protected NGCCHandler( NGCCEventSource _source,
         NGCCHandler _parent, int _parentCookie ) {
             
         this.parent = _parent;
+        this.source = _source;
         this.cookie = _parentCookie;
     }
     
@@ -21,6 +23,12 @@ public abstract class NGCCHandler {
      * If this is the root handler, this field will be null.
      */
     protected final NGCCHandler parent;
+    
+    /**
+     * Event source.
+     */
+    protected final NGCCEventSource source;
+    
     /**
      * This method will be implemented by the generated code
      * and returns a reference to the current runtime.
@@ -38,11 +46,6 @@ public abstract class NGCCHandler {
     // used to copy parameters to (enter|leave)(Element|Attribute) events.
     protected String localName,uri,qname;
     
-    protected abstract void enterElement(String uri, String localName, String qname,Attributes atts) throws SAXException;
-    protected abstract void leaveElement(String uri, String localName, String qname) throws SAXException;
-    protected abstract void text(String value) throws SAXException;
-    protected abstract void enterAttribute(String uri, String localName, String qname) throws SAXException;
-    protected abstract void leaveAttribute(String uri, String localName, String qname) throws SAXException;
     
     /**
      * Notifies the completion of a child object.
@@ -65,8 +68,94 @@ public abstract class NGCCHandler {
      * If it can, perform transitions.
      */
     protected abstract void processAttribute() throws SAXException;
-// TODO: what is this used for?
-//    protected abstract boolean accepted();
+
+
+
+
+
+
+//
+//
+// spawns a new child object from event handlers.
+//
+//
+    public void spawnChildFromEnterElement( NGCCEventReceiver child,
+        String uri, String localname, String qname, Attributes atts) throws SAXException {
+        
+        int id = source.replace(this,child);
+        source.sendEnterElement(id,uri,localname,qname,atts);
+    }
+    public void spawnChildFromEnterAttribute( NGCCEventReceiver child,
+        String uri, String localname, String qname) throws SAXException {
+            
+        int id = source.replace(this,child);
+        source.sendEnterAttribute(id,uri,localname,qname);
+    }
+    public void spawnChildFromLeaveElement( NGCCEventReceiver child,
+        String uri, String localname, String qname) throws SAXException {
+            
+        int id = source.replace(this,child);
+        source.sendLeaveElement(id,uri,localname,qname);
+    }
+    public void spawnChildFromLeaveAttribute( NGCCEventReceiver child,
+        String uri, String localname, String qname) throws SAXException {
+            
+        int id = source.replace(this,child);
+        source.sendLeaveAttribute(id,uri,localname,qname);
+    }
+    public void spawnChildFromText( NGCCEventReceiver child,
+        String value) throws SAXException {
+            
+        int id = source.replace(this,child);
+        source.sendText(id,value);
+    }
+    
+//
+//
+// reverts to the parent object from the child handler
+//
+//
+    public void revertToParentFromEnterElement( Object result, int cookie,
+        String uri,String local,String qname, Attributes atts ) throws SAXException {
+            
+        int id = source.replace(this,parent);
+        parent.onChildCompleted(result,cookie,true);
+        source.sendEnterElement(id,uri,local,qname,atts);
+    }
+    public void revertToParentFromLeaveElement( Object result, int cookie,
+        String uri,String local,String qname ) throws SAXException {
+        
+        if(uri==NGCCRuntime.IMPOSSIBLE && uri==local && uri==qname && parent==null )
+            // all the handlers are properly finalized.
+            // quit now, because we don't have any more NGCCHandler.
+            // see the endDocument handler for detail
+            return;
+        
+        int id = source.replace(this,parent);
+        parent.onChildCompleted(result,cookie,true);
+        source.sendLeaveElement(id,uri,local,qname);
+    }
+    public void revertToParentFromEnterAttribute( Object result, int cookie,
+        String uri,String local,String qname ) throws SAXException {
+            
+        int id = source.replace(this,parent);
+        parent.onChildCompleted(result,cookie,true);
+        source.sendEnterAttribute(id,uri,local,qname);
+    }
+    public void revertToParentFromLeaveAttribute( Object result, int cookie,
+        String uri,String local,String qname ) throws SAXException {
+            
+        int id = source.replace(this,parent);
+        parent.onChildCompleted(result,cookie,true);
+        source.sendLeaveAttribute(id,uri,local,qname);
+    }
+    public void revertToParentFromText( Object result, int cookie,
+        String text ) throws SAXException {
+            
+        int id = source.replace(this,parent);
+        parent.onChildCompleted(result,cookie,true);
+        source.sendText(id,text);
+    }
 
 
 //

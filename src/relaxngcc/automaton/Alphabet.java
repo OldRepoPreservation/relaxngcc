@@ -33,9 +33,10 @@ public abstract class Alphabet
 	public static final int LEAVE_ELEMENT      = 2;
 	public static final int ENTER_ATTRIBUTE    = 4;
     public static final int LEAVE_ATTRIBUTE    = 8;
-    public static final int REF_BLOCK          = 64;
 	public static final int DATA_TEXT          = 16;
 	public static final int VALUE_TEXT         = 32;
+    public static final int REF_BLOCK          = 64;
+    public static final int FORK               = 128;
     
     /** Type of this alphabet. One of the above constants. */
 	private final int _Type;
@@ -74,6 +75,7 @@ public abstract class Alphabet
     public Text             asText() { return null; }
         public ValueText        asValueText() { return null; }
         public DataText         asDataText() { return null; }
+    public Fork             asFork() { return null; }
     
     //
     // type check functions
@@ -87,6 +89,7 @@ public abstract class Alphabet
     public final boolean isText() { return asText()!=null; }
     public final boolean isValueText() { return asValueText()!=null; }
     public final boolean isDataText() { return asDataText()!=null; }
+    public final boolean isFork() { return asFork()!=null; }
     
     /**
      * Base class for (enter|leave)(Attribute|Element).
@@ -170,8 +173,87 @@ public abstract class Alphabet
         public String toString() { return "/@"+getKey(); }
     }
     
+    /** Alphabet that "forks" a state into a set of sub-automata. */
+    public static final class Fork extends Alphabet implements WithOrder {
+        public Fork( State[] subAutomata,
+            NameClass[] elementNC, NameClass[] attNC, boolean[] text,
+            Locator loc, int order ) {
+            
+            super( FORK, loc );
+            this._subAutomata = subAutomata;
+            this.elementNameClasses = elementNC;
+            this.attributeNameClasses = attNC;
+            this.canConsumeText = text;
+            this._order = order;
+        }
+        
+        /** Initial states of sub-automata. */
+        public final State[] _subAutomata;
+        
+        /** NameClass that represents elements that can be consumed by each bracnh.*/
+        public final NameClass[] elementNameClasses;
+        /** for attributes. */
+        public final NameClass[] attributeNameClasses;
+        /** for texts. */
+        public final boolean[] canConsumeText;
+        
+        /** order relationship between attributes and refs. */
+        private final int _order;
+        public final int getOrder() { return _order; }
+
+        public String toString() {
+            StringBuffer buf = new StringBuffer("fork&join ");
+            for( int i=0; i<_subAutomata.length; i++ ) {
+                if(i!=0)    buf.append(',');
+                buf.append( Integer.toString( _subAutomata[i].getIndex() ) );
+            }
+            return buf.toString();
+        }
+        
+        public int hashCode() {
+            int h=0;
+            for( int i=0; i<_subAutomata.length; i++ )
+                h ^= _subAutomata[i].hashCode();
+            return h;
+        }
+        public boolean equals( Object o ) {
+            if(!super.equals(o)) return false;
+            
+            Fork rhs = (Fork)o;
+            if(_subAutomata.length!=rhs._subAutomata.length)    return false;
+            
+            for( int i=_subAutomata.length-1; i>=0; i-- )
+                if( _subAutomata[i]!=rhs._subAutomata[i] )
+                    return false;
+            
+            return true;
+        }
+        public Fork asFork() { return this; }
+        
+        /**
+         * Gets the name of the InterleaveFilter implementation class.
+         */
+        public String getClassName() {
+            StringBuffer id = new StringBuffer("InterleaveFilter");
+            for( int i=0; i<_subAutomata.length; i++ ) {
+                id.append('_');
+                id.append(_subAutomata[i].getIndex());
+            }
+            return id.toString();
+        }
+        
+        /** Returns true if this fork&amp;join is nullable. */
+        public boolean isNullable() {
+            for( int i=0; i<_subAutomata.length; i++ ) {
+                if(!_subAutomata[i].isAcceptable())
+                    return false;
+            }
+            return true;
+        }
+    }
+    
     /** Alphabet of the type "ref." */
-    public static class Ref extends Alphabet implements WithOrder {
+    public static final class Ref extends Alphabet implements WithOrder {
         public Ref( ScopeInfo target, String alias, String params, int order, Locator loc ) {
             super( REF_BLOCK, loc );
             this._Target = target;

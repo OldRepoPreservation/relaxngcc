@@ -21,9 +21,6 @@ public final class Transition
 	private Alphabet _Alphabet;
 	private State _NextState;
     
-	private State _EnableState;
-	private State _DisableState;
-	
     /** value that uniquely identifies a transition. */
     private final int uniqueId;
     
@@ -68,6 +65,10 @@ public final class Transition
     /** Adds a new action at head of the epilogue actions. */
     public void insertEpilogueAction(ScopeInfo.Action newAction) {
         epilogueActions.add(0,newAction);
+    }
+    public void insertEpilogueActions(ScopeInfo.Action[] newActions) {
+        for( int i=newActions.length-1; i>=0; i-- )
+            insertEpilogueAction(newActions[i]);
     }
     
     /** Gets all prologue actions. */
@@ -120,12 +121,6 @@ public final class Transition
 
     public void changeDestination(State s) { _NextState=s; }
 	
-	public void setEnableState(State s)
-	{ _EnableState = s; }
-	public void setDisableState(State s)
-	{ _DisableState = s; }
-	public State getEnableState() { return _EnableState; }
-	public State getDisableState() { return _DisableState; }
 
 
     /**
@@ -148,6 +143,13 @@ public final class Transition
      */
     void head( Set result, boolean includeEE ) {
         Alphabet a = getAlphabet();
+        if(a.isFork()) {
+            Alphabet.Fork fork = a.asFork();
+            for( int i=0; i<fork._subAutomata.length; i++ )
+                fork._subAutomata[i].head( result, false );
+            if(fork.isNullable())
+                nextState().head( result, includeEE );
+        } else
         if(!a.isRef()) {
             result.add(a);
         } else {

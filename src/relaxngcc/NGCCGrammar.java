@@ -190,6 +190,9 @@ public class NGCCGrammar {
             copyResourceAsFile("NGCCHandler.java",opt);
             copyResourceAsFile("AttributesImpl.java",opt);
             copyResourceAsFile("NGCCRuntime.java",opt);
+            copyResourceAsFile("NGCCEventReceiver.java",opt);
+            copyResourceAsFile("NGCCEventSource.java",opt);
+            copyResourceAsFile("NGCCInterleaveFilter.java",opt);
         }
         
         return generated;

@@ -15,7 +15,7 @@ public class IncludeParserRuntime extends ParserRuntime {
      */
     public IncludeParserRuntime( ParserRuntime parent ) {
         start=new IncludedGrammarState(this);
-        pushHandler(start);
+        setRootHandler(start);
         
         // inherit context from the parent
         this.grammar = parent.grammar;

@@ -129,7 +129,7 @@ public abstract class CDFormatter {
     
     /** Outputs a type object. */
     public final CDFormatter type( CDType t ) throws IOException {
-        t.writeTo(this);
+        t.writeType(this);
         return this;
     }
     

@@ -13,7 +13,7 @@ import relaxngcc.grammar.NameClassFunction;
  * Generates a clause that tests the membership of a NameClass.
  * 
  * <p>
- * This function returns {@link String}.
+ * This function returns {@link CDExpression}.
  * 
  * @author Kohsuke Kawaguchi (kk@kohsuke.org)
  */
@@ -22,6 +22,10 @@ public class NameTestBuilder implements NameClassFunction {
     public NameTestBuilder( CDVariable _uriVar, CDVariable _localNameVar ) {
         this.$uriVar = _uriVar;
         this.$localNameVar = _localNameVar;
+    }
+    
+    public static CDExpression build( NameClass nc, CDVariable uri, CDVariable local ) {
+        return (CDExpression)nc.apply(new NameTestBuilder(uri,local));
     }
     
     private final CDVariable $uriVar;

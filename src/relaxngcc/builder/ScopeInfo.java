@@ -60,9 +60,6 @@ public final class ScopeInfo
     public void setInitialState(State s) {
         _initialState = s;
     }
-    
-	private int _threadCount;
-    public int getThreadCount() { return _threadCount; }
 
     /**
      * See {@link NullableChecker} for the definition of nullability.
@@ -70,7 +67,6 @@ public final class ScopeInfo
     private boolean _Nullable;
 	public boolean isNullable() { return _Nullable; }	
     public void setNullable(boolean v) { _Nullable = v; }
-	public void setThreadCount(int n) { _threadCount = n; } 
 	
 	public int getStateCount() { return _allStates.size(); }
 	
@@ -159,7 +155,6 @@ public final class ScopeInfo
             // we need to clone the state
             st = new State(
                 this,
-                orig.getThreadIndex(),
                 getStateCount(),
                 orig.locationHint);
             addState(st);
@@ -194,6 +189,13 @@ public final class ScopeInfo
             Iterator itr = s.iterateTransitions();
             while(itr.hasNext()) {
                 Transition t = (Transition)itr.next();
+                
+                if(t.getAlphabet() instanceof Alphabet.Fork) {
+                    State[] inits = ((Alphabet.Fork)t.getAlphabet())._subAutomata;
+                    for( int i=0; i<inits.length; i++ )
+                        if(reachable.add(inits[i]))
+                            queue.push(inits[i]);
+                }
                 
                 if(reachable.add(t.nextState()))
                     queue.push(t.nextState());
@@ -263,7 +265,7 @@ public final class ScopeInfo
                 "action"+uniqueId,
                 new CDLanguageSpecificString("throws SAXException") );
             
-            method.body().add(new CDLanguageSpecificString(codeFragment));
+            method.body().add(new CDLanguageSpecificString(codeFragment+'\n'));
             
         	classdef.addMethod(method);
         }
@@ -425,15 +427,15 @@ public final class ScopeInfo
     /** Gets the hue of the color for an alphabet. */
     private static String getColor( Alphabet a ) {
         // H S V
-        double d;
         switch(a.getType()) {
         case Alphabet.ENTER_ELEMENT:     return "0";
-        case Alphabet.LEAVE_ELEMENT:     return "0.16";
-        case Alphabet.ENTER_ATTRIBUTE:   return "0.32";
-        case Alphabet.LEAVE_ATTRIBUTE:   return "0.48";
-        case Alphabet.REF_BLOCK:         return "0.64";
+        case Alphabet.LEAVE_ELEMENT:     return "0.125";
+        case Alphabet.ENTER_ATTRIBUTE:   return "0.25";
+        case Alphabet.LEAVE_ATTRIBUTE:   return "0.375";
+        case Alphabet.REF_BLOCK:         return "0.5";
         case Alphabet.DATA_TEXT:
-        case Alphabet.VALUE_TEXT:        return "0.80";
+        case Alphabet.VALUE_TEXT:        return "0.625";
+        case Alphabet.FORK:              return "0.75";
         default:
             throw new Error(); // assertion failed
         }

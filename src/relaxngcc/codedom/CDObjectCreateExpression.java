@@ -8,32 +8,49 @@ import java.util.Iterator;
  */
 public class CDObjectCreateExpression extends CDExpression implements CDStatement {
     
-    private final CDType _ClassName;
-    private final ArrayList _Args = new ArrayList();
+    /** [left].new [type]([args]); */
+    private final CDExpression _left;
+    private final CDType _type;
+    private final ArrayList _args = new ArrayList();
     
     /** use CDType._new */
-    CDObjectCreateExpression(CDType classname ) {
-    	_ClassName = classname;
+    CDObjectCreateExpression(CDType type ) {
+        this(null,type);
+    }
+    
+    CDObjectCreateExpression(CDExpression left,CDType type) {
+    	_left = left;
+        _type = type;
     }
     
     public CDObjectCreateExpression arg( CDExpression arg ) {
-        _Args.add(arg);
+        _args.add(arg);
         return this;
     }
 
     public void express(CDFormatter f) throws IOException {
-        f.p("new").type(_ClassName).p('(');
-    	
+        if(_left!=null)
+            f.express(_left).p('.');
+        
+        if(_type.isArray()) {
+            f.p("new").type(_type).p('{');
+        } else {
+            f.p("new").type(_type).p('(');
+        }
+        	
         boolean first = true;
-        for (Iterator itr = _Args.iterator(); itr.hasNext();) {
+        for (Iterator itr = _args.iterator(); itr.hasNext();) {
             if(!first)  f.p(',');
             first = false;
             
             CDExpression arg = (CDExpression) itr.next();
             f.express(arg);
         }
-        
-    	f.p(')');
+            
+        if(_type.isArray())
+            f.p('}');
+        else
+        	f.p(')');
     }
 
     public void state(CDFormatter f) throws IOException {

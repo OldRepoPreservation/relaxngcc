@@ -37,13 +37,17 @@ public class CodeBuilder
 	{
 		public CDBlock prologue;
         public CDBlock epilogue;
-		public CDIfStatement conditionalCodes;
+		public CDIfStatement conditionalCodes,top;
 		public CDBlock elsecode;
 		
-		public void addConditionalCode(CDExpression cond, CDBlock code)
-		{
-			if(conditionalCodes==null) conditionalCodes = new CDIfStatement(cond, code);
-			else conditionalCodes.addClause(cond, code);
+		public void addConditionalCode(CDExpression cond, CDBlock code) {
+			if(conditionalCodes==null)
+                conditionalCodes = top = new CDIfStatement(cond);
+			else
+                // add another "if" statement.
+                top = top._else()._if(cond);
+            
+            top.setThenBlock(code);
 		}
         
         public CDBlock output(CDStatement errorHandleMethod) {
@@ -53,20 +57,17 @@ public class CodeBuilder
             
             //elsecode, null‚È‚çerrorHandleMethod‚Å•Â‚¶‚é
             
-            if(elsecode!=null) {
-            	if(conditionalCodes!=null)
-	            	conditionalCodes.closeClause(elsecode);
-	            else
-	            	sv.add(elsecode);
-            } else if(errorHandleMethod!=null) {
-            	if(conditionalCodes!=null)
-	            	conditionalCodes.closeClause(new CDBlock(errorHandleMethod));
-	            else
-	            	sv.add(errorHandleMethod);
+            CDBlock terminal = elsecode;
+            if(terminal==null)  terminal = new CDBlock(errorHandleMethod);
+
+            if(conditionalCodes!=null) {
+                if(terminal!=null)
+                        top.setElseBlock(terminal);
+                sv.add(conditionalCodes);
+            } else {
+                if(terminal!=null)
+	            	sv.add(terminal);
             }
-            
-           	if(conditionalCodes!=null)
-	            sv.add(conditionalCodes);
             
             if(epilogue!=null)
                 sv.add(epilogue);
@@ -154,50 +155,49 @@ public class CodeBuilder
 
         private CDBlock output(CDStatement errorHandleMethod) {
         	CDBlock sv = new CDBlock();
-        	CDIfStatement ifblock = null;
+            CDSwitchStatement switchBlock = null;
             Iterator i = state2CodeFragment.entrySet().iterator();
             while(i.hasNext())
             {
                 Map.Entry e = (Map.Entry)i.next();
                 State st = (State)e.getKey();
                 
-                CDExpression condition = CDOp.EQ(
-                    (st.getThreadIndex()==-1) ?
-                        $state : getThreadStateExp(st.getThreadIndex()),
+                CDExpression condition = CDOp.EQ($state,
                      new CDConstant(st.getIndex()));
                     
                 CDBlock whentrue = ((CodeAboutState)e.getValue()).output(errorHandleMethod);
                 
-                if(ifblock==null)
-                	ifblock = new CDIfStatement(condition, whentrue);
-                else
-                	ifblock.addClause(condition, whentrue);
+                if(switchBlock==null)
+                	switchBlock = new CDSwitchStatement($state);
                 
+                switchBlock.addCase(new CDConstant(st.getIndex()), whentrue );
             }
             
-            if(errorHandleMethod!=null) {
-            	if(ifblock!=null) ifblock.closeClause(new CDBlock(errorHandleMethod));
+            if(switchBlock!=null) {
+                if(errorHandleMethod!=null)
+                    switchBlock.defaultCase().add(errorHandleMethod);
+                sv.add(switchBlock);
             }
-            
-            if(ifblock!=null) sv.add(ifblock);
             return sv;
         }
 	}
 	
 	private ScopeInfo _info;
 	private NGCCGrammar _grammar;
-	private Options _Options;
+	private Options _options;
 	
-    public CodeBuilder(NGCCGrammar grm, ScopeInfo sci, Options o)
-	{
+    public CodeBuilder(NGCCGrammar grm, ScopeInfo sci, Options o) {
 		_info = sci;
 		_grammar = grm;
-		_Options = o;
+		_options = o;
     }
     
     
     /** Special transition that means "revert to the parent." */
     private static final Transition REVERT_TO_PARENT = new Transition(null,null);
+    /** Special transition that means "join with other branches. */
+    private static final Transition JOIN = new Transition(null,null);
+    
     
     private class TransitionTable {
         private final Map table = new HashMap();
@@ -261,13 +261,10 @@ public class CodeBuilder
     private CDClass classdef;
     /** Reference to _ngcc_current_state. */
     private CDExpression $state;
-    /** Reference to _ngcc_threaded_state. */
-    private CDExpression $threadState;
-    private CDExpression getThreadStateExp( int idx ) {
-        return $threadState.arrayRef(idx);
-    }
     /** Reference to runtime. */
     private CDVariable $runtime;
+    /** Reference to super.source */
+    private final CDExpression $source = CDConstant.SUPER.prop("source");
     
     /** Reference to "super". */
     private static final CDExpression $super = CDConstant.SUPER;
@@ -275,20 +272,21 @@ public class CodeBuilder
     /** Reference to "this". */
     private static final CDExpression $this = CDConstant.THIS;
     
+    private static final CDType interleaveFilterType = new CDType("NGCCInterleaveFilter");
     
     
 
     /**
      * Builds the code.
      */
-    public CDClass createClassCode(Options options, String globalimport) {
+    public CDClass createClassCode(String globalimport) {
         StringBuffer buf = new StringBuffer();
         
         //notice
-        println(buf, options, "/* this file is generated by RelaxNGCC */");
+        println(buf, "/* this file is generated by RelaxNGCC */");
         //package
         if(_grammar.packageName.length()>0)
-            println(buf, options, "package " + _grammar.packageName + ";");
+            println(buf, "package " + _grammar.packageName + ";");
         
         /*
         //imports
@@ -298,31 +296,35 @@ public class CodeBuilder
             output.println("import java.util.GregorianCalendar;");
         */
 
-        println(buf, options, "import org.xml.sax.SAXException;");
-        println(buf, options, "import org.xml.sax.XMLReader;");
-        println(buf, options, "import org.xml.sax.Attributes;");
+        println(buf, "import org.xml.sax.SAXException;");
+        println(buf, "import org.xml.sax.XMLReader;");
+        println(buf, "import org.xml.sax.Attributes;");
         
-        if(!options.usePrivateRuntime)
-            println(buf, options, "import relaxngcc.runtime.NGCCHandler;");
+        if(!_options.usePrivateRuntime)
+            println(buf, "import relaxngcc.runtime.NGCCHandler;");
         if(!_grammar.getRuntimeTypeFullName().equals(_grammar.getRuntimeTypeShortName()))
-            println(buf, options, "import "+_grammar.getRuntimeTypeFullName()+";");
+            println(buf, "import "+_grammar.getRuntimeTypeFullName()+";");
         
         if(_info.isRoot()) {
-            println(buf, options, "import javax.xml.parsers.SAXParserFactory;");
-            println(buf, options, "import org.xml.sax.XMLReader;");
+            println(buf, "import javax.xml.parsers.SAXParserFactory;");
+            println(buf, "import org.xml.sax.XMLReader;");
         }
 
-        println(buf, options, globalimport);
+        println(buf, globalimport);
         
         if(_info.scope.getImport()!=null)
-            println(buf, options, _info.scope.getImport());
+            println(buf, _info.scope.getImport());
 
-        println(buf, options, _info.getHeaderSection());
+        println(buf, _info.getHeaderSection());
         
         //class name
         NGCCDefineParam param = _info.scope.getParam();
         
-        CDClass classdef = new CDClass(new CDLanguageSpecificString[]{ new CDLanguageSpecificString(buf.toString()) }, new CDLanguageSpecificString(param.access), param.className, new CDLanguageSpecificString("extends NGCCHandler"));
+        CDClass classdef = new CDClass(
+            new CDLanguageSpecificString[]{ new CDLanguageSpecificString(buf.toString()) },
+            new CDLanguageSpecificString(param.access),
+            param.className,
+            new CDLanguageSpecificString("extends NGCCHandler"));
         
         //NSURI constants
         for (Iterator itr = _info.iterateNSURIConstants(); itr.hasNext();) {
@@ -350,7 +352,7 @@ public class CodeBuilder
 
         {// runtime field and the getRuntime method.
             String runtimeBaseName = "relaxngcc.runtime.NGCCRuntime";
-            if(options.usePrivateRuntime) runtimeBaseName = "NGCCRuntime";
+            if(_options.usePrivateRuntime) runtimeBaseName = "NGCCRuntime";
     
             
             $runtime = classdef.addMember(
@@ -372,12 +374,6 @@ public class CodeBuilder
             new CDLanguageSpecificString("private"),
             CDType.INTEGER,
             "_ngcc_current_state");
-            
-        if(_info.getThreadCount()>0)
-            $threadState = classdef.addMember(
-                new CDLanguageSpecificString("private"),
-                new CDType("int[]"),
-                "_ngcc_threaded_state");
         
         
         
@@ -389,11 +385,12 @@ public class CodeBuilder
                 null, param.className, null );
             classdef.addMethod(cotr1);
             
-            // add three parameters (parent,runtime,cookie) and call the super class initializer.
+            // add parameters (parent,source,runtime,cookie) and call the super class initializer.
             CDVariable $parent = cotr1.param( new CDType("NGCCHandler"), "_parent" );
+            CDVariable $source = cotr1.param( new CDType("NGCCEventSource"), "_source" );
             CDVariable $_runtime = cotr1.param( new CDType(_grammar.getRuntimeTypeShortName()), "_runtime" );
             CDVariable $cookie = cotr1.param( CDType.INTEGER, "_cookie" );
-            cotr1.body().invoke("super").arg($parent).arg($cookie);
+            cotr1.body().invoke("super").arg($source).arg($parent).arg($cookie);
             cotr1.body().assign($runtime,$_runtime);
             
             // append additional constructor arguments
@@ -408,10 +405,6 @@ public class CodeBuilder
             // move to the initial state
             cotr1.body().assign( $state,
                 new CDConstant(_info.getInitialState().getIndex()) );
-    
-            if(_info.getThreadCount()>0)
-                cotr1.body().assign( $threadState,
-                    new CDLanguageSpecificString("new int[" + _info.getThreadCount() + "]"));
         }        
         
         {// external constructor
@@ -425,6 +418,7 @@ public class CodeBuilder
             // call the primary constructor
             CDMethodInvokeExpression callThis = cotr2.body().invoke("this")
                 .arg( CDConstant.NULL )
+                .arg( $_runtime )
                 .arg( $_runtime )
                 .arg( new CDConstant(-1) );
             
@@ -460,8 +454,8 @@ public class CodeBuilder
                     "        NGCCRuntime runtime = new NGCCRuntime();\n"+
                     "        reader.setContentHandler(runtime);\n"+
                     "        for( int i=0; i<args.length; i++ ) {\n"+
-                    "            runtime.pushHandler(new "+_info.getClassName()+"(runtime));\n"+
-                    "            reader.parse(args[i]);\n"+
+                    "            runtime.setRootHandler(new "+_info.getClassName()+"(runtime));\n"+
+                    "            reader.parse(new org.xml.sax.InputSource(new java.io.FileInputStream(args[i])));\n"+
                     "            runtime.reset();\n"+
                     "        }\n"+
                     "    }"));
@@ -469,66 +463,233 @@ public class CodeBuilder
         }
         
         return classdef;
+    }
+    
+    /**
+     * Adds code that are necessary to implement NGCCHandler.
+     */
+    private CDClass createInterleaveBranchClassCode( State initial ) {
+        
+        final String className = "Branch"+initial.getIndex();
+        
+        CDClass classdef = new CDClass(
+            new CDLanguageSpecificString[0],
+            null,
+            className,
+            new CDLanguageSpecificString("extends NGCCHandler"));
 
+        {// runtime field and the getRuntime method.
+            String runtimeBaseName = "relaxngcc.runtime.NGCCRuntime";
+            if(_options.usePrivateRuntime) runtimeBaseName = "NGCCRuntime";
+    
+            CDMethod getRuntime = new CDMethod(
+                new CDLanguageSpecificString("public final"),
+                new CDType(runtimeBaseName),
+                "getRuntime", null );
+            classdef.addMethod(getRuntime);
+            
+            getRuntime.body()._return($runtime);
+        }
+
+
+        // create references to variables
+        $state = classdef.addMember(
+            new CDLanguageSpecificString("private"),
+            CDType.INTEGER,
+            "_ngcc_current_state");
+
+        {// internal constructor
+            CDMethod cotr1 = new CDMethod( null, null, className, null );
+            classdef.addMethod(cotr1);
+            
+            CDVariable $source = cotr1.param(new CDType("NGCCInterleaveFilter"),"_source");
+            
+            // add three parameters (parent,runtime,cookie) and call the super class initializer.
+            cotr1.body().invoke("super").arg($source).arg(CDConstant.NULL).arg(new CDConstant(-1));
+            
+            // move to the initial state
+            cotr1.body().assign( $state,
+                new CDConstant(initial.getIndex()) );
+        }        
+        
+        return classdef;
     }
     
     
 	public CDClass output() throws IOException {
-		classdef = createClassCode(_Options,_grammar.globalImportDecls);
+        // set of Fork attributes that have already been processed.
+        Set processedForks = new HashSet();
+        // map from initial state to CDClass that needs to be processed
+        Map jobQueue = new HashMap();
         
-        classdef.addMethod(createAcceptedMethod());
+        final CDClass outerClass = createClassCode(_grammar.globalImportDecls);
+        jobQueue.put( _info.getInitialState(), outerClass );
         
-        // build transition table map< state, map<non-ref alphabet,transition> >
-        TransitionTable table = new TransitionTable();
         
-        Iterator itr = _info.iterateAllStates();
-        while(itr.hasNext()) {
-            State s = (State)itr.next();
+        while( !jobQueue.isEmpty() ) {
+            Map.Entry job = (Map.Entry)jobQueue.entrySet().iterator().next();
             
-            if(s.isAcceptable())
-                table.addEverythingElse( s, REVERT_TO_PARENT );
+            State initial = (State)job.getKey();
+    		classdef = (CDClass)job.getValue();
             
-            Iterator jtr = s.iterateTransitions();
-            while(jtr.hasNext()) {
-                Transition t = (Transition)jtr.next();
+            jobQueue.remove(initial);
+            
+            // process this sub-automata
+        
+            // build transition table map< state, map<non-ref alphabet,transition> >
+            TransitionTable table = new TransitionTable();
+            
+            State[] states = initial.getReachableStates();
+            for( int i=0; i<states.length; i++ ) {
+                State s = states[i];
                 
-                Set head = t.head(true);
-                if(head.contains(Head.EVERYTHING_ELSE)) {
-                    // TODO: check ambiguity
-                    table.addEverythingElse( s, t );
-                    head.remove(Head.EVERYTHING_ELSE);
+                if(s.isAcceptable()) {
+                    if( outerClass==classdef )
+                        table.addEverythingElse( s, REVERT_TO_PARENT );
+                    else
+                        table.addEverythingElse( s, JOIN );
                 }
-                for (Iterator ktr = head.iterator(); ktr.hasNext();)
-                    table.add(s,(Alphabet)ktr.next(),t);
+                
+                Iterator jtr = s.iterateTransitions();
+                while(jtr.hasNext()) {
+                    Transition t = (Transition)jtr.next();
+                    
+                    Set head = t.head(true);
+                    if(head.contains(Head.EVERYTHING_ELSE)) {
+                        // TODO: check ambiguity
+                        table.addEverythingElse( s, t );
+                        head.remove(Head.EVERYTHING_ELSE);
+                    }
+                    for (Iterator ktr = head.iterator(); ktr.hasNext();)
+                        table.add(s,(Alphabet)ktr.next(),t);
+                    
+                    
+                    if(t.getAlphabet().isFork()) {
+                        // if a fork is found, put it into the queue
+                        Alphabet.Fork fork = t.getAlphabet().asFork();
+                        if( processedForks.add(fork) ) {
+                            // generate InterleaveFilter impl.
+                            outerClass.addInnerClass(createInterleaveFilterImpl(fork));
+                            
+                            for( int j=0; j<fork._subAutomata.length; j++ ) {
+                                State subInit = fork._subAutomata[j];
+                                
+                                // we found a new sub-automaton that needs to be processed.
+                                CDClass childClass = createInterleaveBranchClassCode(subInit);
+                                outerClass.addInnerClass(childClass);
+                                jobQueue.put(subInit,childClass);
+                            }
+                        }
+                    }
+                }
             }
-        }
+            
+            classdef.addMethod(writeEventHandler(table,Alphabet.ENTER_ELEMENT,   "enterElement",
+                new CDType[] { new CDType("Attributes") }, new String[] { "attrs" }));
+            classdef.addMethod(writeEventHandler(table,Alphabet.LEAVE_ELEMENT,   "leaveElement"));
+            classdef.addMethod(writeEventHandler(table,Alphabet.ENTER_ATTRIBUTE, "enterAttribute"));
+            classdef.addMethod(writeEventHandler(table,Alphabet.LEAVE_ATTRIBUTE, "leaveAttribute"));
         
-        CDType[] types = new CDType[] { new CDType("Attributes") };
-        String[] args = new String[] { "attrs" };
-        classdef.addMethod(writeEventHandler(table,Alphabet.ENTER_ELEMENT,   "enterElement", types, args));
-        classdef.addMethod(writeEventHandler(table,Alphabet.LEAVE_ELEMENT,   "leaveElement"));
-        classdef.addMethod(writeEventHandler(table,Alphabet.ENTER_ATTRIBUTE, "enterAttribute"));
-        classdef.addMethod(writeEventHandler(table,Alphabet.LEAVE_ATTRIBUTE, "leaveAttribute"));
-    
-		classdef.addMethod(writeTextHandler(table));
-		classdef.addMethod(writeAttributeHandler());
-        classdef.addMethod(writeChildCompletedHandler());
+    		classdef.addMethod(writeTextHandler(table));
+    		classdef.addMethod(writeAttributeHandler());
+            classdef.addMethod(writeChildCompletedHandler());
+            classdef.addMethod(createAcceptedMethod());
+        }
 
-/*        
-        Iterator lambda_scopes = _Info.iterateChildScopes();
-        while(lambda_scopes.hasNext())
-        {
-            CodeBuilder wr = new CodeBuilder(_Grammar, (ScopeInfo)lambda_scopes.next(), _Options);
-            wr.output(out);
-        }
-*/
+
         if(_info.scope.getBody()!=null)
-            classdef.addLanguageSpecificString(new CDLanguageSpecificString(_info.scope.getBody()));
-        classdef.addLanguageSpecificString(new CDLanguageSpecificString(_grammar.globalBody));
+            outerClass.addLanguageSpecificString(new CDLanguageSpecificString(_info.scope.getBody()));
+        outerClass.addLanguageSpecificString(new CDLanguageSpecificString(_grammar.globalBody));
         
-		return classdef;
+		return outerClass;
 	}
     
+    
+    /**
+     * Generate {@link InterleaveFilter} implementation for
+     * the given fork attribute.
+     * 
+     * @return
+     *      Returns a reference to the generated class.
+     */
+    private CDClass createInterleaveFilterImpl( Alphabet.Fork fork ) {
+        String className = fork.getClassName();
+        
+        CDClass classDef = new CDClass(null,null,className,
+                            new CDLanguageSpecificString(" extends NGCCInterleaveFilter"));
+        
+        {// constructor
+            // [RESULT]
+            // InterleaveFilterImpl( source, parent, cookie )
+            CDMethod ctr = new CDMethod(null,null,className,null);
+            classDef.addMethod(ctr);
+            
+            // add parameters (source,parent,cookie) and call the super class initializer.
+            CDVariable $parent = ctr.param( new CDType(_info.getClassName()), "_parent" );
+            CDVariable $cookie = ctr.param( CDType.INTEGER, "_cookie" );
+            
+            // [RESULT]
+            //  super(parent,cookie);
+            ctr.body().invoke("super").arg($parent).arg($cookie);
+            
+            // [RESULT] new NGCCEventReceiver[]{handler1,handler2,...};
+            CDObjectCreateExpression $handlers =
+                new CDType("NGCCEventReceiver").array()._new();
+            for( int i=0; i<fork._subAutomata.length; i++ ) {
+                // TODO: ideally these sub-automata classes should be created first.
+                // and references shall be used
+                $handlers.arg(
+                    new CDType("Branch"+fork._subAutomata[i].getIndex())._new()
+                        .arg($this) );
+            }
+
+            // [RESULT]
+            // setHandlers(handlers);
+            ctr.body().invoke("setHandlers").arg($handlers);
+        }        
+        
+        classDef.addMethod(createFindReceiverMethod(
+            "findReceiverOfElement", fork.elementNameClasses ));
+        classDef.addMethod(createFindReceiverMethod(
+            "findReceiverOfAttribute", fork.attributeNameClasses ));
+        
+        {// [RESULT] protected NGCCEventReceiver findReceiverOfText();
+            CDMethod method = new CDMethod(
+                new CDLanguageSpecificString("protected "),
+                CDType.INTEGER, "findReceiverOfText", null );
+            classDef.addMethod(method);
+            
+            int i;
+            for( i=0; i<fork.canConsumeText.length; i++ )
+                if( fork.canConsumeText[i] ) {
+                    method.body()._return(new CDConstant(i));
+                    break;
+                }
+            if(i==fork.canConsumeText.length)
+                method.body()._return(new CDConstant(-1));
+        }
+        
+        return classDef;
+    }
+    
+    private CDMethod createFindReceiverMethod( String name, NameClass[] nameClasses ) {
+        CDMethod method = new CDMethod(
+            new CDLanguageSpecificString("protected "),
+            CDType.INTEGER, name, null );
+        CDVariable $uri = method.param(CDType.STRING,"uri");
+        CDVariable $local = method.param(CDType.STRING,"local");
+        
+        CDBlock body = method.body();
+        
+        for( int i=0; i<nameClasses.length; i++ )
+            if( nameClasses[i]!=null)
+                body._if(NameTestBuilder.build(nameClasses[i],$uri,$local))
+                    ._then()._return(new CDConstant(i));
+        
+        body._return(new CDConstant(-1));
+        
+        return method;
+    }
 
 	
     private CDMethod createAcceptedMethod()
@@ -538,13 +699,7 @@ public class CodeBuilder
 		while(states.hasNext())
 		{
 			State s = (State)states.next();
-            CDExpression temp = null;
-			if(s.getThreadIndex()==-1)
-				temp = $state;
-			else
-				temp = getThreadStateExp(s.getThreadIndex());
-			
-            temp = CDOp.EQ( temp, new CDConstant(s.getIndex()) );
+            CDExpression temp = CDOp.EQ( $state, new CDConstant(s.getIndex()) );
             
 			statecheckexpression = (statecheckexpression==null)? temp : CDOp.OR(temp, statecheckexpression);
         }
@@ -591,7 +746,7 @@ public class CodeBuilder
         sv.assign($super.prop("localName"), $localName);
         sv.assign($super.prop("qname"),     $qname);
             
-		if(_Options.debug) {
+		if(_options.debug) {
 			sv.invoke( $runtime, "traceln")
                     .arg(new CDLanguageSpecificString("\""+eventName + " \"+qname+\" #\" + _ngcc_current_state"));
         }
@@ -667,17 +822,40 @@ public class CodeBuilder
                 r = new CDType(boxType)._new().arg(r);
             
 	    	CDBlock sv = current.invokeActionsOnExit();
-	    	sv.invoke( $runtime, "revertToParentFrom"+capitalize(eventName))
+	    	sv.invoke("revertToParentFrom"+capitalize(eventName))
                     .arg(r)
                     .arg($super.prop("cookie"))
                     .args(additionalparams);
 	    	return sv;
         }
+        if(tr==JOIN) {
+            CDBlock sv = current.invokeActionsOnExit();
+            sv.invoke( $source.castTo(interleaveFilterType), "joinBy"+capitalize(eventName))
+                    .arg(CDConstant.THIS)
+                    .args(additionalparams);
+            return sv;
+        }
         
         if(tr.getAlphabet().isEnterElement()) {
         	CDBlock sv = new CDBlock();
-            sv.invoke( $runtime, "pushAttributes")
+            sv.invoke( $runtime, "onEnterElementConsumed")
+                    // TODO: quick hack
+                    .arg(new CDLanguageSpecificString("uri"))
+                    .arg(new CDLanguageSpecificString("local"))
+                    .arg(new CDLanguageSpecificString("qname"))
                     .arg(new CDLanguageSpecificString("attrs"));
+            sv.add(buildMoveToStateCode(tr));
+            
+            return sv;
+        }
+        
+        if(tr.getAlphabet().isLeaveElement()) {
+            CDBlock sv = new CDBlock();
+            sv.invoke( $runtime, "onLeaveElementConsumed")
+                    // TODO: quick hack
+                    .arg(new CDLanguageSpecificString("uri"))
+                    .arg(new CDLanguageSpecificString("local"))
+                    .arg(new CDLanguageSpecificString("qname"));
             sv.add(buildMoveToStateCode(tr));
             
             return sv;
@@ -695,7 +873,9 @@ public class CodeBuilder
         }
 	    if(tr.getAlphabet().isRef())
 	        return buildCodeToSpawnChild(eventName,tr,additionalparams);
-            
+        if(tr.getAlphabet().isFork())
+            return buildCodeToForkChildren(eventName,tr,additionalparams);
+        
         return buildMoveToStateCode(tr);
     }
     
@@ -731,6 +911,7 @@ public class CodeBuilder
         CDObjectCreateExpression oe = 
             new CDType(ref_block.getClassName())._new()
                 .arg($this)
+                .arg($source)
                 .arg($runtime)
                 .arg(new CDConstant(ref_tr.getUniqueId()));
         if(extraarg.length()>0)
@@ -739,7 +920,7 @@ public class CodeBuilder
         CDExpression $h = sv.decl(new CDType("NGCCHandler"), "h", oe );
         
         
-        if(_Options.debug) {
+        if(_options.debug) {
         	CDExpression msg = new CDConstant(MessageFormat.format(
                 "Change Handler to {0} (will back to:#{1})",
                 new Object[]{
@@ -750,11 +931,44 @@ public class CodeBuilder
         	sv.invoke($runtime, "traceln").arg(msg);
         }
         
-        sv.invoke($runtime, "spawnChildFrom"+capitalize(eventName))
+        sv.invoke("spawnChildFrom"+capitalize(eventName))
             .arg($h).args(eventParams);
                 
         return sv;
     }
+
+    
+    /**
+     * Generates a code fragment that forks a new InterleaveFilter.
+     * 
+     * @param eventName
+     *      The event name for which we are writing an event handler.
+     * @param forkTr
+     *      The transition with FORK type alphabet.
+     * @param eventParams
+     *      Additional parameters that will be passed to the
+     *      spawnChildFromXXX method. Usually the parameters
+     *      given to the event handler.
+     * @return
+     *      code fragment.
+     */
+    private CDBlock buildCodeToForkChildren(String eventName,Transition forkTr, CDExpression[] eventParams) {
+        
+        CDBlock sv = new CDBlock();
+        Alphabet.Fork alpha = forkTr.getAlphabet().asFork();
+        
+        // [RESULT]
+        // spawnChildFromXXX( new InterleaveFilter<id>(cookie), ... );
+        sv.invoke("spawnChildFrom"+capitalize(eventName))
+            .arg( new CDType(alpha.getClassName())._new()
+                    .arg($this)
+                    .arg(new CDConstant(forkTr.getUniqueId()))
+            ).args(eventParams);
+                
+        return sv;
+    }
+    
+    
 
     
     /**
@@ -767,26 +981,6 @@ public class CodeBuilder
         
         sv.add(tr.invokePrologueActions());
         State nextstate = tr.nextState();
-        
-        if(tr.getDisableState()!=null) {
-        	CDExpression dest;
-            if(tr.getDisableState().getThreadIndex()==-1)
-                dest = $state;
-            else
-                dest = getThreadStateExp(tr.getDisableState().getThreadIndex());
-            
-            sv.assign(dest, new CDConstant(-1));
-        }
-        
-        if(tr.getEnableState()!=null) {
-        	CDExpression dest;
-            if(tr.getEnableState().getThreadIndex()==-1)
-                dest = $state;
-            else
-                dest = getThreadStateExp(tr.getEnableState().getThreadIndex());
-        
-            sv.assign(dest, new CDConstant(tr.getEnableState().getIndex()));
-        }
         
         State result = appendStateTransition(sv, nextstate);
         sv.add(tr.invokeEpilogueActions());
@@ -814,7 +1008,7 @@ public class CodeBuilder
         
 		CDBlock sv = method.body();
 		
-        if(_Options.debug) {
+        if(_options.debug) {
         	sv.invoke( $runtime, "trace" )
                 .arg(new CDLanguageSpecificString("\"text '\"+___$value.trim()+\"' #\" + _ngcc_current_state"));
         }
@@ -856,7 +1050,7 @@ public class CodeBuilder
         }
         
         CDStatement errorHandler = null;
-        if(_Options.debug)
+        if(_options.debug)
             errorHandler = $runtime.invoke("traceln")
                     .arg(new CDConstant("ignored")).asStatement();
 		sv.add(bi.output(errorHandler));
@@ -879,7 +1073,7 @@ public class CodeBuilder
     
     private String getJavaBoxType( CDType type ) {
         for( int i=0; i<boxTypes.length; i+=2 )
-            if( boxTypes[i].equals(type.name) )
+            if( boxTypes[i].equals(type.getName()) )
                 return boxTypes[i+1];
         return null;
     }
@@ -898,7 +1092,7 @@ public class CodeBuilder
         
         CDBlock sv = method.body();
         
-        if(_Options.debug) {
+        if(_options.debug) {
         	sv.invoke( $runtime, "traceln" )
                 .arg( new CDLanguageSpecificString("\"onChildCompleted(\"+cookie+\") back to "+_info.getClassName()+"\""));
         }
@@ -911,17 +1105,22 @@ public class CodeBuilder
         while(states.hasNext()) {
             State st = (State)states.next();
             
-            Iterator trans =st.iterateTransitions(Alphabet.REF_BLOCK);
+            Iterator trans =st.iterateTransitions(Alphabet.REF_BLOCK|Alphabet.FORK);
             while(trans.hasNext()) {
                 Transition tr = (Transition)trans.next();
-                Alphabet.Ref a = tr.getAlphabet().asRef();
                 
                 if(processedTransitions.add(tr)) {
                     
                     CDBlock block = new CDBlock();
                     // if there is an alias, assign to that variable
-                    String alias = a.getAlias();
+                    String alias = null;
+                    
+                    if( tr.getAlphabet().isRef() )
+                        alias = tr.getAlphabet().asRef().getAlias();
+                    
                     if(alias!=null) {
+                        Alphabet.Ref a = tr.getAlphabet().asRef();
+                        
                         ScopeInfo childBlock = a.getTargetScope();
                         CDType returnType = childBlock.scope.getParam().returnType;
                         
@@ -931,7 +1130,7 @@ public class CodeBuilder
                             rhs = new CDCastExpression( returnType, $result);
                         else
                             rhs = new CDCastExpression( new CDType(boxType),
-                                $result).invoke(returnType.name+"Value");
+                                $result).invoke(returnType.getName()+"Value");
                             
                         block.assign( $this.prop(alias), rhs );
                     }
@@ -968,7 +1167,7 @@ public class CodeBuilder
 		CDBlock sv = method.body();
         
 		CDVariable $ai = sv.decl(CDType.INTEGER, "ai");
-		if(_Options.debug)
+		if(_options.debug)
 			sv.invoke( $runtime, "traceln")
                 .arg( new CDLanguageSpecificString("\"processAttribute (\" + runtime.getCurrentAttributes().getLength() + \" atts) #\" + _ngcc_current_state")); 
 		
@@ -993,6 +1192,11 @@ public class CodeBuilder
             
             if(a.isRef()) {
                 writeAttributeHandler( bi, source, a.asRef().getTargetScope().getInitialState(), $ai );
+            } else
+            if(a.isFork()) {
+                Alphabet.Fork fork = a.asFork();
+                for( int i=0; i<fork._subAutomata.length; i++ )
+                    writeAttributeHandler( bi, source, fork._subAutomata[i], $ai );
             } else {
                 writeAttributeHandlerBlock( bi, source, a.asEnterAttribute(), $ai );
             }
@@ -1034,66 +1238,29 @@ public class CodeBuilder
 	private State appendStateTransition(CDBlock sv, State deststate, CDVariable flagVar)
 	{
 		
-		CDExpression statevariable = null;
-		if(deststate.getThreadIndex()==-1)
-			statevariable = $state;
-		else
-			statevariable = getThreadStateExp(deststate.getThreadIndex());
+		CDExpression statevariable = $state;
 		
 		sv.assign(statevariable, new CDConstant(deststate.getIndex()));
 		
-		if(_Options.debug) {
-        	String trace;	
-            if(deststate.getThreadIndex()==-1)
-                trace = "-> #" + deststate.getIndex();
-            else
-                trace = "-> #[" + deststate.getThreadIndex() + "]"+ deststate.getIndex();
-
+		if(_options.debug) {
         	sv.invoke( $runtime, "traceln" )
-                .arg( new CDConstant(trace));
-               
+                .arg( new CDConstant("-> #" + deststate.getIndex()));
         }
 
         if(!deststate.attHead().isEmpty()) {
-        	
-        	CDStatement processAttribute =
-                new CDMethodInvokeExpression("processAttribute").asStatement();
+            CDBlock block = sv;
+            if( flagVar!=null )
+                block = sv._if(flagVar)._then();
             
-            if(flagVar!=null)
-                sv.add(new CDIfStatement(flagVar, new CDBlock(processAttribute)));
-            else
-	            sv.add(processAttribute);
+            block.invoke("processAttribute");
         }
 		
-		if(deststate.getMeetingDestination()!=null) {
-			CDExpression condition = null;
-			Iterator it = deststate.getMeetingDestination().iterateStatesForWait();
-			while(it.hasNext()) {
-				State s = (State)it.next();
-				if(s==deststate) continue;
-				
-				CDExpression t = CDOp.EQ(
-                    getThreadStateExp(s.getThreadIndex()),
-					new CDConstant(s.getIndex()));
-				
-				condition = condition==null? t : CDOp.AND(condition, t);
-			}
-			
-			CDBlock whentrue = new CDBlock();
-			State t = appendStateTransition(whentrue, deststate.getMeetingDestination());
-			if(condition==null)
-				sv.add(whentrue);
-			else
-				sv.add(new CDIfStatement(condition, whentrue));
-			return t;
-		}
-		else
-			return deststate;
+		return deststate;
 	}
 
 
-    private static void println(StringBuffer buf, Options options, String data) {
+    private void println(StringBuffer buf, String data) {
         buf.append(data);
-        buf.append(options.newline);
+        buf.append(_options.newline);
     }
 }
