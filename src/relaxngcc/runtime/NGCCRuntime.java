@@ -112,7 +112,11 @@ public class NGCCRuntime extends XMLFilterImpl implements ValidationContext {
         
         currentHandler.leaveElement(uri, localname, qname);
 //        System.out.println("endElement:"+localname);
-        attStack.pop();
+        Attributes a = (Attributes)attStack.pop();
+        if(a.getLength()!=0) {
+            // when debugging, it's useful to set a breakpoint here.
+            ;
+        }
         currentAtts = (AttributesImpl)attStack.peek();
     }
     

@@ -490,8 +490,26 @@ public class ScopeBuilder
             addAction(member,true);
 			head.mergeTransitions(member);
             
-            if(member.isAcceptable())
+            if(member.isAcceptable()) {
+                // TODO: we need to copy exit actions from the member state
+                // to the head state, but what if there already are some exit
+                // actions?
+                // this would happen for cases like
+                // <choice>
+                //   <group>
+                //     <optional>...</optoinal>
+                //     <cc:java> AAA </cc:java>
+                //   </group>
+                //   <group>
+                //     <optional>...</optoinal>
+                //     <cc:java> BBB </cc:java>
+                //   </group>
+                // </choice>
+                //
+                // this is a variation of ambiguity which we need to
+                // detect.
                 head.setAcceptable(true);
+            }
 		}
 		return head;
 	}
@@ -551,7 +569,10 @@ public class ScopeBuilder
         destination.mergeTransitions(head);
         head.mergeTransitions(tmp);
         
-        if(destination.isAcceptable()) head.setAcceptable(true);
+        if(destination.isAcceptable()) {
+            head.addActionsOnExit(destination.getActionsOnExit());
+            head.setAcceptable(true);
+        }
         // TODO: I suppose we also need to copy list state?
         
 		return head;
@@ -578,7 +599,10 @@ public class ScopeBuilder
 		addAction(head,true);
         
         head.mergeTransitions(tmp);
-        if(destination.isAcceptable())  head.setAcceptable(true);
+        if(destination.isAcceptable()) {
+            head.addActionsOnExit(destination.getActionsOnExit());
+            head.setAcceptable(true);
+        }
         return head;
 	}
 	

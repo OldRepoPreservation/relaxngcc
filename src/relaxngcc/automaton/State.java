@@ -47,6 +47,10 @@ public final class State implements Comparable
 	public void addActionOnExit(ScopeInfo.Action act) {
        actionsOnExit.add(0,act);
     }
+    public void addActionsOnExit(ScopeInfo.Action[] act) {
+        for( int i=act.length-1; i>=0; i-- )
+            addActionOnExit(act[i]);
+    }
 	 
 	//for interleave support
 	private State _MeetingDestination;
