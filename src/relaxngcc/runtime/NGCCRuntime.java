@@ -1,17 +1,13 @@
 package relaxngcc.runtime;
 
-import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Stack;
 import java.util.StringTokenizer;
 
-import org.relaxng.datatype.ValidationContext;
 import org.xml.sax.Attributes;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.Locator;
 import org.xml.sax.SAXException;
-import org.xml.sax.XMLReader;
-import org.xml.sax.helpers.XMLFilterImpl;
 
 /**
  * Runtime Engine for RELAXNGCC execution.
@@ -30,7 +26,7 @@ import org.xml.sax.helpers.XMLFilterImpl;
  * 
  * @author Kohsuke Kawaguchi (kk@kohsuke.org)
  */
-public class NGCCRuntime implements ValidationContext, ContentHandler {
+public class NGCCRuntime implements ContentHandler {
     
     public NGCCRuntime() {
         reset();
@@ -63,8 +59,15 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
     // current content handler can be acccessed via set/getContentHandler.
     
     private Locator locator;
-    public Locator getLocator() { return locator; }
     public void setDocumentLocator( Locator _loc ) { this.locator=_loc; }
+    /**
+     * Gets the source location of the current event.
+     * 
+     * <p>
+     * One can call this method from RelaxNGCC handlers to access
+     * the line number information. Note that to 
+     */
+    public Locator getLocator() { return locator; }
     
 
     /** stack of {@link Attributes}. */
@@ -72,6 +75,14 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
     /** current attributes set. always equal to attStack.peek() */
     private AttributesImpl currentAtts;
     
+    /**
+     * Attributes that belong to the current element.
+     * <p>
+     * It's generally not recommended for applications to use
+     * this method. RelaxNGCC internally removes processed attributes,
+     * so this doesn't correctly reflect all the attributes an element
+     * carries.
+     */
     public Attributes getCurrentAttributes() {
         return currentAtts;
     }
@@ -88,11 +99,19 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
     /** The current NGCCHandler. Always equals to handlerStack.peek() */
     private NGCCHandler currentHandler;
     
+    /**
+     * Pushes the new NGCCHandler object on top of the stack so that
+     * it will receive objects.
+     */
     public void pushHandler( NGCCHandler handler ) {
         handlerStack.push(handler);
         currentHandler = handler;
         indent++;
     }
+    /**
+     * A NGCCHandler pops itself when it finishes its work.
+     * So the applications shouldn't call this method directly.
+     */
     public void popHandler() {
         indent--;
         handlerStack.pop();
@@ -397,12 +416,12 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
         return null;    // TODO
     }
     
-    public boolean isNotation(String s) {
+    public boolean isNotation(String s) throws SAXException {
         // there is no point in seriously implementing this method
         return true;
     }
     
-    public boolean isUnparsedEntity(String s) {
+    public boolean isUnparsedEntity(String s) throws SAXException {
         // there is no point in seriously implementing this method
         return true;
     }
