@@ -7,14 +7,23 @@
 <body>
 <a name="top">
 <h1>RelaxNGCC <?ja?>マニュアル<?/ja?><?en?>Manual<?/en?></h1>
-<div align="right">$Id: manual.htm,v 1.3 2002/06/21 03:13:06 kkawa Exp $</div>
+<div align="right">$Id: manual.htm,v 1.4 2002/06/22 23:25:30 kkawa Exp $</div>
 <div><?ja?>目次<?/ja?><?en?>Contents<?/en?></div>
 <ul>
 <!--li><a href="#scope"><?ja?>スコープ<?/ja?><?en?>Scopes<?/en?></a></li-->
-<li><a href="#markup"><?ja?>マークアップ<?/ja?><?en?>Mark-ups<?/en?></a></li>
-<li><a href="#modes"><?ja?>動作モード<?/ja?><?en?>Operation Modes<?/en?></a></li>
+<li><a href="#markup"><?ja?>マークアップ<?/ja?><?en?>Syntax<?/en?></a></li>
+	<ol>
+		<li><a href="#ann_alias"  ><tt>c:alias</tt></a>
+		<li><a href="#ann_java"   ><tt>c:java</tt></a>
+		<li><a href="#ann_jbody"  ><tt>c:java-body</tt></a>
+		<li><a href="#ann_jimprt" ><tt>c:java-import</tt></a>
+		<li><a href="#ann_package"><tt>c:package</tt></a>
+		<li><a href="#ann_access" ><tt>c:access</tt></a>
+		<li><a href="#ann_runtime"><tt>c:runtime-type</tt></a>
+		<li><a href="#ann_return" ><tt>c:return-type/c:return-value</tt></a>
+		<li><a href="#ann_params" ><tt>c:params/c:with-params</tt></a>
+	</ol>
 <li><a href="#usage"><?ja?>生成したコードの使い方<?/ja?><?en?>Usage of the Generated Code<?/en?></a></li>
-<li><a href="#typemap"><?ja?>型の対応表<?/ja?><?en?>Type Correspondence Table<?/en?></a></li>
 <li><a href="#restrictions"><?ja?>制約事項<?/ja?><?en?>Restrictions<?/en?></a></li>
 <li><a href="#tbd"><?ja?>未サポート機能<?/ja?><?en?>Unsupported Features<?/en?></a></li>
 </ul>
@@ -47,7 +56,7 @@
 -->
 
 <a name="markup">
-<h2>1 <?ja?>マークアップ<?/ja?><?en?>Mark-up<?/en?></h2>
+<h2>1 <?ja?>マークアップ<?/ja?><?en?>Annotation Syntax<?/en?></h2>
 <p>
 	<?ja?>
 		　RelaxNGCC独自のマークアップはすべて<br><br><tt style="font-weight:bold;">http://www.xml.gr.jp/xmlns/relaxngcc</tt><br><br>のnamespace-URIを持ちますが、このマニュアルではプレフィックス "<tt>c</tt>" を使用しています。マークアップは次に説明するように３種のエレメントと５種のアトリビュートから構成されます。
@@ -57,6 +66,9 @@
 	<?/en?>
 </p>
 
+
+
+<a name="ann_alias" />
 <h3>1.1 <tt>c:alias</tt><?ja?>アトリビュート<?/ja?><?en?> attribute<?/en?></h3>
 <p>
 	<?ja?>
@@ -100,7 +112,10 @@
 	<?/en?>
 </p>
 
-<h3>2.2 <tt>c:java</tt><?ja?>エレメント<?/ja?><?en?> element<?/en?></h3>
+
+
+<a name="ann_java" />
+<h3>1.2 <tt>c:java</tt><?ja?>エレメント<?/ja?><?en?> element<?/en?></h3>
 <p>
 <?ja?>　ユーザ定義のJavaコードを記述します。コードから<tt>c:alias</tt>アトリビュートで定義した名前を使うことができます。記述したコードは、入力XMLの該当個所を読んだところで実行されます。<?/ja?>
 <?en?> You can write a code fragment of Java in a <tt>c:java</tt> element. Within this fragment, you can refer to the data of an XML document by fields declared through <tt>alias</tt> attribites. The content of <tt>java</tt> element is executed when the input hits the position where the <tt>c:java</tt> element is written.<?/en?>
@@ -128,7 +143,10 @@
 <?en?> Note that the reason why we use the keyword "<tt>java</tt>" as an element name is that we are planning to support other languages (such as C#) in the future.<?/en?>
 </p>
 
-<h3>2.3 <?ja?><tt>java-body</tt>エレメント<?/ja?><?en?><tt>java-body</tt> element<?/en?></h3>
+
+
+<a name="ann_jbody" />
+<h3>1.3 <?ja?><tt>java-body</tt>エレメント<?/ja?><?en?><tt>java-body</tt> element<?/en?></h3>
 <p>
 	<?ja?>
 		　生成されるクラスについて、補助的に使用するメソッドやデータメンバを記述します。ここで定義したものはjavaエレメント内のコードからアクセスできます。
@@ -159,7 +177,11 @@
 <dt>b. <?ja?><tt>start</tt>, <tt>define</tt>エレメントの直下<?/ja?><?en?><tt>start</tt> or <tt>define</tt> pattern<?/en?></dt>
 <dd><?ja?>その<tt>start/define</tt>エレメントに対応して生成されるクラスのコードにのみ挿入されます。<?/ja?><?en?>The contents of <tt>java-body</tt> is copied only to the class that corresponds to that <tt>start</tt> or <tt>define</tt> element.<?/en?></dd>
 </dl>
-<h3>2.4 <?ja?><tt>java-import</tt>エレメント<?/ja?><?en?><tt>java-import</tt> element<?/en?></h3>
+
+
+
+<a name="ann_jimprt" />
+<h3>1.4 <?ja?><tt>java-import</tt>エレメント<?/ja?><?en?><tt>java-import</tt> element<?/en?></h3>
 <p>
 <?ja?>　<tt>java-body</tt>と違い、ソースコード中のクラス定義本体の外に記述するコードを記述します。ふつうJavaのimport宣言を記述します。これを置くことのできる位置と効果はjava-bodyと同じです。<?/ja?>
 	<?en?>
@@ -214,7 +236,8 @@
 -->
 
 
-<h3>2.7 <tt>c:package</tt><?ja?>アトリビュート<?/ja?><?en?> attribute<?/en?></h3>
+<a name="ann_package" />
+<h3>1.5 <tt>c:package</tt><?ja?>アトリビュート<?/ja?><?en?> attribute<?/en?></h3>
 <p>
 	<?ja?>
 		　生成するソースコードがどのパッケージに属すかを指定します。ルートエレメントに記入します。この宣言は生成されるすべてのクラスに対して有効です。
@@ -229,7 +252,10 @@
 </pre>
 
 
-<h3>2.8 <tt>c:access</tt><?ja?>アトリビュート<?/ja?><?en?> attribute<?/en?></h3>
+
+
+<a name="ann_access" />
+<h3>1.6 <tt>c:access</tt><?ja?>アトリビュート<?/ja?><?en?> attribute<?/en?></h3>
 <p>
 	<?ja?>
 		　生成するソースコードのアクセス修飾子("public final"など)を指定します。このアトリビュートは<tt>define</tt>エレメント、<tt>start</tt>エレメント、<tt>class</tt>アトリビュートを書いたエレメントに書くことができます。
@@ -242,6 +268,134 @@
 &lt;start <span class="emph-code">c:class="sample1"</span> <span class="emph-code">c:access="public final"</span>&gt;
 ...
 &lt;/start&gt;
+</pre>
+
+
+
+
+<a name="ann_runtime" />
+<h3>1.7 <tt>c:runtime-type</tt><?ja?>アトリビュート<?/ja?><?en?> attribute<?/en?></h3>
+<p>
+	<?en?>
+		This attribute causes the compiler to use a user-defined runtime class instead of the default <tt>NGCCRuntime</tt> class. The value of the attribute must be a valid Java class that is derived from <tt>NGCCRuntime</tt>.
+	<?/en?>
+	<?ja?>
+		標準の<tt>NGCCRuntime</tt>クラスの代わりに、この属性で指定されたユーザー定義のクラスを使うようにコンパイラに指示します。
+	<?/ja?>
+</p><p>
+	<?en?>
+		Only the root element (usually a <tt>&lt;grammar></tt> pattern) in the source schema can carry this attribute.
+	<?/en?>
+	<?ja?>
+		この属性は、RELAX NG文法ファイルのルート要素でのみ指定可能です。
+	<?/ja?>
+</p>
+<pre>
+&lt;?xml version="1.0"?>
+&lt;grammar <em>c:runtime-type="org.acme.foo.MyNGCCRuntime"</em> ...>
+  ....
+&lt;/grammar>
+</pre>
+
+
+
+<a name="ann_return" />
+<h3>1.8 <tt>c:return-type/c:return-value</tt><?ja?>アトリビュート<?/ja?><?en?> attribute<?/en?></h3>
+<p>
+	<?en?>
+		These attributes can be specified on <tt>&lt;define></tt> and <tt>&lt;start</tt> patterns, to specify the return value from a handler class.
+	<?/en?>
+	<?ja?>
+		これらの属性を指定することで、生成されたハンドラクラスからの戻り値を指定できるようになります。これらの属性は、どちらも&lt;define>か&lt;start>パターンに対して指定可能です。
+	<?/ja?>
+</p><p>
+	<?en?>
+		<tt>c:return-value</tt> specifies the expression that will be evaluated to the return value from a handler, and <tt>c:return-type</tt> specifies its type. The return value will be assigned to the alias specified on the corresponding <tt>&lt;ref></tt> element.
+	<tt>c:return-value</tt> defaults to "this", hence by default the handler object itself will be returned and assigned to the alias.
+	<?/en?>
+	<?ja?>
+		<tt>c:return-value</tt>属性には、戻り値として評価される式を書きます。子ハンドラが処理を終了して親ハンドラに戻る際に、この式が評価されて結果が親ハンドラに返ります。親ハンドラ側では、<tt>c:alias</tt>属性を使って戻り値にアクセスすることができます。<tt>c:return-type</tt>属性は、この戻り値の型を指定します。ディフォルトでは、<tt>c:return-value</tt>は"this"になっているので、ハンドラ自身が返されます。
+	<?/ja?>
+</p><p>
+	<?en?>
+		In the following example, <tt>makeResult</tt> method will be called and the return value from that method will be returned from the handler.
+	<?/en?>
+	<?ja?>
+		次の例では、<tt>makeResult</tt>関数が呼び出されて、その値が戻り値となります。
+	<?/ja?>
+</p>
+<pre>
+&lt;define name="foo" <em>c:return-type="String" c:return-value="makeResult()"</em>>
+  &lt;c:java-body>
+    private String makeResult() {
+      ....
+    }
+  &lt;/c:java-body>
+  ...
+&lt;/define>
+
+...
+
+
+    &lt;ref name="foo" <em>c:alias="someStringVariable"</em>>
+</pre>
+
+
+
+
+<a name="ann_params" />
+<h3>1.9 <tt>c:params/c:with-params</tt><?ja?>アトリビュート<?/ja?><?en?> attribute<?/en?></h3>
+<p>
+	<?en?>
+		These two annotations are used together to allow a parent handler to pass parameters to the a handler.
+	<?/en?>
+	<?ja?>
+		これらの属性は対で利用され、親ハンドラから子ハンドラへパラメータを渡すのに使われます。
+	<?/ja?>
+</p><p>
+	<?en?>
+		The <tt>c:params</tt> attribute can be specified on <tt>&lt;define></tt> and <tt>&lt;start</tt> elements to declare parameters. When a <tt>c:params</tt> is present, the <tt>c:with-params</tt> needs to be specified on the corresponding <tt>&lt;ref></tt> elements.
+	<?/en?>
+	<?ja?>
+		<tt>c:params</tt>属性は、<tt>&lt;define></tt>か<tt>&lt;start></tt>パターンに対して指定でき、パラメータを宣言します。一方、<tt>c:with-params</tt>属性は、パラメータつきで宣言された<tt>&lt;define></tt>を参照する<tt>&lt;ref></tt>パターンに対して指定します。
+	<?/ja?>
+</p><p>
+	<?en?>
+		The value of the <tt>c:params</tt> attribute must be a camma(',')-separated list of type and variable name pairs, just like when you define arguments of a function. The value of the <tt>c:with-params</tt> attribute must be a camma-separated list of Java expressions, again just like when you invoke a method.
+	<?/en?>
+	<?ja?>
+		<tt>c:params</tt>属性の値は、カンマ区切りの型-変数名ペアで、ちょうど関数を宣言する時のパラメータリストと同じ書式です。<tt>c:with-params</tt>は、同じくカンマ区切りの式の並びで、やはりちょうど関数を呼び出す時と同じ書式です。
+	<?/ja?>
+</p><p>
+	<?en?>
+		Once you specify a <tt>c:params</tt> attribute on a block, you need to have <tt>c:with-params</tt> attributes on all the <tt>&lt;ref/></tt> patterns that refer to it.
+	<?/en?>
+	<?ja?>
+		あるブロックを<tt>c:params</tt>付きで宣言すると、そのブロックを参照する全ての<tt>&lt;ref/></tt>パターンに<tt>c:with-params</tt>が必要になるので注意してください。
+	<?/ja?>
+</p><p>
+	<?en?>
+		The compiler generated fields by the same name, and passed parameters are assigned to those fields, so you can access them from <tt>&lt;c:java-body></tt> or <tt>&lt;c:java></tt>.
+	<?/en?>
+	<?ja?>
+		渡されたパラメータは、同名で生成されたフィールド変数にコピーされるので、<tt>&lt;c:java-body></tt>や<tt>&lt;c:java></tt>の中からアクセスできます。
+	<?/ja?>
+</p>
+<pre>
+&lt;define name="foo" <em>c:params="String a,boolean b,Object c"</em>>
+  ...
+  &lt;c:java>
+    System.out.println(a);
+  &lt;/c:java>
+&lt;/define>
+
+...
+
+   &lt;ref name="foo" <em>c:with-params='"xyz",true,null'</em> />
+
+...
+
+   &lt;ref name="foo" <em>c:with-params='"test",false,System.out'</em> />
 </pre>
 
 <!--
@@ -283,7 +437,7 @@
 
 
 <a name="usage">
-<h2>4 <?ja?>生成したコードの使い方<?/ja?><?en?>Usage of the Generated Code<?/en?></h2>
+<h2>2 <?ja?>生成したコードの使い方<?/ja?><?en?>Usage of the Generated Code<?/en?></h2>
 <h3><?ja?>(このセクションはJAXPの知識を仮定しています。)<?/ja?><?en?>(This section assumes you are familiar with JAXP.)<?/en?></h3>
 <p>
 <?ja?>
@@ -371,7 +525,7 @@ PlainSAX <?ja?>または<?/ja?><?en?>or<?/en?> TypedSAX mode:<br>
 
 
 <a name="restrictions">
-<h2>6 <?ja?>制約事項<?/ja?><?en?>Restrictions<?/en?></h2>
+<h2>3 <?ja?>制約事項<?/ja?><?en?>Restrictions<?/en?></h2>
 <p>
 <?ja?>
 	　RelaxNGCCでは、どんな文法も読み込めるわけではなく、先読み１個で分岐を判断できる文法だけを受け付けます。
@@ -423,7 +577,7 @@ PlainSAX <?ja?>または<?/ja?><?en?>or<?/en?> TypedSAX mode:<br>
 </p>
 
 <a name="tbd">
-<h2>7 <?ja?>未サポート機能<?/ja?><?en?>Unsupported Features<?/en?></h2>
+<h2>4 <?ja?>未サポート機能<?/ja?><?en?>Unsupported Features<?/en?></h2>
 <p>
 <?ja?>　RELAX NGの仕様のうち、次の機能はまだサポートされていません。将来のバージョンで徐々に実装するつもりです。<?/ja?>
 <?en?>RelaxNGCC does not support the following features of RELAX NG. Hopefully they will be implemented in a future version.<?/en?>
