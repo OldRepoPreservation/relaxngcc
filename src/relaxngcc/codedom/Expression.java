@@ -34,13 +34,9 @@ public abstract class Expression {
         };
     }
     
-    /** Creates !exp */
+    /** Creates !x */
     public Expression not() {
-        return new Expression() {
-            public void express(Formatter f) throws IOException {
-                f.p('!').express(Expression.this);
-            }
-        };
+        return Op.not(this);
     }
 
     /** Prints itself as an expression. */

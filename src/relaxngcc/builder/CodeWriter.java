@@ -160,7 +160,7 @@ public class CodeWriter
                 Map.Entry e = (Map.Entry)i.next();
                 State st = (State)e.getKey();
                 
-                Expression condition = BinaryOperatorExpression.EQ(
+                Expression condition = Op.EQ(
                     (st.getThreadIndex()==-1) ?
                         $state : getThreadStateExp(st.getThreadIndex()),
                      new ConstantExpression(st.getIndex()));
@@ -353,9 +353,9 @@ public class CodeWriter
 			else
 				temp = getThreadStateExp(s.getThreadIndex());
 			
-            temp = BinaryOperatorExpression.EQ( temp, new ConstantExpression(s.getIndex()) );
+            temp = Op.EQ( temp, new ConstantExpression(s.getIndex()) );
             
-			statecheckexpression = (statecheckexpression==null)? temp : BinaryOperatorExpression.OR(temp, statecheckexpression);
+			statecheckexpression = (statecheckexpression==null)? temp : Op.OR(temp, statecheckexpression);
         }
         
         if(statecheckexpression==null) statecheckexpression = new ConstantExpression(false);
@@ -652,8 +652,8 @@ public class CodeWriter
                 
                 StatementVector code = buildTransitionCode(st,tr,"text",new Expression[]{ $value });
                 if(a.isValueText())
-                    bi.addConditionalCode(st, $value.invoke("equals")
-                            .arg( new ConstantExpression(a.asValueText().getValue())), code);
+                    bi.addConditionalCode(st,
+                        Op.STREQ( $value, new ConstantExpression(a.asValueText().getValue())), code);
                 else {
                     dataPresent = true;
                     bi.addElseCode(st, code);
@@ -882,11 +882,11 @@ public class CodeWriter
 				State s = (State)it.next();
 				if(s==deststate) continue;
 				
-				Expression t = BinaryOperatorExpression.EQ(
+				Expression t = Op.EQ(
                     getThreadStateExp(s.getThreadIndex()),
 					new ConstantExpression(s.getIndex()));
 				
-				condition = condition==null? t : BinaryOperatorExpression.AND(condition, t);
+				condition = condition==null? t : Op.AND(condition, t);
 			}
 			
 			StatementVector whentrue = new StatementVector();

@@ -2,7 +2,7 @@ package relaxngcc.builder;
 
 import java.text.MessageFormat;
 
-import relaxngcc.codedom.BinaryOperatorExpression;
+import relaxngcc.codedom.Op;
 import relaxngcc.codedom.ConstantExpression;
 import relaxngcc.codedom.Expression;
 import relaxngcc.codedom.Variable;
@@ -28,7 +28,7 @@ public class NameTestBuilder implements NameClassFunction {
     private final Variable $localNameVar;
     
 	public Object choice(NameClass nc1, NameClass nc2) {
-        return BinaryOperatorExpression.OR(
+        return Op.OR(
             (Expression)nc1.apply(this),
             (Expression)nc2.apply(this));
 	}
@@ -37,7 +37,7 @@ public class NameTestBuilder implements NameClassFunction {
         Expression exp = $uriVar.invoke("equals").arg(new ConstantExpression(ns));
         
         if(except!=null)
-            exp = BinaryOperatorExpression.AND( exp,
+            exp = Op.AND( exp,
                 ((Expression)except.apply(this)).not() );
         
         return exp;
@@ -51,9 +51,9 @@ public class NameTestBuilder implements NameClassFunction {
 	}
 
 	public Object name(String ns, String local) {
-        return BinaryOperatorExpression.AND(
-            $uriVar.invoke("equals").arg(new ConstantExpression(ns)),
-            $localNameVar.invoke("equals").arg(new ConstantExpression(local)) );
+        return Op.AND(
+            Op.STREQ( $uriVar, new ConstantExpression(ns) ),
+            Op.STREQ( $localNameVar, new ConstantExpression(local)) );
 	}
 
 }
