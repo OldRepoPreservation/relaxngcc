@@ -21,11 +21,13 @@ public class TransitionTable {
         
         if(m.containsKey(alphabet)) {
             // TODO: proper error report
-            System.out.println(MessageFormat.format(
+            String scopename = s.getContainer()._scope.name;
+            if(scopename==null) scopename = "<start>"; //the ScopeInfo for <start> block has a null as its name
+            System.err.println(MessageFormat.format(
                 "State #{0}  of \"{1}\" has a conflict by {2}",
                 new Object[]{
                     Integer.toString(s.getIndex()),
-                    s.getContainer()._scope.name,
+                    scopename,
                     alphabet } ));
             alphabet.printLocator(System.out);
         }

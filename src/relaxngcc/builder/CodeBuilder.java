@@ -587,7 +587,7 @@ public class CodeBuilder
                 Transition tr = (Transition)e.getValue();// action to perform
                 
                 CDExpression condition = null;
-                if(a.getType()==Alphabet.ENTER_ATTRIBUTE && (type==Alphabet.ENTER_ELEMENT || type==Alphabet.LEAVE_ELEMENT)) {
+                if(a.isEnterAttribute() && (type==Alphabet.ENTER_ELEMENT || type==Alphabet.LEAVE_ELEMENT)) {
                     Set t = tr.nextState().AFollow();
                     Iterator it = t.iterator();
                     boolean consume_attr = false;
