@@ -231,6 +231,12 @@
             runtime.appendGlobalImport(value);
           </cc:java>
         </element>
+        <element name="cc:java-body">
+          <text cc:alias="value"/>
+          <cc:java>
+            runtime.appendGlobalBody(value);
+          </cc:java>
+        </element>
         <element name="include">
           <attribute name="href" cc:alias="href" />
           <cc:java>
