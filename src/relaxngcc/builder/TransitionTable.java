@@ -3,6 +3,7 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Arrays;
+import java.util.Vector;
 import java.util.Comparator;
 import java.text.MessageFormat;
 
@@ -12,12 +13,27 @@ import relaxngcc.automaton.Transition;
 import relaxngcc.automaton.WithOrder;
 
 public class TransitionTable {
-    private final Map table = new HashMap();
+	
+	public static class Entry {
+		public Transition transition;
+		public Vector alphabets;
+		
+		public Entry(Transition tr, Alphabet a) {
+			transition = tr;
+			alphabets = new Vector();
+			alphabets.add(a);
+		}
+		public void addAlphabet(Alphabet a) {
+			alphabets.add(a);
+		}
+	}
+	
+    private final Map _table = new HashMap();
     
     public void add( State s, Alphabet alphabet, Transition action ) {
-        Map m = (Map)table.get(s);
+        Map m = (Map)_table.get(s);
         if(m==null)
-            table.put(s,m=new HashMap());
+            _table.put(s, m = new HashMap());
         
         if(m.containsKey(alphabet)) {
             // TODO: proper error report
@@ -38,10 +54,10 @@ public class TransitionTable {
      * If EVERYTHING_ELSE is added to a transition table,
      * we will store that information here.
      */
-    private final Map eeAction = new HashMap();
+    private final Map _eeAction = new HashMap();
     
     public void addEverythingElse( State s, Transition action ) {
-        eeAction.put(s,action);
+        _eeAction.put(s,action);
     }
     
     /**
@@ -49,7 +65,7 @@ public class TransitionTable {
      * in the given state if any. Or null.
      */
     public Transition getEverythingElse( State s ) {
-        return (Transition)eeAction.get(s);
+        return (Transition)_eeAction.get(s);
     }
     
     /**
@@ -57,10 +73,10 @@ public class TransitionTable {
      * the specified state in terms of TrnasitionTable.Entry.
      * The resulting array is sorted in the order of Transition.
      */
-    public Map.Entry[] list( State s ) {
-        Map m = (Map)table.get(s);
+    public Entry[] list( State s ) {
+        Map m = (Map)_table.get(s);
         if(m==null)
-            return new Map.Entry[0];
+            return new Entry[0];
             /*
             return new Iterator() {
                 public boolean hasNext() { return false; }
@@ -77,7 +93,20 @@ public class TransitionTable {
                     return ((WithOrder)o2).getOrder()-((WithOrder)o1).getOrder();
                 }
             } );
-            return a;
+            //making groups by transition
+            Vector result = new Vector();
+            Entry e = new Entry((Transition)a[0].getValue(), (Alphabet)a[0].getKey());
+            result.add(e);
+            for(int i=1; i<a.length; i++) {
+            	if(a[i].getValue()==a[i-1].getValue()) //identical transition
+            		e.addAlphabet((Alphabet)a[i].getKey());
+            	else {
+		            e = new Entry((Transition)a[i].getValue(), (Alphabet)a[i].getKey());
+		            result.add(e);
+            	}
+            }            	
+            	
+            return (Entry[])result.toArray(new Entry[result.size()]);
             
         }
     }

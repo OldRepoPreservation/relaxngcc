@@ -579,56 +579,61 @@ public class CodeBuilder
             State st = (State)states.next();
             
             // list all the transition table entry
-            Map.Entry[] entries = table.list(st);
+            TransitionTable.Entry[] entries = table.list(st);
             for(int i=0; i<entries.length; i++) {
-                Map.Entry e = entries[i];
+                TransitionTable.Entry e = entries[i];
                 
-                Alphabet a = (Alphabet)e.getKey();      // alphabet
-                Transition tr = (Transition)e.getValue();// action to perform
-                
-                CDExpression condition = null;
-                if(a.isEnterAttribute() && (type==Alphabet.ENTER_ELEMENT || type==Alphabet.LEAVE_ELEMENT)) {
-                    Set t = tr.nextState().AFollow();
-                    Iterator it = t.iterator();
-                    boolean consume_attr = false;
-                    while(it.hasNext()) {
-                        Object o = it.next();
-                        if(o==Head.EVERYTHING_ELSE)
-                            consume_attr = true;
-                        else {
-                            Alphabet af = (Alphabet)o;
-                             if(af.getType()==type) {
-                                CDExpression expr = NameTestBuilder.build(af.asMarkup().getNameClass() , $params.$uri, $params.$localName);
-                                condition = condition==null? expr : CDOp.OR(condition, expr);
-                            }
-                            consume_attr = true;
-                        }
-                    }
-                    
-                    if(consume_attr) {
-                        NameClass nc = a.asMarkup().getNameClass();
-                        if(!(nc instanceof SimpleNameClass))
-                            throw new UnsupportedOperationException("attribute with a complex name class is not supported yet  name class:"+nc.toString());
-                        SimpleNameClass snc = (SimpleNameClass)nc;
+                Transition tr = e.transition;// action to perform
+                Iterator as = e.alphabets.iterator();
+                CDExpression transition_condition = null;
+                while(as.hasNext()) {
+	                CDExpression condition = null;
+	                Alphabet a = (Alphabet)as.next();      // alphabet
+	                
+	                if(a.isEnterAttribute() && (type==Alphabet.ENTER_ELEMENT || type==Alphabet.LEAVE_ELEMENT)) {
+	                    Set t = tr.nextState().AFollow();
+	                    Iterator it = t.iterator();
+	                    boolean consume_attr = false;
+	                    while(it.hasNext()) {
+	                        Object o = it.next();
+	                        consume_attr = true;
+	                        if(o!=Head.EVERYTHING_ELSE) {
+	                            Alphabet af = (Alphabet)o;
+	                             if(af.getType()==type) {
+	                                CDExpression expr = NameTestBuilder.build(af.asMarkup().getNameClass() , $params.$uri, $params.$localName);
+	                                condition = condition==null? expr : CDOp.OR(condition, expr);
+	                            }
+	                        }
+	                    }
+	                    
+	                    if(consume_attr) {
+	                        NameClass nc = a.asMarkup().getNameClass();
+	                        if(!(nc instanceof SimpleNameClass))
+	                            throw new UnsupportedOperationException("attribute with a complex name class is not supported yet  name class:"+nc.toString());
+	                        SimpleNameClass snc = (SimpleNameClass)nc;
+	
+	                        CDExpression expr = new CDLanguageSpecificString(MessageFormat.format(
+	                            "("+$params.$ai.getName()+" = "+_$runtime.getName()+".getAttributeIndex(\"{0}\",\"{1}\"))>=0",
+	                            new Object[]{snc.nsUri, snc.localName}));
+	                        condition = condition==null? expr : CDOp.AND(expr, condition);
+	                    }                    
+	                }
+	                else {
+	                    if(a.getType()==type) {
+	                        condition = (CDExpression)a.asMarkup().getNameClass().apply(new NameTestBuilder($params.$uri, $params.$localName));
+	                    }
+	                }
+	                
+	                if(condition!=null)
+	                    transition_condition = transition_condition==null? condition : CDOp.OR(condition, transition_condition);
 
-                        CDExpression expr = new CDLanguageSpecificString(MessageFormat.format(
-                            "("+$params.$ai.getName()+" = "+_$runtime.getName()+".getAttributeIndex(\"{0}\",\"{1}\"))>=0",
-                            new Object[]{snc.nsUri, snc.localName}));
-                        condition = condition==null? expr : CDOp.AND(expr, condition);
-                    }                    
                 }
-                else {
-                    if(a.getType()==type) {
-                        condition = (CDExpression)a.asMarkup().getNameClass().apply(new NameTestBuilder($params.$uri, $params.$localName));
-                    }
-                }
-
-                
-                if(condition==null)
+                                
+                if(transition_condition==null)
                     continue;   // we are not interested in this attribute now.
                 
                 bi.addConditionalCode(st,
-                    condition,
+                    transition_condition,
                     buildTransitionCode(st,tr,type,$params));
             }
 
@@ -680,35 +685,38 @@ public class CodeBuilder
             boolean dataPresent = false;
             
             // list all the transition table entry
-            Map.Entry[] entries = table.list(st);
+            TransitionTable.Entry[] entries = table.list(st);
             for(int i=0; i<entries.length; i++) {
-                Map.Entry e = entries[i];
+                TransitionTable.Entry e = entries[i];
                 
-                Alphabet a = (Alphabet)e.getKey();      // alphabet
-                Transition tr = (Transition)e.getValue();// action to perform
-                
-                CDExpression condition = null;
-                if(a.getType()==Alphabet.ENTER_ATTRIBUTE) {
-                    NameClass nc = a.asMarkup().getNameClass();
-                    if(!(nc instanceof SimpleNameClass))
-                        throw new UnsupportedOperationException("attribute with a complex name class is not supported yet  name class:"+nc.toString());
-                    SimpleNameClass snc = (SimpleNameClass)nc;
-
-                    condition = new CDLanguageSpecificString(MessageFormat.format(
-                        "("+$params.$ai.getName()+" = "+_$runtime.getName()+".getAttributeIndex(\"{0}\",\"{1}\"))>=0",
-                        new Object[]{snc.nsUri, snc.localName}));
-                    CDBlock code = buildTransitionCode(st,tr,Alphabet.VALUE_TEXT,$params);
-                    bi.addConditionalCode(st, condition, code);
-                }
-                else if(a.isValueText()) {
-                    CDBlock code = buildTransitionCode(st,tr,Alphabet.VALUE_TEXT,$params);
-                       condition = CDOp.STREQ( $params.$value, new CDConstant(a.asValueText().getValue()));
-                    bi.addConditionalCode(st, condition, code);
-                }
-                   else if(a.isDataText()) {
-                    CDBlock code = buildTransitionCode(st,tr,Alphabet.VALUE_TEXT,$params);
-                    dataPresent = true;
-                    bi.addElseCode(st, code);
+                Transition tr = e.transition;// action to perform
+                Iterator as = e.alphabets.iterator();
+                while(as.hasNext()) {
+	                Alphabet a = (Alphabet)as.next();      // alphabet
+	                
+	                CDExpression condition = null;
+	                if(a.getType()==Alphabet.ENTER_ATTRIBUTE) {
+	                    NameClass nc = a.asMarkup().getNameClass();
+	                    if(!(nc instanceof SimpleNameClass))
+	                        throw new UnsupportedOperationException("attribute with a complex name class is not supported yet  name class:"+nc.toString());
+	                    SimpleNameClass snc = (SimpleNameClass)nc;
+	
+	                    condition = new CDLanguageSpecificString(MessageFormat.format(
+	                        "("+$params.$ai.getName()+" = "+_$runtime.getName()+".getAttributeIndex(\"{0}\",\"{1}\"))>=0",
+	                        new Object[]{snc.nsUri, snc.localName}));
+	                    CDBlock code = buildTransitionCode(st,tr,Alphabet.VALUE_TEXT,$params);
+	                    bi.addConditionalCode(st, condition, code);
+	                }
+	                else if(a.isValueText()) {
+	                    CDBlock code = buildTransitionCode(st,tr,Alphabet.VALUE_TEXT,$params);
+	                       condition = CDOp.STREQ( $params.$value, new CDConstant(a.asValueText().getValue()));
+	                    bi.addConditionalCode(st, condition, code);
+	                }
+	                else if(a.isDataText()) {
+	                    CDBlock code = buildTransitionCode(st,tr,Alphabet.VALUE_TEXT,$params);
+	                    dataPresent = true;
+	                    bi.addElseCode(st, code);
+	                }
                 }
             }
 
