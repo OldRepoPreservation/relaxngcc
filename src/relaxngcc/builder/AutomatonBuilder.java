@@ -208,7 +208,7 @@ public class AutomatonBuilder implements PatternFunction
                 head,
                 _orderCounter++ );
             tr.insertEpilogueAction(_scopeInfo.createAction(
-                "runtime.processList(__text);"));
+                "$runtime.processList(__text);"));
             addAction(tr,false);
             // add user-defined action before the processList method,
             // so that those are executed before <list> is processed.
