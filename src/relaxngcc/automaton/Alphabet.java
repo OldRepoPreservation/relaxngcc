@@ -144,8 +144,9 @@ public abstract class Alphabet {
     
     /** Alphabet of the type "enter attribute." */
     public static class EnterAttribute extends Markup {
-        public EnterAttribute( NameClass key, Locator loc ) {
+        public EnterAttribute( NameClass key, Locator loc, State _leaveState ) {
             super( ENTER_ATTRIBUTE, key, loc );
+            this.leaveState = _leaveState;
         }
         public EnterAttribute asEnterAttribute() { return this; }
         public String toString() { return "@"+getNameClass(); }
@@ -157,6 +158,11 @@ public abstract class Alphabet {
          */
         public boolean workaroundSignificant;
         
+        /**
+         * The state that will be reached when the whole attribute
+         * is consumed.
+         */
+        public final State leaveState;
     }
     
     /** Alphabet of the type "leave attribute." */
@@ -168,7 +174,11 @@ public abstract class Alphabet {
         public String toString() { return "/@"+getNameClass(); }
     }
     
-    /** Alphabet that "forks" a state into a set of sub-automata. */
+    /**
+     * Alphabet that "forks" a state into a set of sub-automata.
+     * 
+     * Used to handle &lt;interleave>s
+     */
     public static final class Fork extends Alphabet {
         public Fork( State[] subAutomata,
             NameClass[] elementNC, NameClass[] attNC, boolean[] text,

@@ -320,20 +320,32 @@ public final class State implements Comparable
         }
     }
 
-    /**
-     * Computes AFOLLOW
-     */
     private Set _cachedAFollow;
     
     public Set AFollow() {
         return _cachedAFollow;
     }
+    
+    /**
+     * Computes AFOLLOW from this state.
+     */
     public void calcAFOLLOW() {
         HashSet t = new HashSet();
         HashSet c = new HashSet();
         AFollow(t, c);
         _cachedAFollow = t;
     }
+    
+    /**
+     * The actual meta of AFOLLOW computation. AFOLLOW(s) is a set
+     * of enterElement/leaveElement/text alphabets that can be
+     * reached directly if one "collapses" attribute transitions.
+     * 
+     * @param   result
+     *      This set will receive AFOLLOW.
+     * @param   checked_state
+     *      Used to detect cycles.
+     */
     private void AFollow(Set result, Set checked_state) {
     	if(checked_state.contains(this)) return;
     	checked_state.add(this);
@@ -345,9 +357,9 @@ public final class State implements Comparable
             
             if(a.isEnterElement() || a.isLeaveElement() || a.isText())
                 result.add(a);
-            else if(a.isEnterAttribute())
-                collectAFOLLOWAfterLeaveAttribute(result, checked_state);
-            else if(a.isRef()) {
+            else if(a.isEnterAttribute()) {
+                a.asEnterAttribute().leaveState.AFollow(result,checked_state);
+            } else if(a.isRef()) {
                 ScopeInfo si = a.asRef().getTargetScope();
                 si.getInitialState().AFollow(result, checked_state);
                 if(si.isNullable())
@@ -364,51 +376,4 @@ public final class State implements Comparable
         
         if(isAcceptable()) result.add(Head.EVERYTHING_ELSE);
     }
-    private void collectAFOLLOWAfterLeaveAttribute(Set result, Set checked_state) {
-        HashSet states = new HashSet();
-        Iterator itr = iterateTransitions();
-        while(itr.hasNext()) {
-            Transition t = (Transition)itr.next();
-            Alphabet a = t.getAlphabet();
-            
-            if(a.isEnterAttribute() || a.isDataText()) {
-                addStateAfterLeaveAttribute(t.nextState(), states);
-            }
-            else if(a.isLeaveAttribute()) {
-                states.add(t.nextState());
-            }
-            else if(a.isRef()) {
-                ScopeInfo si = a.asRef().getTargetScope();
-                addStateAfterLeaveAttribute(si.getInitialState(), result);
-                if(si.isNullable())
-                    addStateAfterLeaveAttribute(t.nextState(), result);
-            }
-            else if(a.isFork()) {
-                Alphabet.Fork fork = a.asFork();
-                for( int i=0; i<fork._subAutomata.length; i++ )
-                    addStateAfterLeaveAttribute(fork._subAutomata[i], result);
-                if(a.asFork().isNullable())
-                    addStateAfterLeaveAttribute(t.nextState(), result);
-            }
-        }
-        
-        itr = states.iterator();
-        while(itr.hasNext()) {
-            ((State)itr.next()).AFollow(result, checked_state);
-        }
-    }
-    private static void addStateAfterLeaveAttribute(State s, Set result) {
-        Iterator it = s.iterateTransitions();
-        while(it.hasNext()) {
-            Transition t = (Transition)it.next();
-            Alphabet a = t.getAlphabet();
-            if(a.isLeaveAttribute()) {
-                State next = t.nextState();
-                result.add(next);
-            }
-            else if(a.isDataText() || a.isRef())
-                addStateAfterLeaveAttribute(t.nextState(), result);
-        }
-    }
-
 }

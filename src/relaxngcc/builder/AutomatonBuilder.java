@@ -113,9 +113,6 @@ public class AutomatonBuilder implements PatternFunction
         NameClass nc = pattern.name;
         State orgdest = _destination;
 
-        // I think I broke the code related to interleave handling.
-        // I just don't know how to fix them.  - Kohsuke
-        
         State tail = createState(pattern);
         Transition te = createTransition(
             new Alphabet.LeaveAttribute(nc,pattern.startLocator),
@@ -127,7 +124,7 @@ public class AutomatonBuilder implements PatternFunction
         State middle = (State)pattern.body.apply(this);      
         
         Alphabet.EnterAttribute ea = new Alphabet.EnterAttribute(
-            nc,pattern.endLocator);
+            nc,pattern.endLocator,orgdest);
         ea.workaroundSignificant = pattern.workaroundSignificant;
         
         Transition ts = createTransition(
