@@ -5,3 +5,4 @@ JavaBodyParserTokenManager.java
 ParseException.java
 Token.java
 TokenMgrError.java
+SimpleCharStream.java
