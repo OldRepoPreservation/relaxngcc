@@ -232,6 +232,8 @@ public class ScopeBuilder
                 _ScopeInfo.createAction(preservedAction):
                 null);
         
+        _ScopeInfo.copyAttributeHandlers();
+        
         _ScopeInfo.minimizeStates();
 	}
 	
@@ -381,19 +383,16 @@ public class ScopeBuilder
 		else
 			nc = NameClass.fromElementElement(_ScopeInfo, exp, ns);
 
+        // I think I broke the code related to interleave handling.
+        // I just don't know how to fix them.  - Kohsuke
         
         State tail = createState(exp, ctx);
-        Transition te = createTransition(new Alphabet.LeaveAttribute(nc), destination);
+        Transition te = createTransition(new Alphabet.LeaveAttribute(nc),
+            destination /*createState(exp,ctx)*/);
         addAction(te,true);
-//??        if(ctx.getInterleaveBranchRoot()!=null) te.setEnableState(ctx.getInterleaveBranchRoot());
         tail.addTransition(te);
         
-//??        ScopeBuildingContext newctx = new ScopeBuildingContext(ctx);
-//??        newctx.setInterleaveBranchRoot(null);
-
-//        State middle = traverseNodeList(exp.getChildNodes(), ctx/*newctx*/, tail);
-        State middle = traverseNodeList(exp.getChildNodes(), ctx/*newctx*/,
-            createState(exp,ctx));
+        State middle = traverseNodeList(exp.getChildNodes(), ctx/*newctx*/, tail);
         
         State head = createState(exp, ctx);
         Transition ts = createTransition(
@@ -490,6 +489,9 @@ public class ScopeBuilder
             State member = processNode(child, ctx, destination);
             addAction(member,true);
 			head.mergeTransitions(member);
+            
+            if(member.isAcceptable())
+                head.setAcceptable(true);
 		}
 		return head;
 	}

@@ -15,6 +15,7 @@ import java.io.PrintWriter;
 import java.io.StringReader;
 import java.text.MessageFormat;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -169,6 +170,78 @@ public final class ScopeInfo
     
     public boolean containsFollowAttributeAlphabet() {
         return iterateFollowAlphabets(Alphabet.ENTER_ATTRIBUTE).hasNext();
+    }
+    
+    /**
+     * Fixes the attribute handlers so that a transition by
+     * an attribute will always return to the same state that
+     * it started.
+     */
+    public void copyAttributeHandlers() {
+        State[] states = (State[]) _AllStates.toArray(new State[_AllStates.size()]);
+        for( int i=0; i<states.length; i++ ) {
+            State st = states[i];
+            
+            Vector transitions = new Vector();
+            Iterator itr = st.iterateTransitions(Alphabet.ENTER_ATTRIBUTE);
+            while(itr.hasNext())
+                transitions.add(itr.next());
+                
+            for( int j=0; j<transitions.size(); j++ ) {
+                // replace this transition by a cloned transition.
+                Transition t = (Transition)transitions.get(j);
+                Transition t2 = cloneAttributeTransition(t,st);
+                st.removeTransition(t);
+                st.addTransition(t2);
+            }
+        }
+    }
+    
+    /**
+     * Clones a sub-automaton that starts from t and ends with
+     * leaveAttribute. The destination state of such a leaveAttribute
+     * event would be re-written to the 'dest' state.
+     */
+    private Transition cloneAttributeTransition( Transition t, State dest ) {
+        return cloneAttributeTransition(t,dest,new Hashtable());
+    }
+    
+    /**
+     * @param m
+     *      map from the original state to the cloned state.
+     */
+    private Transition cloneAttributeTransition( Transition t, State dest,
+        Map m ) {
+            
+        if(t.getAlphabet().isLeaveAttribute())
+            // this is the leave attribute transition. So go back to
+            // the 'dest' state.
+            return t.clone(dest);
+        
+        State orig = t.nextState();
+        
+        State st = (State)m.get(orig);
+        if(st==null) {
+            // we need to clone the state
+            st = new State(
+                this,
+                orig.getThreadIndex(),
+                getStateCount(),
+                orig.getLocationHint());
+            addState(st);
+            m.put(orig,st);
+            
+            st.setAcceptable(orig.isAcceptable());
+            st.setListMode  (orig.getListMode());
+            
+            // clone transitions
+            Iterator itr = orig.iterateTransitions();
+            while(itr.hasNext())
+                st.addTransition(cloneAttributeTransition(
+                    (Transition)itr.next(), dest, m));
+        }
+        
+        return t.clone(st);
     }
     
     /**

@@ -37,6 +37,7 @@ public class CodeWriter
 	private class CodeAboutState
 	{
 		public String prologue;
+        public String epilogue;
 		public Vector conditionalCodes;
 		public String elsecode;
 		
@@ -79,8 +80,40 @@ public class CodeWriter
                 if(flag) _output.print("else ");
                 _output.println(errorHandleMethod+"(qname);");
             }
+            
+            if(epilogue!=null)
+                _output.println(epilogue);
         }
 	}
+    
+    /**
+     * Generates code in the following format:
+     * 
+     * <pre>
+     * switch(state) {
+     * case state #1:
+     *     === prologue code ===
+     *     
+     *     if( conditional #1 ) {
+     *         statement #1;
+     *     } else
+     *     if( conditional #2 ) {
+     *         statement #2;
+     *     } else {
+     *     if ...
+     *  
+     *     } else {
+     *         === else code ===
+     *     }
+     *     
+     *     === epilogue code ===
+     *     break;
+     * case state #n:
+     *     ...
+     *     break;
+     * }
+     * </pre>
+     */
 	private class SwitchBlockInfo
 	{
 		public Map state2CodeFragment;
@@ -115,6 +148,7 @@ public class CodeWriter
 			else
 				cas.elsecode += code;
 		}
+        
 		public void addPrologue(State state, String code) {
 			CodeAboutState cas = getCAS(state);
 			if(cas.prologue==null)
@@ -122,6 +156,14 @@ public class CodeWriter
 			else
 				cas.prologue += code;
 		}
+        
+        public void addEpilogue(State state, String code) {
+            CodeAboutState cas = getCAS(state);
+            if(cas.epilogue==null)
+                cas.epilogue = code;
+            else
+                cas.epilogue += code;
+        }
 
         private void output(String errorHandleMethod) {
             boolean first = true;
@@ -488,9 +530,6 @@ public class CodeWriter
                     buf.append(tr.invokeEpilogueActions());
 
                     appendStateTransition(buf, tr.nextState());
-                    
-                    if(tr.nextState().hasTransition(Alphabet.ENTER_ATTRIBUTE))
-                        _output.println("processAttribute();");
                         
                     _output.println(buf);
                     _output.println("return;");
@@ -553,6 +592,14 @@ public class CodeWriter
                             ((Alphabet)jtr.next()).asEnterAttribute() );
                 }
 			}
+/*  dangling attribute handler approach. it doesn't work.            
+            // by default, return
+            bi.addElseCode(st,"return;");
+            
+            StringBuffer buf = new StringBuffer();
+            appendStateTransition(buf,st);
+            bi.addEpilogue(st,buf.toString());
+*/
 		}
 		
         // TODO: end of scope handling.
@@ -667,6 +714,9 @@ public class CodeWriter
 		else
 			buf.append("_ngcc_threaded_state[" + deststate.getThreadIndex() + "]="+ deststate.getIndex());
 		buf.append(";");
+
+        if(deststate.hasTransition(Alphabet.ENTER_ATTRIBUTE))
+            buf.append("processAttribute();");
 		
 		if(deststate.getMeetingDestination()!=null)
 		{

@@ -62,6 +62,7 @@ public final class State implements Comparable
 	private int _ThreadIndex;
 
 	private NGCCElement _LocationHint;
+    public NGCCElement getLocationHint() { return _LocationHint; }
 	
 	//about list operation
 	private int _ListMode;
@@ -95,6 +96,11 @@ public final class State implements Comparable
 				break;
 		}
 */	}
+
+    public void removeTransition( Transition t) {
+        _AllTransitions.remove(t);
+        t.nextState()._ReversalTransitions.remove(t);
+    }
 	
     private class TypeIterator extends SelectiveIterator {
         TypeIterator( int _typeMask ) {

@@ -110,9 +110,13 @@ public final class Transition
     
 	
 	public Object clone() {
-        return new Transition(_Alphabet, _NextState,
-            (Vector)prologueActions.clone(), (Vector)epilogueActions.clone());
+        return clone(_NextState);
 	}
+    
+    public Transition clone( State next ) {
+        return new Transition(_Alphabet, next,
+            (Vector)prologueActions.clone(), (Vector)epilogueActions.clone());
+    }
 
 	public Alphabet getAlphabet() { return _Alphabet; }
 	public State nextState() { return _NextState; }
