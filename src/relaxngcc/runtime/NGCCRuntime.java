@@ -7,6 +7,7 @@ import java.util.StringTokenizer;
 
 import org.relaxng.datatype.ValidationContext;
 import org.xml.sax.Attributes;
+import org.xml.sax.ContentHandler;
 import org.xml.sax.Locator;
 import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
@@ -29,8 +30,7 @@ import org.xml.sax.helpers.XMLFilterImpl;
  * 
  * @author Kohsuke Kawaguchi (kk@kohsuke.org)
  */
-// TODO: support redirecting a subtree to another ContentHandler.
-public class NGCCRuntime extends XMLFilterImpl implements ValidationContext {
+public class NGCCRuntime implements ValidationContext, ContentHandler {
     
     public NGCCRuntime() {
         // add a dummy attributes at the bottom as a "centinel."
@@ -99,32 +99,58 @@ public class NGCCRuntime extends XMLFilterImpl implements ValidationContext {
     public void startElement(String uri, String localname, String qname, Attributes atts)
             throws SAXException {
         
-        processPendingText();
-        attStack.push(currentAtts=new AttributesImpl(atts));
-//        System.out.println("startElement:"+localname+"->"+_attrStack.size());
-        currentHandler.enterElement(uri, localname, qname);
+        if(redirect!=null) {
+            redirect.startElement(uri,localname,qname,atts);
+            redirectionDepth++;
+        } else {
+	        processPendingText();
+	        attStack.push(currentAtts=new AttributesImpl(atts));
+	//        System.out.println("startElement:"+localname+"->"+_attrStack.size());
+	        currentHandler.enterElement(uri, localname, qname);
+        }
     }
     
     public void endElement(String uri, String localname, String qname)
             throws SAXException {
-                
-        processPendingText();
         
-        currentHandler.leaveElement(uri, localname, qname);
-//        System.out.println("endElement:"+localname);
-        Attributes a = (Attributes)attStack.pop();
-        if(a.getLength()!=0) {
-            // when debugging, it's useful to set a breakpoint here.
-            ;
+        if(redirect!=null) {
+            redirect.endElement(uri,localname,qname);
+            redirectionDepth--;
+            if(redirectionDepth==0) {
+                // finished redirection.
+		        for( int i=0; i<namespaces.size(); i+=2 )
+		            redirect.endPrefixMapping((String)namespaces.get(i));
+		        redirect.endDocument();
+                
+                redirect = null;
+                // call myself to process this endElement normally.
+                endElement(uri,localname,qname);
+            }
+        } else {
+	        processPendingText();
+	        
+	        currentHandler.leaveElement(uri, localname, qname);
+	//        System.out.println("endElement:"+localname);
+	        Attributes a = (Attributes)attStack.pop();
+	        if(a.getLength()!=0) {
+	            // when debugging, it's useful to set a breakpoint here.
+	            ;
+	        }
+	        currentAtts = (AttributesImpl)attStack.peek();
         }
-        currentAtts = (AttributesImpl)attStack.peek();
     }
     
     public void characters(char[] ch, int start, int length) throws SAXException {
-        text.append(ch,start,length);
+        if(redirect!=null)
+            redirect.characters(ch,start,length);
+        else
+            text.append(ch,start,length);
     }
     public void ignorableWhitespace(char[] ch, int start, int length) throws SAXException {
-        text.append(ch,start,length);
+        if(redirect!=null)
+            redirect.ignorableWhitespace(ch,start,length);
+        else
+            text.append(ch,start,length);
     }
     
     public int getAttributeIndex(String uri, String localname) {
@@ -144,14 +170,80 @@ public class NGCCRuntime extends XMLFilterImpl implements ValidationContext {
 
 
     public void startPrefixMapping( String prefix, String uri ) throws SAXException {
-        super.startPrefixMapping(prefix,uri);
-        namespaces.add(prefix);
-        namespaces.add(uri);
+        if(redirect!=null)
+            redirect.startPrefixMapping(prefix,uri);
+        else {
+	        namespaces.add(prefix);
+	        namespaces.add(uri);
+        }
     }
     
     public void endPrefixMapping( String prefix ) throws SAXException {
-        namespaces.remove(namespaces.size()-1);
-        namespaces.remove(namespaces.size()-1);
+        if(redirect!=null)
+            endPrefixMapping(prefix);
+        else {
+	        namespaces.remove(namespaces.size()-1);
+	        namespaces.remove(namespaces.size()-1);
+        }
+    }
+    
+    public void skippedEntity( String name ) throws SAXException {
+        if(redirect!=null)
+            redirect.skippedEntity(name);
+    }
+    
+    public void processingInstruction( String target, String data ) throws SAXException {
+        if(redirect!=null)
+            redirect.processingInstruction(target,data);
+    }
+    
+    public void endDocument() {}
+    public void startDocument() {}
+
+//
+//
+// redirection of SAX2 events.
+//
+//
+    /** When redirecting a sub-tree, this value will be non-null. */
+    private ContentHandler redirect = null;
+    
+    /**
+     * Counts the depth of the elements when we are re-directing
+     * a sub-tree to another ContentHandler.
+     */
+    private int redirectionDepth = 0;
+
+    /**
+     * This method can be called only from the enterElement handler.
+     * The sub-tree rooted at the new element will be redirected
+     * to the specified ContentHandler.
+     * 
+     * <p>
+     * Currently active NGCCHandler will only receive the leaveElement
+     * event of the newly started element.
+     * 
+     * @param   uri,local,qname
+     *      Parameters passed to the enter element event. Used to
+     *      simulate the startElement event for the new ContentHandler.
+     */
+    public void redirectSubtree( ContentHandler child,
+        String uri, String local, String qname ) throws SAXException {
+        
+        redirect = child;
+        redirect.startDocument();
+        
+        // TODO: when a prefix is re-bound to something else,
+        // the following code is potentially dangerous. It should be
+        // modified to report active bindings only.
+        for( int i=0; i<namespaces.size(); i+=2 )
+            redirect.startPrefixMapping(
+                (String)namespaces.get(i),
+                (String)namespaces.get(i+1)
+            );
+        
+        redirect.startElement(uri,local,qname,currentAtts);
+        redirectionDepth=1;
     }
 
 //
