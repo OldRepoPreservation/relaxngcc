@@ -7,7 +7,7 @@
 <body>
 <a name="top">
 <h1>RelaxNGCC <?ja?>マニュアル<?/ja?><?en?>Manual<?/en?></h1>
-<div align="right">$Id: manual.htm,v 1.4 2002/06/22 23:25:30 kkawa Exp $</div>
+<div align="right">$Id: manual.htm,v 1.5 2002/06/26 13:08:48 kkawa Exp $</div>
 <div><?ja?>目次<?/ja?><?en?>Contents<?/en?></div>
 <ul>
 <!--li><a href="#scope"><?ja?>スコープ<?/ja?><?en?>Scopes<?/en?></a></li-->
@@ -17,6 +17,7 @@
 		<li><a href="#ann_java"   ><tt>c:java</tt></a>
 		<li><a href="#ann_jbody"  ><tt>c:java-body</tt></a>
 		<li><a href="#ann_jimprt" ><tt>c:java-import</tt></a>
+		<li><a href="#ann_class"  ><tt>c:class</tt></a>
 		<li><a href="#ann_package"><tt>c:package</tt></a>
 		<li><a href="#ann_access" ><tt>c:access</tt></a>
 		<li><a href="#ann_runtime"><tt>c:runtime-type</tt></a>
@@ -185,7 +186,7 @@
 <p>
 <?ja?>　<tt>java-body</tt>と違い、ソースコード中のクラス定義本体の外に記述するコードを記述します。ふつうJavaのimport宣言を記述します。これを置くことのできる位置と効果はjava-bodyと同じです。<?/ja?>
 	<?en?>
-		Works similar to <tt>c:java-import</tt> attributes. The only difference is that the contents of a <tt>java-import</tt> element is copied before the definition of a class. Hence one would usually write import declarations by using the <tt>java-import</tt> element.
+		Works similar to <tt>c:java-body</tt> elements. The only difference is that the contents of a <tt>java-import</tt> element is copied before the definition of a class. Hence one would usually write import declarations by using the <tt>java-import</tt> element.
 	<?/en?>
 </p>
 <pre>
@@ -194,16 +195,24 @@
     import java.util.Iterator;
 &lt;/c:java-import&gt;</em>
 </pre>
-<!--
-<h3>2.5 <?ja?><tt>class</tt>アトリビュート<?/ja?><?en?><tt>class</tt> attribute<?/en?></h3>
+
+
+<a name="#ann_class" />
+<h3>1.5 <?ja?><tt>c:class</tt>アトリビュート<?/ja?><?en?><tt>c:class</tt> attribute<?/en?></h3>
 <p>
-<?ja?>　<tt>start</tt>エレメント、<tt>define</tt>エレメントに記述して、それに対応するクラスの名前を指定します。Javaのクラス名として正しい文字列を指定する必要があります。省略時には、RelaxNGCCが適当な名前をつけてソースコードを生成します。<?/ja?>
-<?en?> The <tt>class</tt> attribute appears at a <tt>start</tt> element or a <tt>define</tt> element, and defines the name of generated Java class. The value of <tt>class</tt> attribute must be valid as a name of a Java class. If it is omitted, RelaxNGCC gives a suitable name for the class.<?/en?>
+	<?ja?>
+		　<tt>start</tt>エレメント、<tt>define</tt>エレメントに記述して、それに対応するクラスの名前を指定します。Javaのクラス名として正しい文字列を指定する必要があります。省略時には、RelaxNGCCが適当な名前をつけてソースコードを生成します。
+	<?/ja?>
+	<?en?>
+		The <tt>class</tt> attribute can appear at a <tt>start</tt> pattern or a <tt>define</tt> pattern, and specifies the name of the generated Java class. The value of <tt>class</tt> attribute must be a valid Java class. If it is omitted, RelaxNGCC generates a name for the class.
+	<?/en?>
+</p>
 <pre>
-&lt;start <span class="emph-code">c:class="Root"</span>&gt;
+&lt;start <em>c:class="Root"</em>&gt;
 ...
 &lt;/start&gt;
 </pre>
+<!-- TODO:
 <p>
 <?ja?>　さらに、<tt>element</tt>、<tt>oneOrMore</tt>のようなRELAX NGの文法要素に<tt>class</tt>アトリビュートを書くこともできます。こうした場合には、アトリビュートを付加した要素に対応する部分を読むコードがJavaクラスとして切り出されます。このクラスはそれを囲む<tt>define/start</tt>エレメントに対応したクラスの内部クラスになるので、外のクラスのインスタンス変数にアクセスすることができます。<?/ja?>
 <?en?> Additionally, the <tt>class</tt> attribute can appear at some RELAX NG elements such as <tt>element</tt> element or <tt>oneOrMore</tt> element. In this case, the corresponding block enclosed by the RELAX NG element is chopped off into a Java class. Since the class is located in the inner-class of the class for parent <tt>define</tt>/<tt>start</tt> element, you can access data members of the parent class including data named via <tt>alias</tt> attribute.<?/en?>
@@ -237,7 +246,7 @@
 
 
 <a name="ann_package" />
-<h3>1.5 <tt>c:package</tt><?ja?>アトリビュート<?/ja?><?en?> attribute<?/en?></h3>
+<h3>1.6 <tt>c:package</tt><?ja?>アトリビュート<?/ja?><?en?> attribute<?/en?></h3>
 <p>
 	<?ja?>
 		　生成するソースコードがどのパッケージに属すかを指定します。ルートエレメントに記入します。この宣言は生成されるすべてのクラスに対して有効です。
@@ -255,7 +264,7 @@
 
 
 <a name="ann_access" />
-<h3>1.6 <tt>c:access</tt><?ja?>アトリビュート<?/ja?><?en?> attribute<?/en?></h3>
+<h3>1.7 <tt>c:access</tt><?ja?>アトリビュート<?/ja?><?en?> attribute<?/en?></h3>
 <p>
 	<?ja?>
 		　生成するソースコードのアクセス修飾子("public final"など)を指定します。このアトリビュートは<tt>define</tt>エレメント、<tt>start</tt>エレメント、<tt>class</tt>アトリビュートを書いたエレメントに書くことができます。
@@ -274,7 +283,7 @@
 
 
 <a name="ann_runtime" />
-<h3>1.7 <tt>c:runtime-type</tt><?ja?>アトリビュート<?/ja?><?en?> attribute<?/en?></h3>
+<h3>1.8 <tt>c:runtime-type</tt><?ja?>アトリビュート<?/ja?><?en?> attribute<?/en?></h3>
 <p>
 	<?en?>
 		This attribute causes the compiler to use a user-defined runtime class instead of the default <tt>NGCCRuntime</tt> class. The value of the attribute must be a valid Java class that is derived from <tt>NGCCRuntime</tt>.
@@ -300,7 +309,7 @@
 
 
 <a name="ann_return" />
-<h3>1.8 <tt>c:return-type/c:return-value</tt><?ja?>アトリビュート<?/ja?><?en?> attribute<?/en?></h3>
+<h3>1.9 <tt>c:return-type/c:return-value</tt><?ja?>アトリビュート<?/ja?><?en?> attribute<?/en?></h3>
 <p>
 	<?en?>
 		These attributes can be specified on <tt>&lt;define></tt> and <tt>&lt;start</tt> patterns, to specify the return value from a handler class.
@@ -344,7 +353,7 @@
 
 
 <a name="ann_params" />
-<h3>1.9 <tt>c:params/c:with-params</tt><?ja?>アトリビュート<?/ja?><?en?> attribute<?/en?></h3>
+<h3>1.10 <tt>c:params/c:with-params</tt><?ja?>アトリビュート<?/ja?><?en?> attribute<?/en?></h3>
 <p>
 	<?en?>
 		These two annotations are used together to allow a parent handler to pass parameters to the a handler.
