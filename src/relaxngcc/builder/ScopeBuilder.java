@@ -222,9 +222,10 @@ public class ScopeBuilder
 			initial = processRelaxNGNode(_Root, ctx, finalstate);
 		_ScopeInfo.setThreadCount(_ThreadCount);
         // TODO: don't we need to reset the preservedAction variable? - Kohsuke
-        // TODO: avoid adding action if preservedAction is empty
 		_ScopeInfo.setInitialState(initial,
-            _ScopeInfo.createAction(preservedAction));
+            (preservedAction.length()!=0)?
+                _ScopeInfo.createAction(preservedAction):
+                null);
         
         _ScopeInfo.minimizeStates();
 	}
@@ -508,10 +509,13 @@ public class ScopeBuilder
 	}
 	private State processZeroOrMore(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
-        ScopeInfo.Action action_last = _ScopeInfo.createAction(preservedAction);
-        // TODO: avoid adding action if preservedAction is empty
+        ScopeInfo.Action action_last = null;
+        
+        if(preservedAction.length()!=0)
+            _ScopeInfo.createAction(preservedAction);
         // TODO: isn't this a bug? I mean, we end up adding the same action
         // to two different places - Kohsuke
+        
 		addAction(destination);
 		State head = traverseNodeList(exp.getChildNodes(), ctx, destination);
 		addAction(head);
@@ -526,8 +530,10 @@ public class ScopeBuilder
 	{
         // TODO: isn't this a bug? I mean, we end up adding the same action
         // to two different places - Kohsuke
-        // TODO: avoid adding action if preservedAction is empty
-        ScopeInfo.Action action_last = _ScopeInfo.createAction(preservedAction);
+        ScopeInfo.Action action_last = null;
+        if(preservedAction.length()!=0)
+            action_last = _ScopeInfo.createAction(preservedAction);
+            
 		addAction(destination);
 		State head = traverseNodeList(exp.getChildNodes(), ctx, destination);
 		addAction(head);
@@ -552,9 +558,11 @@ public class ScopeBuilder
 		}
 		else
 		{
-			ScopeInfo.Action action = _ScopeInfo.createAction(preservedAction);
+			ScopeInfo.Action action = null;
+            if(preservedAction!=null)
+                action = _ScopeInfo.createAction(preservedAction);
             // TODO: seems like this is also a bug?
-        // TODO: avoid adding action if preservedAction is empty
+            
 			addAction(destination);
 			
 			State head = createState(exp, ctx);
