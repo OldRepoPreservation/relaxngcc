@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.io.Reader;
 import java.io.StringReader;
 import java.text.MessageFormat;
 import java.util.HashMap;
@@ -298,13 +299,15 @@ public final class ScopeInfo
         
         
         if(_scope.getBody()!=null) {
-            JavaBodyParser p = new JavaBodyParser(new StringReader(_scope.getBody()));
+            Reader reader = new StringReader(_scope.getBody());
+            JavaBodyParser p = new JavaBodyParser(reader);
             
             try {
                 p.JavaBody();       // parse the text
-            } catch( relaxngcc.javabody.ParseException e ) {
+            } catch( Throwable e ) {
                 // TODO: report error location and such.
                 System.err.println("[Warning] unable to parse <java-body>");
+                System.err.println("   "+e.getMessage());
             }
             
             _userDefinedFields.addAll(p.fields);
