@@ -4,25 +4,25 @@
 	<taskdef name="relaxngcc" classname="relaxngcc.ant.RelaxNGCCTask">
 		<classpath path="lib/bootstrap-relaxngcc.jar"/>
 	</taskdef>
-	
-	<!-- check if the parser generator needs to be run -->
-	<target name="ngcc-check">
-		<uptodate property="ngcc.notrequired"
-		  targetfile="src/relaxngcc/parser/state/Start.java">
-			<srcfiles dir="src/relaxngcc/parser" includes="*.rng"/>
-		</uptodate>
-	</target>
+	<taskdef name="self-relaxngcc" classname="relaxngcc.ant.RelaxNGCCTask">
+		<classpath path="bin"/>
+		<classpath path="src"/>
+		<classpath path="lib/relaxngDatatype.jar"/>
+	</taskdef>
 	
 	<!-- use bootstrap RelaxNGCC to compile the parser -->
-	<target name="ngcc" unless="ngcc.notrequired" depends="ngcc-check">
+	<target name="ngcc">
 		
 		<mkdir dir="src/relaxngcc/parser/automata"/>
-		<delete dir="src/relaxngcc/parser/automata" includes="*.gif" />
-		<delete dir="src/relaxngcc/parser/state" includes="*.java" />
 		
 		<relaxngcc source="src/relaxngcc/parser/relaxng.rng"
 			targetdir="src/relaxngcc/parser/state"
 			automata="src/relaxngcc/parser/automata">
+			
+			<!-- up-to-date check parameters -->
+			<depends  dir="src/relaxngcc/parser" includes="relaxng.rng"/>
+			<produces dir="src/relaxngcc/parser/automata" includes="*.gif"/>
+			<produces dir="src/relaxngcc/parser/state" includes="*.java"/>
 		</relaxngcc>
 	</target>
 	
@@ -139,25 +139,11 @@ Class-Path: crimson.jar relaxngDatatype.jar xsdlib.jar msv.jar jaxp-api.jar
 		<mkdir dir="src/relaxngcc/parser/automata"/>
 		<delete dir="src/relaxngcc/parser/automata" includes="*.gif" />
 		<delete dir="src/relaxngcc/parser/state" includes="*.java" />
-		<java classname="relaxngcc.RelaxNGCC" fork="true">
-			<!-- enable debug statements -->
-			<arg value="-d"/>
-			
-			<!-- dump automata -->
-			<arg value="--print-automata"/>
-			<arg path="src/relaxngcc/parser/automata"/>
-			
-			<!-- specify output directory -->
-			<arg value="--target"/>
-			<arg path="src/relaxngcc/parser/state" />
-			
-			<!-- source file -->
-			<arg path="src/relaxngcc/parser/relaxng.rng"/>
-			
-			<classpath path="bin"/>
-			<classpath path="src"/>
-			<classpath path="lib/relaxngDatatype.jar"/>
-		</java>
+		
+		<self-relaxngcc source="src/relaxngcc/parser/relaxng.rng"
+			targetdir="src/relaxngcc/parser/state"
+			automata="src/relaxngcc/parser/automata">
+		</self-relaxngcc>
 	</target>
 	
 	

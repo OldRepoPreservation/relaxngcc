@@ -58,7 +58,8 @@ public class CodeBuilder
             //elsecode, null‚È‚çerrorHandleMethod‚Å•Â‚¶‚é
             
             CDBlock terminal = elsecode;
-            if(terminal==null)  terminal = new CDBlock(errorHandleMethod);
+            if(terminal==null && errorHandleMethod!=null)
+                terminal = new CDBlock(errorHandleMethod);
 
             if(conditionalCodes!=null) {
                 if(terminal!=null)
