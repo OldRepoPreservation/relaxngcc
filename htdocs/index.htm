@@ -6,11 +6,13 @@
 </head>
 <body>
 <div align="right">
-Access Counter <img src="http://hpcounter2.nifty.com/cgi-bin/counter.cgi?u=bze11134&p=9&c=6"> 
+<!--Access Counter <img src="http://hpcounter2.nifty.com/cgi-bin/counter.cgi?u=bze11134&p=9&c=6"> -->
 <?ja?><a href="../index.htm">目次</a>&nbsp;&nbsp;&nbsp;<a href="index_en.htm">英語ドキュメント</a><?/ja?><?en?><a href="../index.htm">Contents</a>&nbsp;&nbsp;&nbsp;<a href="index_ja.htm">Japanese document</a><?/en?>
 </div>
 <h1>RelaxNGCC ( RELAX NG compiler compiler)</h1>
-<p align="right">Last update <?ja?>2002/05/03, <a href="mailto:daisuke.okajima@nifty.ne.jp">岡嶋 大介</a><?/ja?><?en?>May 3, 2002, by <a href="mailto:daisuke.okajima@nifty.ne.jp">Daisuke OKAJIMA</a><?/en?></p>
+<div align="right">
+	$Id: index.htm,v 1.2 2002/06/18 02:31:54 kkawa Exp $ <a href="mailto:daisuke.okajima@nifty.ne.jp"><?ja?>岡嶋 大介<?/ja?><?en?>By Daisuke OKAJIMA<?/en?></a>
+</div>
 <p>
 <?ja?>　RelaxNGCCは、RELAX NGで書かれたスキーマからJavaのソースコードを生成するツールです。入力XMLの各エレメントやアトリビュートを読んだときのアクションを、yaccやJavaCCと同様の手法でユーザが直接スキーマに追加記述します。<?/ja?>
 <?en?> RelaxNGCC is a tool for generating Java source code from a given RELAX NG grammar. By embedding code fragments in the grammar like yacc or JavaCC, you can take appropriate actions while parsing valid XML documents against the grammar.<?/en?>
@@ -20,7 +22,8 @@ Access Counter <img src="http://hpcounter2.nifty.com/cgi-bin/counter.cgi?u=bze11
 <li><a href="manual_ja.htm">マニュアル</a></li>
 <li>初歩的な使い方を示す<a href="tutorial1_ja.htm">チュートリアル１</a></li>
 <li>もうちょっと高度な使い方を示す<a href="tutorial2_ja.htm">チュートリアル２</a></li>
-<li><a href="nonxml_ja.htm">non-xml syntaxでの入力</a></li>
+<li>略記法とASTに関する<a href="tutorial3_ja.htm">チュートリアル３</a></li>
+<li>ASTに関して更に解説した<a href="tutorial4_ja.htm">チュートリアル４</a></li>
 <li>どのような原理で動いているかの<a href="method_ja.htm">内部的な説明</a>(これを読むにはRELAX NGとオートマトンについての予備知識が必要です。)</li>
 <li><a href="relaxngcc.jar"><img border="0" src="dl.gif" alt="">ダウンロード</a>(約200KB, ソースもついています)</li>
 <li><a href="relaxngccsample.zip"><img border="0" src="dl.gif" alt="">サンプル</a></li>
@@ -28,18 +31,24 @@ Access Counter <img src="http://hpcounter2.nifty.com/cgi-bin/counter.cgi?u=bze11
 <?/ja?>
 <?en?>
 <ul>
-<li><a href="tutorial1_en.htm">Tutorial 1</a>(basic usage)</li>
-<li><a href="tutorial2_en.htm">Tutorial 2</a>(advanced usage)</li>
+<li><a href="tutorial1_en.htm">Tutorial 1</a>(get your feet wet)</li>
+<li><a href="tutorial2_en.htm">Tutorial 2</a>(basic usage)</li>
+<li><a href="tutorial3_en.html">Tutorial 2</a>(text-based syntax and AST)</li>
+<li><a href="tutorial4_en.html">Tutorial 2</a>(more about AST)</li>
 <li><a href="manual_en.htm">Manual</a></li>
-<li><a href="nonxml_en.htm">non-xml syntax input (this is just an experiment)</a></li>
 <li><a href="method_en.htm">Document about the internal algorithm</a></li>
 <li><a href="relaxngcc.jar"><img border="0" src="dl.gif" alt="">Download</a>(approximately 200KB, including source code)</li>
 <li><a href="relaxngccsample.zip"><img border="0" src="dl.gif" alt="">Samples</a></li>
 </ul>
 <?/en?>
-
-<h2><?ja?>実行環境<?/ja?><?en?>Environment<?/en?></h2>
-<p><?ja?>　RelaxNGCCの実行にはJRE1.2以降が必要です。また、JAXP1.2経由でXMLパーサが利用可能でないといけません。さらに、Sun Multi-Schema XML Validator(MSV)があると、RELAX NG文法が誤っていたときに詳しい指摘をしてくれます。MSVは必須ではありませんが、一緒に入れておくことをお勧めします。MSVは、<a href="http://www.sun.com/software/xml/developers/multischema/">ここ</a>からダウンロードできます。<?/ja?><?en?> To use RelaxNGCC, JRE 1.2 or later and an XML parser compliant with JAXP 1.2 are required. If you add Sun Multi-Schema XML Validator(MSV), it reports detailed error information about wrong input. MSV is not mandatory but I recommend you use RelaxNGCC with MSV. It is available from <a href="http://www.sun.com/software/xml/developers/multischema/">here</a>.<?/en?>
+<p>
+	<?ja?>　コンパイラの実行にはJRE1.2以降が必要です。<?/ja?>
+	<?en?> To use RelaxNGCC, JRE 1.2 or later is required.<?/en?>
+</p>
+<p>
+	<?ja?>　生成されたコードの実行にはSAXパーサが必要です。<?/ja?>
+	<?en?>Generated code will only need a SAX parser to run.<?/en?>
+</p>
 
 <h2><?ja?>主な特徴<?/ja?><?en?>Main features<?/en?></h2>
 <p>
@@ -51,7 +60,7 @@ Access Counter <img src="http://hpcounter2.nifty.com/cgi-bin/counter.cgi?u=bze11
 <li><?ja?>一からDOMやSAXのプログラムを書くよりも簡単にXMLを読む機能が実装できます。<?/ja?><?en?>RelaxNGCC makes programming easy for reading XML in comparison with writing raw DOM or SAX code.<?/en?></li>
 </ul>
 
-<h2><?ja?>リリース<?/ja?><?en?>Release history<?/en?></h2>
+<h2><?ja?>リリース<?/ja?><?en?>Release Notes<?/en?></h2>
 <ul>
 <li><?ja?>2002/03/03 バージョン0.51を公開しました。<?/ja?><?en?>Mar 3, 2002   Version 0.51 is released. <?/en?></li>
 <ul>
@@ -63,39 +72,60 @@ Access Counter <img src="http://hpcounter2.nifty.com/cgi-bin/counter.cgi?u=bze11
 <li><?ja?><code>list</code>に<code>alias</code>アトリビュートをつけることができるようにしました。<?/ja?><?en?>Added feature for <code>alias</code> attributes with <code>list</code> element.<?/en?></li>
 </ul>
 <li><?ja?>2002/05/03 バージョン0.7を公開しました。<?/ja?><?en?>May 3, 2002   Version 0.7 is released. <?/en?></li>
-<ul>
-<li><?ja?><code>inline</code>アトリビュートを導入し、スコープの展開ができるようになりました。<?/ja?><?en?>Added <code>inline</code> attribute for expanding a scope into other scopes.<?/en?></li>
-<li><?ja?>マニュアルを改訂しました。<?/ja?><?en?>Revised manuals.<?/en?></li>
+	<ul>
+		<li><?ja?><code>inline</code>アトリビュートを導入し、スコープの展開ができるようになりました。<?/ja?><?en?>Added <code>inline</code> attribute for expanding a scope into other scopes.<?/en?></li>
+		<li><?ja?>マニュアルを改訂しました。<?/ja?><?en?>Revised manuals.<?/en?></li>
+	</ul>
+<li><?ja?>2002/06<?ja?> バージョン1.0を公開しました。<?/ja?><?en?>Jun, 2002   Version 1.0 is released<?en?>
+	<ul>
+		<li><a href="mailto:kk@kohsuke.org">Kohsuke Kawaguchi</a> joined the development and the project is now hosted at SourceForge.
+		<li>RelaxNGCC became self-sufficient; now it uses itself to parse RELAX NG grammars.
+		<li>Replaced the compiler algorithm so that it generates code that works correctly
+		<li>Implemented an experimental text-based shorthand syntax.
+		<li>Added new features represented by <tt>c:with-params, c:params, c:return-type</tt>, and <tt>c:return-value</tt> attributes.
+		<li>Runtime code is refactored. The compiler now generates <tt>NGCCRuntime</tt> class, which coordinates the entire processing.
+		<li>The RELAX NG compact syntax support was pulled out.
+		<li>The compiler is now smart enough to handle multiple aliases with the same name, and aliases colliding with fields defined in <tt>c:java-body</tt> elements.
+	</ul>
 </ul>
-</ul>
-<p><?ja?>さらに前のリリース履歴は<a href="history_ja.htm">こちら</a>です。<?/ja?><?en?>More previous release history is <a href="history_en.htm">here</a>.<?/en?></p>
+<p><?ja?>さらに前のリリース履歴は<a href="history_ja.htm">こちら</a>です。<?/ja?><?en?>Earlier release notes are available <a href="history_en.htm">here</a>.<?/en?></p>
 
-<h2><?ja?>将来のバージョンで行う予定のこと<?/ja?><?en?>Feature list for future version<?/en?></h2>
+<h2><?ja?>将来のバージョンで行う予定のこと<?/ja?><?en?>Wish list for future versions<?/en?></h2>
 <ul>
-<li><?en?>Looking ahead tokens to support more various schemas<?/en?> <?ja?>トークンの先読みをしてより広いスキーマに対応<?/ja?></li>
-<li><?en?>Generating C# code<?/en?> <?ja?>C#のコード生成<?/ja?></li>
-<li><?en?>Enhancing documents, especially internal algorithm<?/en?> <?ja?>ドキュメント整備、特に内部的なアルゴリズムについて<?/ja?></li>
+	<li><?en?>Token looking ahead support to handle ambiguous schemas<?/en?> <?ja?>トークンの先読みをしてより広いスキーマに対応<?/ja?></li>
+	<li><?en?>Supporting code generation in other languages, such as C#<?/en?> <?ja?>C#のコード生成<?/ja?></li>
+	<li><?en?>Enhancing documents, especially internal algorithm<?/en?> <?ja?>ドキュメント整備、特に内部的なアルゴリズムについて<?/ja?></li>
 </ul>
+<p>
+	<?en?>To file your feature request, please visit <a href="https://sourceforge.net/tracker/?atid=471312&group_id=53706&func=browse">the project website at SourceForge</a>.<?/en?>
+	<?ja?>この他の機能の提案などがあれば、<a href="https://sourceforge.net/tracker/?atid=471312&group_id=53706&func=browse">SourceForgeのウェブサイトに書き込んでください</a>.<?/ja?>
+</p>
 
 <h2><?ja?>問い合わせ<?/ja?><?en?>Your Comment<?/en?></h2>
 <p>
-<?ja?>　RelaxNGCCに関する質問・要望は、<a href="http://www2.xml.gr.jp/1ml_main.html?MLID=relax-users-j">Relax開発者メーリングリスト</a>または個人宛ての<a href="mailto:daisuke.okajima@nifty.ne.jp">メール(daisuke.okajima@nifty.ne.jp)</a>へお願いします。基本的に、使い方の質問は個人宛てに、機能に対する要望はML宛てにお願いします。まだ安定した実装になっているとはいえないので、使ってみておかしいと思ったらお気軽にご連絡ください。できる限りすみやかに対処します。ユーザの声が僕のモチベーションを引き出すのでよろしくお願いします。<?/ja?>
-<?en?> If you hava any questions or requests, please post to <a href="http://groups.yahoo.com/group/reldeve">reldeve mailing list</a> or send me a mail to <a href="mailto:daisuke.okajima@nifty.ne.jp">daisuke.okajima@nifty.ne.jp</a>. If you find strange behavior about RelaxNGCC, please don't hesitate to contact me. Your comment and request bring my motivation. <?/en?>
+<?ja?>　RelaxNGCCに関する質問・要望は、開発者全員がモニターしている<a href="http://www2.xml.gr.jp/1ml_main.html?MLID=relax-users-j">Relax開発者メーリングリスト</a>へお願いします。まだ安定した実装になっているとはいえないので、使ってみておかしいと思ったらお気軽にご連絡ください。できる限りすみやかに対処します。ユーザの声が僕らのモチベーションを引き出すのでよろしくお願いします。<?/ja?>
+<?en?> If you hava any comments, questions, or requests, please post them to <a href="http://groups.yahoo.com/group/reldeve">reldeve mailing list</a>, where all the developers are avaialable. We always welcome your comments, as those are the ultimate motivation that drives us to further development.<?/en?>
 </p>
 
 <h2><?ja?>ライセンス<?/ja?><?en?>License<?/en?></h2>
 <p>
-<?ja?>　RelaxNGCC本体はGNU GENERAL PUBLIC LICENSE(GPL)に従って配布されます。RelaxNGCCが生成したJavaソースコード、およびそれが依存するNGCCTypedContentHandler.java, NGCCPlainHandler.javaは完全にフリーです。この２ファイルは<tt>relaxngcc.runtime</tt>パッケージに含まれています。<?/ja?>
-<?en?>RelaxNGCC is distributed under the GNU GENERAL PUBLIC LICENSE(GPL). The code generated by RelaxNGCC, and their depending <tt>NGCCTypedContentHandler.java</tt> and <tt>NGCCPlainHandler.java</tt> are absolutely free. These two files are located at <tt>relaxngcc.runtime</tt> package.<?/en?>
+<?ja?>　RelaxNGCC本体はGNU GENERAL PUBLIC LICENSE(GPL)に従って配布されます。RelaxNGCCが生成したJavaソースコードについては我々は著作権を放棄します。<?/ja?>
+<?en?>RelaxNGCC is licensed under the GNU GENERAL PUBLIC LICENSE(GPL). For the code generated by RelaxNGCC, we waive our copyrights, so they are all yours.<?/en?>
 </p>
-<h3><?ja?>AttributesImpl.javaについて注意<?/ja?><?en?>About AttributesImpl.java<?/en?></h3>
+<h3><?ja?>AttributesImpl.javaについて注意<?/ja?><?en?>Note about AttributesImpl.java<?/en?></h3>
 <p>
-<?ja?>　relaxngcc.runtimeパッケージにあるAttributesImpl.javaはorg.xml.sax.Attributesの実装として使っています。このソースコードはXerces等とともに配布されているorg.xml.sax.helpers.AttributesImplのソースコードを元にしていますが、現在のところこれにはremoveAttributeメソッドにバグがあるため、それを避ける目的でバグを修正したものをrelaxngcc.runtimeパッケージに配置して使用しています。なので当面の間、relaxngcc.runtime.AttributesImpl.javaだけはorg.xml.sax.helpers.AttributesImplに倣ってpublic domainのライセンスとします。なおこのバグはJRE1.4でも同様の模様です。<?/ja?>
-<?en?> AttributesImpl.java in the <code>relaxngcc.runtime</code> package is used as an implementation of <code>org.xml.sax.Attributes</code>. It is based on the source code of <code>org.xml.sax.helpers.AttributesImpl</code> distributed with some products such as Xerces, but the original <code>org.xml.sax.helpers.AttributesImpl</code> has a bug in removeAttribute method. To avoid the bug, I modified the original and located at relaxngcc.runtime package. <code>relaxngcc.runtime.AttributesImpl.java</code> is in the public domain like the original for this reason. The bug has not been fixed in JRE1.4.<?/en?>
+	<?ja?>
+		　生成されるAttributesImpl.javaはorg.xml.sax.Attributesの実装として使っています。このソースコードはXerces等とともに配布されているorg.xml.sax.helpers.AttributesImplのソースコードを元にしていますが、現在のところこれにはremoveAttributeメソッドにバグがあるため、それを避ける目的でバグを修正したものをrelaxngcc.runtimeパッケージに配置して使用しています。なので当面の間、relaxngcc.runtime.AttributesImpl.javaだけはorg.xml.sax.helpers.AttributesImplに倣ってpublic domainのライセンスとします。なおこのバグはJRE1.4でも同様の模様です。
+	<?/ja?>
+	<?en?>
+		The generated AttributesImpl.java is used as an implementation of <code>org.xml.sax.Attributes</code>. It is based on the source code of <code>org.xml.sax.helpers.AttributesImpl</code> distributed with some products such as Xerces, but the original <code>org.xml.sax.helpers.AttributesImpl</code> has a bug in removeAttribute method. To avoid the bug, I modified the original and located at relaxngcc.runtime package. <code>relaxngcc.runtime.AttributesImpl.java</code> is in the public domain like the original for this reason. The bug has not been fixed in JRE1.4.<?/en?>
 </p>
 
 <h2><?ja?>関連リソース<?/ja?><?en?>Related resources<?/en?></h2>
 <ul>
+<li><a href="http://relaxngcc.sourceforge.net/">
+	<?ja?>プロジェクトウェブサイト（SourceForge）<?/ja?>
+	<?en?>Project Website at SourceForge<?/en?></a>
 <li><a href="http://www.oasis-open.org/committees/relax-ng/">RELAX NG official page</a></li>
 <li><a href="http://www.oasis-open.org/committees/relax-ng/tutorial-20011203.html"><?ja?>RELAX NG チュートリアル<?/ja?><?en?>RELAX NG Tutorial<?/en?></a><?ja?>(英語)<?/ja?></li>
 <?ja?><li><a href="http://www.kohsuke.org/relaxng/tutorial.ja.html">RELAX NG チュートリアル</a>(日本語, ただし内容は少し古いです)</li><?/ja?>
