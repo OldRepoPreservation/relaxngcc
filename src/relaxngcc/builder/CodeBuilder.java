@@ -1061,9 +1061,9 @@ public class CodeBuilder
             "onChildCompleted",
             new CDLanguageSpecificString("throws SAXException") );
 
-        CDVariable $result = method.param( new CDType("Object"), "result" );
-        CDVariable $cookie = method.param( CDType.INTEGER, "cookie" );
-        CDVariable $attCheck = method.param( CDType.BOOLEAN, "needAttCheck" );
+        CDVariable $result = method.param( new CDType("Object"), "$__result__" );
+        CDVariable $cookie = method.param( CDType.INTEGER, "$__cookie__" );
+        CDVariable $attCheck = method.param( CDType.BOOLEAN, "$__needAttCheck__" );
         
         CDBlock sv = method.body();
         
@@ -1107,7 +1107,10 @@ public class CodeBuilder
                             rhs = new CDCastExpression( new CDType(boxType),
                                 $result).invoke(returnType.getName()+"Value");
                             
-                        block.assign( _$this.prop(alias), rhs );
+//                        block.assign( _$this.prop(alias), rhs );
+                        // when used in an interleave branch, we can't qualify
+                        // aliases with "this."
+                        block.assign( new CDLanguageSpecificString(alias), rhs );
                     }
                     
                     block.add(tr.invokeEpilogueActions());
