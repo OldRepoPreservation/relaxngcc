@@ -13,7 +13,7 @@
 
 <h1>RelaxNGCC ( RELAX NG Compiler Compiler)</h1>
 <div align="right">
-	$Id: index.htm,v 1.3 2002/06/20 01:16:58 kkawa Exp $
+	$Id: index.htm,v 1.4 2002/06/20 01:28:07 kkawa Exp $
 	<a href="mailto:daisuke.okajima@nifty.ne.jp">
 		<?ja?>岡嶋 大介<?/ja?>
 		<?en?>By Daisuke OKAJIMA<?/en?>
@@ -82,6 +82,7 @@
 	</ul>
 <li><?ja?>2002/06<?ja?> バージョン1.0を公開しました。<?/ja?><?en?>Jun, 2002   Version 1.0 is released<?/en?>
 	<ul>
+	<?en?>
 		<li><a href="mailto:kk@kohsuke.org">Kohsuke Kawaguchi</a> joined the development and the project is now hosted at SourceForge.
 		<li>RelaxNGCC became self-sufficient; now it uses itself to parse RELAX NG grammars.
 		<li>Replaced the compiler algorithm so that it generates code that works correctly
@@ -90,6 +91,17 @@
 		<li>Runtime code is refactored. The compiler now generates <tt>NGCCRuntime</tt> class, which coordinates the entire processing.
 		<li>The RELAX NG compact syntax support was pulled out.
 		<li>The compiler is now smart enough to handle multiple aliases with the same name, and aliases colliding with fields defined in <tt>c:java-body</tt> elements.
+	<?/en?>
+	<?ja?>
+		<li><a href="mailto:kk@kohsuke.org">川口耕介</a>が開発に参加したのに伴い、プロジェクトをSourceForgeに移管しました
+		<li>RelaxNGCC自身を使って作ったパーサを使ってRELAX NG文法を読み込むように書き換えました
+		<li>コンパイラのアルゴリズムを全面的に変更し、正しいコードが生成されるようにしました
+		<li>属性によらない簡易記法を試験的に実装しました
+		<li>新しい機能を追加し、それに伴い<tt>c:with-params, c:params, c:return-type</tt>や<tt>c:return-value</tt> といった属性を追加しました
+		<li>ランタイムを再デザインしなおしました。処理をつかさどる<tt>NGCCRuntime</tt>クラスが生成されるようになりました
+		<li>RELAX NG コンパクト文法サポートは取り除かれました
+		<li>コンパイラは<tt>c:java-body</tt>内のJavaコードを正しく解析するようになりました。これに伴い、宣言されたエイリアスの取り扱いがスマートになりました
+	<?/ja?>
 	</ul>
 </ul>
 <p><?ja?>さらに前のリリース履歴は<a href="history.htm">こちら</a>です。<?/ja?><?en?>Earlier release notes are available <a href="history.htm">here</a>.<?/en?></p>
