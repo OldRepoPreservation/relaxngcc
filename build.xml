@@ -85,16 +85,18 @@
 			</fileset>
 		</copy>
 		
-		<java classname="DocGen" fork="true">
-			<classpath path="docgen"/>
-			<arg value="ja"/>
-			<arg value="htdocs/*.htm"/>
-		</java>
-		<java classname="DocGen" fork="true">
-			<classpath path="docgen"/>
-			<arg value="en"/>
-			<arg value="htdocs/*.htm"/>
-		</java>
+		<taskdef name="docgen" classname="DocGenTask">
+		  <classpath>
+		    <pathelement path="docgen"/>
+		  </classpath>
+		</taskdef>
+		
+		<docgen language="ja">
+		  <src dir="htdocs" includes="*.htm"/>
+		</docgen>
+		<docgen language="en">
+		  <src dir="htdocs" includes="*.htm"/>
+		</docgen>
 	</target>
 	
 	<target name="jar" depends="compile">
