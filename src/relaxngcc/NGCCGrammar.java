@@ -21,6 +21,7 @@ import relaxngcc.builder.NullableChecker;
 import relaxngcc.builder.ScopeCollector;
 import relaxngcc.builder.ScopeInfo;
 import relaxngcc.codedom.CDJavaFormatter;
+import relaxngcc.datatype.NoDefinitionException;
 import relaxngcc.grammar.Grammar;
 import relaxngcc.grammar.Scope;
 import relaxngcc.runtime.NGCCRuntime;
@@ -158,7 +159,7 @@ public class NGCCGrammar {
      * @return
      *      true if files are in fact generated.
      */
-    public boolean output( Options opt, long sourceTimestamp ) throws IOException {
+    public boolean output( Options opt, long sourceTimestamp ) throws IOException, NoDefinitionException {
         boolean generated = false;
         
         //step2 scopes
