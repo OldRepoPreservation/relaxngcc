@@ -379,8 +379,10 @@ public class CodeWriter
         sv.addStatement(new AssignStatement(new PropertyReferenceExpression(new VariableExpression("this"), "qname"), new VariableExpression("qname")));
             
 		if(_Options.debug) {
-			sv.addStatement(new ExpressionStatement(new MethodInvokeExpression(new VariableExpression("runtime"), "traceln",
-				new Expression[]{ new LanguageSpecificExpression(new LanguageSpecificString("\""+eventName + " \"+qname+\" #\" + _ngcc_current_state")) })));
+			sv.invoke(
+                new VariableExpression("runtime"), "traceln")
+                    .arg(new LanguageSpecificExpression(
+                        new LanguageSpecificString("\""+eventName + " \"+qname+\" #\" + _ngcc_current_state")));
         }
         
 		SwitchBlockInfo bi = new SwitchBlockInfo(type);
@@ -418,7 +420,9 @@ public class CodeWriter
                     buildTransitionCode(st,tr,eventName,arguments));
 		}
         
-        Statement eh = new ExpressionStatement(new MethodInvokeExpression("unexpected"+capitalize(eventName), new Expression[]{ new VariableExpression("qname") }));
+        Statement eh = new ExpressionStatement(
+            new MethodInvokeExpression("unexpected"+capitalize(eventName))
+                .arg(new VariableExpression("qname")));
 		sv.addStatement(bi.output(eh));
 
 		TypeDescriptor[] types = new TypeDescriptor[3 + additionaltypes.length];
@@ -455,27 +459,29 @@ public class CodeWriter
     private StatementVector buildTransitionCode( State current, Transition tr, String eventName, Expression[] additionalparams ) {
 	    
 	    if(tr==REVERT_TO_PARENT) {
-	    	Expression[] args = new Expression[2 + additionalparams.length];
-	    	args[0] = new VariableExpression(_Info.scope.getParam().returnValue);
-	    	args[1] = new VariableExpression("cookie");
-	    	System.arraycopy(additionalparams, 0, args, 2, additionalparams.length);
-	    	
+            
+            String retValue = _Info.scope.getParam().returnValue;
+            String retType  = _Info.scope.getParam().returnType;
+            String boxType = getJavaBoxType(retType);
+            
+            Expression r = new VariableExpression(_Info.scope.getParam().returnValue);
+            if(boxType!=null)
+                r = new ObjectCreateExpression( new TypeDescriptor(boxType) ).arg(r);
+            
 	    	StatementVector sv = current.invokeActionsOnExit();
-	    	sv.addStatement(new ExpressionStatement(new MethodInvokeExpression(
+	    	sv.invoke(
 	    		new VariableExpression("runtime"),
-	    		"revertToParentFrom"+capitalize(eventName),
-	    		args)));
+	    		"revertToParentFrom"+capitalize(eventName))
+                    .arg(r)
+                    .arg(new VariableExpression("cookie"))
+                    .args(additionalparams);
 	    	return sv;
         }
         
         if(tr.getAlphabet().isEnterElement()) {
-        	
-        	Expression[] args = new Expression[1];
-        	args[0] = new VariableExpression("attrs");
-        	StatementVector sv = new StatementVector(new ExpressionStatement(new MethodInvokeExpression(
-	    		new VariableExpression("runtime"),
-	    		"pushAttributes",
-	    		args)));
+        	StatementVector sv = new StatementVector();
+            sv.invoke( new VariableExpression("runtime"), "pushAttributes")
+                    .arg(new VariableExpression("attrs"));
             sv.addStatement(buildMoveToStateCode(tr));
             
             return sv;
@@ -525,31 +531,32 @@ public class CodeWriter
          *  But I give it away because separating the string into Expression[] is hard.
          */
         String extraarg = alpha.getParams();
-        Expression[] args = new Expression[extraarg.length()==0? 3 : 4];
-        args[0] = new VariableExpression("this"); //TODO: literal 'this' is specific to programming language 
-        args[1] = new VariableExpression("runtime");
-        args[2] = new ConstantExpression(ref_tr.getUniqueId());
+        
+        ObjectCreateExpression oe = 
+            new ObjectCreateExpression(new TypeDescriptor(ref_block.getClassName()))
+                .arg(new VariableExpression("this")) //TODO: literal 'this' is specific to programming language 
+                .arg(new VariableExpression("runtime"))
+                .arg(new ConstantExpression(ref_tr.getUniqueId()));
         if(extraarg.length()>0)
-	        args[3] = new LanguageSpecificExpression(extraarg.substring(1));
-        sv.addStatement(new VariableDeclarationStatement(new TypeDescriptor("NGCCHandler"), "h",
-        	new ObjectCreateExpression(new TypeDescriptor(ref_block.getClassName()), args)));
+            oe.arg(new LanguageSpecificExpression(extraarg.substring(1)));
+            
+        sv.addStatement(new VariableDeclarationStatement(new TypeDescriptor("NGCCHandler"), "h", oe ));
         
         
         if(_Options.debug) {
-        	args = new Expression[] { new ConstantExpression(MessageFormat.format(
+        	Expression msg = new ConstantExpression(MessageFormat.format(
                 "Change Handler to {0} (will back to:#{1})",
                 new Object[]{
                     ref_block.getClassName(),
                     new Integer(ref_tr.nextState().getIndex())
-                })) };
+                }));
                 
-        	sv.addStatement(new ExpressionStatement(new MethodInvokeExpression(new VariableExpression("runtime"), "traceln", args)));
+        	sv.invoke(new VariableExpression("runtime"), "traceln").arg(msg);
         }
         
-        args = new Expression[1+eventParams.length];
-        args[0] = new VariableExpression("h");
-        System.arraycopy(eventParams, 0, args, 1, eventParams.length);
-        sv.addStatement(new ExpressionStatement(new MethodInvokeExpression(new VariableExpression("runtime"), "spawnChildFrom"+capitalize(eventName), args)));
+        sv.invoke( new VariableExpression("runtime"), "spawnChildFrom"+capitalize(eventName))
+            .arg(new VariableExpression("h"))
+            .args(eventParams);
                 
         return sv;
     }
@@ -604,10 +611,8 @@ public class CodeWriter
 		StatementVector sv = new StatementVector();
 		
         if(_Options.debug) {
-        	sv.addStatement(new ExpressionStatement(new MethodInvokeExpression(
-        		new VariableExpression("runtime"),
-        		"trace", 
-        		new Expression[] { new LanguageSpecificExpression(new LanguageSpecificString("\"text '\"+___$value.trim()+\"' #\" + _ngcc_current_state")) })));
+        	sv.invoke( new VariableExpression("runtime"), "trace")
+                .arg(new LanguageSpecificExpression(new LanguageSpecificString("\"text '\"+___$value.trim()+\"' #\" + _ngcc_current_state")));
         }
 
 		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.VALUE_TEXT);
@@ -632,7 +637,9 @@ public class CodeWriter
                 
                 StatementVector code = buildTransitionCode(st,tr,"text",new Expression[]{ new VariableExpression("___$value") });
                 if(a.isValueText())
-                    bi.addConditionalCode(st, BinaryOperatorExpression.EQ(new VariableExpression("___$value"), new ConstantExpression(a.asValueText().getValue())), code);
+                    bi.addConditionalCode(st, 
+                    new MethodInvokeExpression( new VariableExpression("___$value"), "equals" )
+                        .arg( new ConstantExpression(a.asValueText().getValue())), code);
                 else {
                     dataPresent = true;
                     bi.addElseCode(st, code);
@@ -647,7 +654,9 @@ public class CodeWriter
         
         Statement errorHandler = null;
         if(_Options.debug)
-            errorHandler = new ExpressionStatement(new MethodInvokeExpression(new VariableExpression("runtime"), "traceln", new Expression[] { new ConstantExpression("ignored") }));
+            errorHandler = new ExpressionStatement(
+                new MethodInvokeExpression(new VariableExpression("runtime"), "traceln")
+                .arg(new ConstantExpression("ignored")));
 		sv.addStatement(bi.output(errorHandler));
         
 		//_output.println("public void text(String ___$value) throws SAXException");
@@ -659,13 +668,30 @@ public class CodeWriter
         
 	}
     
+    private static final String[] boxTypes = {
+            "boolean","Boolean",
+            "char","Character",
+            "byte","Byte",
+            "short","Short",
+            "int","Integer",
+            "long","Long",
+            "float","Float",
+            "double","Double"};
+    
+    private String getJavaBoxType( String name ) {
+        for( int i=0; i<boxTypes.length; i+=2 )
+            if( name.equals(boxTypes[i]) )
+                return boxTypes[i+1];
+        return null;
+    }
+    
     private MethodDefinition writeChildCompletedHandler() {
         //printSection("child completed");
         
         StatementVector sv = new StatementVector();
         if(_Options.debug) {
-        	sv.addStatement(new ExpressionStatement(new MethodInvokeExpression(new VariableExpression("runtime"), "traceln",
-        		new Expression[] { new LanguageSpecificExpression("\"onChildCompleted(\"+cookie+\") back to "+_Info.getClassName()+"\"") })));
+        	sv.invoke(new VariableExpression("runtime"), "traceln" )
+                .arg( new LanguageSpecificExpression("\"onChildCompleted(\"+cookie+\") back to "+_Info.getClassName()+"\""));
         }
         
         SwitchStatement switchstatement = new SwitchStatement(new VariableExpression("cookie"));
@@ -688,9 +714,23 @@ public class CodeWriter
                     String alias = a.getAlias();
                     if(alias!=null) {
                         ScopeInfo childBlock = a.getTargetScope();
+                        String returnType = childBlock.scope.getParam().returnType;
+                        
+                        String boxType = getJavaBoxType(returnType);
+                        Expression rhs;
+                        if(boxType==null)
+                            rhs = new CastExpression(
+                                new TypeDescriptor(returnType), new VariableExpression("result"));
+                        else
+                            rhs = new MethodInvokeExpression(
+                                new CastExpression( new TypeDescriptor(boxType),
+                                new VariableExpression("result")),
+                                returnType+"Value");
+                            
                         block.addStatement(new AssignStatement(
                         	new PropertyReferenceExpression(new VariableExpression("this"), alias),
-                        	new CastExpression(new TypeDescriptor(childBlock.scope.getParam().returnType), new VariableExpression("result"))));
+                        	rhs));
+                                
                     }
                     
                     block.addStatement(tr.invokeEpilogueActions());
@@ -721,16 +761,18 @@ public class CodeWriter
 		StatementVector sv = new StatementVector();
 		sv.addStatement(new VariableDeclarationStatement(TypeDescriptor.INTEGER, "ai"));
 		if(_Options.debug)
-			sv.addStatement(new ExpressionStatement(new MethodInvokeExpression(new VariableExpression("runtime"), "traceln",
-				new Expression[] { new LanguageSpecificExpression("\"processAttribute (\" + runtime.getCurrentAttributes().getLength() + \" atts) #\" + _ngcc_current_state") }))); 
+			sv.invoke(new VariableExpression("runtime"), "traceln")
+                .arg( new LanguageSpecificExpression("\"processAttribute (\" + runtime.getCurrentAttributes().getLength() + \" atts) #\" + _ngcc_current_state")); 
 		
 		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.ENTER_ATTRIBUTE);
-		
+        
         Iterator states = _Info.iterateAllStates();
         while(states.hasNext()) {
             State st = (State)states.next();
             writeAttributeHandler(bi,st,st);
         }
+        
+        sv.addStatement(bi.output(null));
         
         return new MethodDefinition(new LanguageSpecificString("public"), TypeDescriptor.VOID, "processAttribute", null, null, new LanguageSpecificString("throws SAXException"), sv);
     }
@@ -759,11 +801,12 @@ public class CodeWriter
 	            "(ai = runtime.getAttributeIndex(\"{0}\",\"{1}\"))>=0",
 	                new Object[]{
 	                    snc.nsUri, snc.localName})); //chotto sabori gimi
-	                    
-	        Statement consumeattr = new ExpressionStatement(new MethodInvokeExpression(new VariableExpression("runtime"), "getAttributeIndex",
-	        	new Expression[] { new VariableExpression("ai") }));
+	       
+            StatementVector sv = new StatementVector();
+            sv.invoke(new VariableExpression("runtime"), "consumeAttribute")
+                .arg(new VariableExpression("ai"));
 	        	
-	        bi.addConditionalCode(st, condition, new StatementVector(consumeattr));
+	        bi.addConditionalCode(st, condition, sv);
         } else {
             // if the name class is complex
             throw new UnsupportedOperationException(
@@ -800,14 +843,14 @@ public class CodeWriter
             else
                 trace = "-> #[" + deststate.getThreadIndex() + "]"+ deststate.getIndex();
 
-        	sv.addStatement(new ExpressionStatement(new MethodInvokeExpression(new VariableExpression("runtime"), "traceln",
-        		new Expression[] { new ConstantExpression(trace) })));
+        	sv.invoke( new VariableExpression("runtime"), "traceln" )
+                .arg( new ConstantExpression(trace));
                
         }
 
         if(!deststate.attHead().isEmpty()) {
         	
-        	Statement processAttribute = new ExpressionStatement(new MethodInvokeExpression("processAttribute", null));
+        	Statement processAttribute = new ExpressionStatement(new MethodInvokeExpression("processAttribute"));
             if(flagVarName!=null)
                 sv.addStatement(new IfStatement(new VariableExpression(flagVarName), new StatementVector(processAttribute)));
             else

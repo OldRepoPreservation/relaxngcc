@@ -25,9 +25,22 @@ public class StatementVector extends CodeDOMRoot {
 		if(s==null) throw new IllegalArgumentException("parameter is null");
 		_Statements.add(s);
 	}
+    public void add(Expression e) {
+        addStatement(new ExpressionStatement(e));
+    }
 	public void addStatement(StatementVector sv) {
 		_Statements.addAll(sv._Statements);
 	}
+    public MethodInvokeExpression invoke( Expression obj, String method ) {
+        MethodInvokeExpression e = new MethodInvokeExpression(obj,method);
+        add(e);
+        return e;
+    }
+    public MethodInvokeExpression invoke( String method ) {
+        MethodInvokeExpression e = new MethodInvokeExpression(method);
+        add(e);
+        return e;
+    }
 
 	public int size() { return _Statements.size(); }
 	

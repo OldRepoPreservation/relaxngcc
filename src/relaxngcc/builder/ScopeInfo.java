@@ -258,7 +258,7 @@ public final class ScopeInfo
         
         /** Gets the code to invoke this action. */
         public Statement invoke() {
-        	return new ExpressionStatement(new MethodInvokeExpression("action"+uniqueId, null));
+        	return new ExpressionStatement(new MethodInvokeExpression("action"+uniqueId));
         }
         
         /** ID number that uniquely identifies this fragment. */
@@ -304,7 +304,7 @@ public final class ScopeInfo
                 String varname = pair.substring(idx+1).trim();
                 
                 vec.add(
-                    addUserDefinedAlias(varname,vartype));
+                    addAlias(varname,vartype));
             }
         }
         constructorParams = (Alias[])vec.toArray(new Alias[vec.size()]);
@@ -383,20 +383,7 @@ public final class ScopeInfo
 		_AllStates.add(state);
 	}
 	
-	public Alias addAlias(String name, String xsdtype)
-	{
-        String javatype = NGCCUtil.XSDTypeToJavaType(xsdtype);
-        if(!_UsingBigInteger && javatype.equals("BigInteger"))
-            _UsingBigInteger = true;
-        else if(!_UsingCalendar && javatype.equals("GregorianCalendar"))
-            _UsingCalendar = true;
-
-        Alias a = new Alias(name, javatype, false);
-        aliases.put(name,a);
-        return a;
-	}
-	public Alias addUserDefinedAlias(String name, String classname)
-	{
+	public Alias addAlias(String name, String classname) {
         Alias a = new Alias(name, classname, true);
 		aliases.put(name,a);
         return a;
@@ -492,7 +479,9 @@ public final class ScopeInfo
 		argParams[2] = "cookie";
 		
         StatementVector argAssigns = new StatementVector();   // constructor aguments assignments
-        argAssigns.addStatement(new ExpressionStatement(new MethodInvokeExpression("super", new Expression[]{ new VariableExpression("parent"), new VariableExpression("cookie") })));
+        argAssigns.invoke("super")
+            .arg(new VariableExpression("parent"))
+            .arg(new VariableExpression("cookie"));
         argAssigns.addStatement(new AssignStatement(new VariableExpression("runtime"), new VariableExpression("_runtime")));
         {// build up constructor arguments
             for( int i=0; i<constructorParams.length; i++ ) {
@@ -518,9 +507,18 @@ public final class ScopeInfo
 		System.arraycopy(argTypes, 3, argTypes2, 1, argTypes.length-3);
 		System.arraycopy(argParams, 3, argParams2, 1, argParams.length-3);
 
-		classdef.addMethod(new MethodDefinition(new LanguageSpecificString("public"), null, param.className, argTypes2, argParams2, null, 
-			new StatementVector(new ExpressionStatement(new MethodInvokeExpression("this",
-				new Expression[]{ ConstantExpression.NULL, new VariableExpression("_runtime"), new ConstantExpression(-1) })))));
+        {
+            StatementVector body = new StatementVector();
+    		classdef.addMethod(new MethodDefinition(new LanguageSpecificString("public"), null, param.className, argTypes2, argParams2, null, 
+    			body ));
+                
+            MethodInvokeExpression sc = body.invoke("this")
+                .arg( ConstantExpression.NULL )
+                .arg( new VariableExpression("_runtime") )
+                .arg( new ConstantExpression(-1) );
+            for( int i=0; i<constructorParams.length; i++ )
+                sc.arg(new VariableExpression('_'+constructorParams[i].name));
+        }
 
         String runtimeBaseName = "relaxngcc.runtime.NGCCRuntime";
         if(options.usePrivateRuntime) runtimeBaseName = "NGCCRuntime";

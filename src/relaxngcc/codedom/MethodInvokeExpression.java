@@ -2,25 +2,37 @@ package relaxngcc.codedom;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Iterator;
 
 /**
  */
 public class MethodInvokeExpression extends Expression {
 
-	private Expression _Object;
-	private String _MethodName;
-	private Expression[] _Args;
+	private final Expression _Object;
+	private final String _MethodName;
+    private final ArrayList _Args = new ArrayList();
 
-	public MethodInvokeExpression(Expression obj, String methodname, Expression[] args) {
+	public MethodInvokeExpression(Expression obj, String methodname) {
 		_Object = obj;
 		_MethodName = methodname;
-		_Args = args;
 	}
-	public MethodInvokeExpression(String methodname, Expression[] args) {
+	public MethodInvokeExpression(String methodname) {
 		_Object = null;
 		_MethodName = methodname;
-		_Args = args;
 	}
+    
+    /** Adds an argument to this invocation. */
+    public MethodInvokeExpression arg( Expression arg ) {
+        _Args.add(arg);
+        return this;
+    }
+    /** Adds arguments to this invocation. */
+    public MethodInvokeExpression args( Expression[] args ) {
+        for( int i=0; i<args.length; i++ )
+            arg( args[i] );
+        return this;
+    }
 	
 
     public void writeTo(OutputParameter param, Writer writer) throws IOException {
@@ -32,12 +44,16 @@ public class MethodInvokeExpression extends Expression {
     	writer.write(_MethodName);
     	writer.write("(");
     	
-    	if(_Args!=null) {
-    		for(int i=0; i<_Args.length; i++) {
-    			if(i > 0) writer.write(", ");
-    			_Args[i].writeTo(param, writer);
-    		}
-    	}
+        boolean first = true;
+        for (Iterator itr = _Args.iterator(); itr.hasNext();) {
+            
+            if(!first)  writer.write(",");
+            first = false;
+            
+            Expression arg = (Expression) itr.next();
+			arg.writeTo(param, writer);
+		}
+        
     	writer.write(")");
     }
 

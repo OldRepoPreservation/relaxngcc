@@ -45,17 +45,26 @@ public class IfStatement extends Statement {
 	    	writer.write(i==0? "if(" : "else if(");
 	    	Block block = (Block)_Blocks.get(i);
 	    	block._Expr.writeTo(param, writer);
-	    	writer.write(block._Statements.size()>1? ") {" : ")");
+            // not writing '{' causes ambiguity if the only statement
+            // inside it is another IfStatement.
+            // consider
+            // if(x) if(y) a; else b;
+            
+            // Is this
+            // if(x) { if(y) a; } else b;
+            // or
+            // if(x) { if(y) a; else b; } ?
+            //
+	    	writer.write(") {");
 	    	writer.write(NEWLINE);
 	    	
 	    	param.incrementIndent();
 	    	block._Statements.writeTo(param, writer);
 	    	param.decrementIndent();
 
-	    	if(block._Statements.size()>1) {
-		    	writeIndent(param, writer);
-	    		writer.write("} ");
-	    	}
+	    	writeIndent(param, writer);
+    		writer.write("} ");
+            
 	    	writer.write(NEWLINE);
     	}
     	

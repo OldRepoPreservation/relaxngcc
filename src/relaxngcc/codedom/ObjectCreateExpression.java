@@ -1,17 +1,23 @@
 package relaxngcc.codedom;
 import java.io.IOException;
 import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Iterator;
 
 /**
  */
 public class ObjectCreateExpression extends Expression {
     
-    private TypeDescriptor _ClassName;
-    private Expression[] _ConstructorArgs;
+    private final TypeDescriptor _ClassName;
+    private final ArrayList _Args = new ArrayList();
     
-    public ObjectCreateExpression(TypeDescriptor classname, Expression[] constructorArgs) {
+    public ObjectCreateExpression(TypeDescriptor classname ) {
     	_ClassName = classname;
-    	_ConstructorArgs = constructorArgs;
+    }
+    
+    public ObjectCreateExpression arg( Expression arg ) {
+        _Args.add(arg);
+        return this;
     }
 
     public void writeTo(OutputParameter param, Writer writer) throws IOException {
@@ -19,12 +25,15 @@ public class ObjectCreateExpression extends Expression {
     	_ClassName.writeTo(param, writer);
     	writer.write("(");
     	
-    	if(_ConstructorArgs!=null) {
-    		for(int i=0; i<_ConstructorArgs.length; i++) {
-    			if(i > 0) writer.write(", ");
-    			_ConstructorArgs[i].writeTo(param, writer);
-    		}
-    	}
+        boolean first = true;
+        for (Iterator itr = _Args.iterator(); itr.hasNext();) {
+            if(!first)  writer.write(",");
+            first = false;
+            
+            Expression arg = (Expression) itr.next();
+            arg.writeTo(param,writer);
+        }
+        
     	writer.write(")");
     	
     }

@@ -192,7 +192,7 @@ public class AutomatonBuilder implements PatternFunction
 
     public Object data( DataPattern pattern ) {
         State result = createState(pattern);
-        if(pattern.alias!=null) _ScopeInfo.addUserDefinedAlias(pattern.alias,"String");
+        if(pattern.alias!=null) _ScopeInfo.addAlias(pattern.alias,"String");
         Transition t = createTransition(
             new Alphabet.DataText(pattern.type,pattern.alias,pattern.locator),
             destination);
@@ -210,7 +210,7 @@ public class AutomatonBuilder implements PatternFunction
     }
 
     public Object value( ValuePattern pattern ) {
-        if(pattern.alias!=null) _ScopeInfo.addUserDefinedAlias(pattern.alias,"String");
+        if(pattern.alias!=null) _ScopeInfo.addAlias(pattern.alias,"String");
         
         State result = createState(pattern);
         Transition t = createTransition(
@@ -225,7 +225,7 @@ public class AutomatonBuilder implements PatternFunction
     public Object list( ListPattern pattern ) {
         if(pattern.alias!=null) {
             // don't treat this list as a structured text.
-	        _ScopeInfo.addUserDefinedAlias(pattern.alias,"String");
+	        _ScopeInfo.addAlias(pattern.alias,"String");
 	        
             State result = createState(pattern);
 	        Transition t = createTransition(
@@ -241,7 +241,7 @@ public class AutomatonBuilder implements PatternFunction
             State head = (State)pattern.p.apply(this);
             
             // then append the "header" transition that tokenizes the text.
-            _ScopeInfo.addAlias("__text","string");
+            _ScopeInfo.addAlias("__text","String");
             Transition tr = new Transition(
                 new Alphabet.DataText(
                     new MetaDataType("string"), "__text", pattern.locator ),
@@ -373,7 +373,7 @@ public class AutomatonBuilder implements PatternFunction
         
         String alias = pattern.param.getAlias();
         if(alias!=null)
-            _ScopeInfo.addUserDefinedAlias(alias,
+            _ScopeInfo.addAlias(alias,
                 targetScope.scope.getParam().returnType);
         
         Transition t = createTransition(new Alphabet.Ref(

@@ -22,10 +22,11 @@ public class CastExpression extends Expression {
 	}
 
     public void writeTo(OutputParameter param, Writer writer) throws IOException {
-    	writer.write("(");
+    	writer.write("((");
     	_Type.writeTo(param, writer);
     	writer.write(")");
     	_Expression.writeTo(param, writer);
+        writer.write(")");
     }
 
 }
