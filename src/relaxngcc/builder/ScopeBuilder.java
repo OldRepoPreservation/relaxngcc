@@ -513,18 +513,22 @@ public class ScopeBuilder
         
         if(preservedAction.length()!=0)
             action_last = _ScopeInfo.createAction(preservedAction);
-        // TODO: isn't this a bug? I mean, we end up adding the same action
-        // to two different places - Kohsuke
+        // TODO: put those actions into the same Action object if applicable.
         
 		addAction(destination);
 		State head = traverseNodeList(exp.getChildNodes(), ctx, destination);
 		addAction(head);
-		head.mergeTransitions(destination, action_last);
-		destination.mergeTransitions(head);
-        return destination;
-//  use less states
-//		if(destination.isAcceptable()) head.setAcceptable(true);
-//		return head;
+
+        State tmp = createState(exp,ctx);
+        tmp.mergeTransitions(destination);
+        
+        destination.mergeTransitions(head);
+        head.mergeTransitions(tmp);
+        
+        if(destination.isAcceptable()) head.setAcceptable(true);
+        // TODO: I suppose we also need to copy list state?
+        
+		return head;
 	}
 	private State processOptional(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
@@ -540,12 +544,8 @@ public class ScopeBuilder
 		State head = traverseNodeList(exp.getChildNodes(), ctx, destination);
 		addAction(head);
         
-        destination.mergeTransitions(head,action_last);
-        return destination;
-        
-//		head.mergeTransitions(destination, action_last);
-//		if(destination.isAcceptable()) head.setAcceptable(true);
-//		return head;
+        head.mergeTransitions(destination,action_last);
+        return head;
 	}
 	
 	private State processRef(NGCCElement exp, ScopeBuildingContext ctx, State destination)
@@ -560,11 +560,9 @@ public class ScopeBuilder
 		}
 		else
 		{
-			ScopeInfo.Action action = null;
-            if(preservedAction.length()!=0)
-                action = _ScopeInfo.createAction(preservedAction);
-            // TODO: seems like this is also a bug --- why don't we need to
-            // reset preserved action?
+//			ScopeInfo.Action action = null;
+//            if(preservedAction.length()!=0)
+//                action = _ScopeInfo.createAction(preservedAction);
             
 			addAction(destination);
 			
@@ -581,7 +579,11 @@ public class ScopeBuilder
                 exp.attributeNGCC("with-params",null)),
                 destination);
 			head.addTransition(t);
-			if(target.nullable()) head.mergeTransitions(destination, action);
+            
+// this is a bug. even if the target is nullable, we need to call it
+// because the parent scope is expecting to call it.
+// it is the child scope's responsibility to revert to parent ASAP.
+//			if(target.nullable()) head.mergeTransitions(destination, action);
 			return head;
 		}
 	}
