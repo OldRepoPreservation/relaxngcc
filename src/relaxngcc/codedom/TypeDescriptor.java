@@ -5,7 +5,7 @@ import java.io.Writer;
 
 /**
  */
-public class TypeDescriptor extends CodeDOMRoot {
+public class TypeDescriptor {
 	
 	public static final int TYPE_VOID    = 0;
 	public static final int TYPE_OBJECT  = 1;
@@ -38,23 +38,25 @@ public class TypeDescriptor extends CodeDOMRoot {
 		_Name = classname;
 	}
 
-	public void writeTo(OutputParameter param, Writer writer) throws IOException {
+	public void writeTo( Formatter f ) throws IOException {
 		switch(_Type) {
 			case TYPE_OBJECT:
-				writer.write(_Name);
+				f.p(_Name);
 				break;
 			case TYPE_VOID:
-				writer.write("void");
+				f.p("void");
 				break;
 			case TYPE_INTEGER:
-				writer.write("int");
+				f.p("int");
 				break;
 			case TYPE_BOOLEAN:
-				writer.write("boolean");
+				f.p("boolean");
 				break;
 			case TYPE_STRING:
-				writer.write("String");
+				f.p("String");
 				break;
+            default:
+                throw new InternalError();
 		}
 	}		
 }

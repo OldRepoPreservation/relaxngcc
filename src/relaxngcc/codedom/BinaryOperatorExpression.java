@@ -31,23 +31,23 @@ public class BinaryOperatorExpression extends Expression {
     	return new BinaryOperatorExpression(OR, left, right);
     }
 
-    public void express(OutputParameter param, Writer writer) throws IOException {
+    public void express(Formatter f) throws IOException {
     	//TODO: eliminate excessive brackets
-        writer.write("(");
-        _Left.express(param, writer);
+        f.p('(');
+        _Left.express(f);
         switch(_Type) {
         	case AND:
-        	    writer.write(" && ");
+        	    f.p("&&");
         	    break;
         	case OR:
-        	    writer.write(" || ");
+        	    f.p("||");
         	    break;
         	case EQ:
-        	    writer.write(" == "); //TODO: string support
+        	    f.p("=="); //TODO: string support
         	    break;
         }
-        _Right.express(param, writer);
-        writer.write(")");
+        _Right.express(f);
+        f.p(')');
     }
 
 }

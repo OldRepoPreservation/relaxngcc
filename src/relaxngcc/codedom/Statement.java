@@ -12,5 +12,5 @@ public interface Statement {
     /**
      * Prints itself as a statement.
      */
-    void state( OutputParameter param, Writer writer ) throws IOException;
+    void state( Formatter f ) throws IOException;
 }

@@ -6,7 +6,7 @@ import java.util.Vector;
 
 /**
  */
-public class IfStatement extends CodeDOMRoot implements Statement {
+public class IfStatement implements Statement {
 	
 	private class Block {
 		Expression _Expr;
@@ -38,13 +38,14 @@ public class IfStatement extends CodeDOMRoot implements Statement {
 	}
 	
 	
-    public void state(OutputParameter param, Writer writer) throws IOException {
+    public void state( Formatter f ) throws IOException {
 
     	for(int i=0; i<_Blocks.size(); i++) {
-	    	writeIndent(param, writer);
-	    	writer.write(i==0? "if(" : "else if(");
-	    	Block block = (Block)_Blocks.get(i);
-	    	block._Expr.express(param, writer);
+            final Block block = (Block)_Blocks.get(i);
+            
+            if(i!=0)    f.p("else");
+            f.p("if").p('(').express(block._Expr).p(')');
+            
             // not writing '{' causes ambiguity if the only statement
             // inside it is another IfStatement.
             // consider
@@ -54,38 +55,12 @@ public class IfStatement extends CodeDOMRoot implements Statement {
             // if(x) { if(y) a; } else b;
             // or
             // if(x) { if(y) a; else b; } ?
-            //
-	    	writer.write(") {");
-	    	writer.write(NEWLINE);
-	    	
-	    	param.incrementIndent();
-	    	block._Statements.writeTo(param, writer);
-	    	param.decrementIndent();
-
-	    	writeIndent(param, writer);
-    		writer.write("} ");
             
-	    	writer.write(NEWLINE);
+            f.state(block._Statements);
     	}
     	
-    	if(_ElseBlock!=null) {
-	    	writeIndent(param, writer);
-	    	writer.write("else");
-
-	    	if(_ElseBlock.size()>1) writer.write(" {");
-	    	writer.write(NEWLINE);
-	    	
-	    	param.incrementIndent();
-    		_ElseBlock.writeTo(param, writer);
-	    	param.decrementIndent();
-
-	    	if(_ElseBlock.size()>1) {
-   		    	writeIndent(param, writer);
-				writer.write("} ");
-	    	}
-    	}
-
-    	writer.write(NEWLINE);
+    	if(_ElseBlock!=null)
+            f.p("else").state(_ElseBlock);
     }
 
 }

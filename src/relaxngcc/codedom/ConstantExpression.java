@@ -33,24 +33,23 @@ public class ConstantExpression extends Expression {
 		NULL._Type = TypeDescriptor.TYPE_OBJECT;
 	}
 
-    public void express(OutputParameter param, Writer writer) throws IOException {
+    public void express(Formatter f) throws IOException {
     	switch(_Type) {
     		case TypeDescriptor.TYPE_OBJECT:
-    		   	writer.write("null");
+    		   	f.p("null");
     		   	break;
     		case TypeDescriptor.TYPE_INTEGER:
-    		   	writer.write(Integer.toString(_IntVal));
+    		   	f.p(Integer.toString(_IntVal));
     		   	break;
     		case TypeDescriptor.TYPE_BOOLEAN:
-    		   	writer.write(_BooleanVal? "true" : "false");
+    		   	f.p(_BooleanVal? "true" : "false");
     		   	break;
     		case TypeDescriptor.TYPE_STRING:
-    		   	writer.write("\"");
-    		   	writer.write(_StringVal);
-    		   	writer.write("\"");
+    		   	f.p('"'+_StringVal+'"');
     		   	break;
+            default:
+                throw new InternalError();
     	}
-    		   	
     }
 
 }

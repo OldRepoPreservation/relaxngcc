@@ -6,14 +6,14 @@ import java.util.Vector;
 
 /**
  */
-public class ClassDefinition extends CodeDOMRoot {
+public class ClassDefinition {
 
 	private LanguageSpecificString[] _PrecedingDeclarations;
 	private LanguageSpecificString _ForwardSpecifier;
 	private String _ClassName;
 	private LanguageSpecificString _BackwardSpecifier;
-	private Vector _Members;
-	private Vector _Methods;
+	private final Vector _Members = new Vector();
+	private final Vector _Methods = new Vector();
 	private Vector _LanguageSpecificStrings;
 
 	public ClassDefinition(LanguageSpecificString[] declarations, LanguageSpecificString fs, String name, LanguageSpecificString bs) {
@@ -21,8 +21,6 @@ public class ClassDefinition extends CodeDOMRoot {
 		_ForwardSpecifier = fs;
 		_ClassName = name;
 		_BackwardSpecifier = bs;
-		_Members = new Vector();
-		_Methods = new Vector();
 		_LanguageSpecificStrings = new Vector();
 	}
 
@@ -49,53 +47,39 @@ public class ClassDefinition extends CodeDOMRoot {
 		_LanguageSpecificStrings.add(content);
 	}
 
-    public void writeTo(OutputParameter param, Writer writer) throws IOException {
+    public void writeTo( Formatter f ) throws IOException {
 
     	if(_PrecedingDeclarations!=null) {
-	    	for(int i=0; i<_PrecedingDeclarations.length; i++) {
-	    		_PrecedingDeclarations[i].writeTo(param, writer);
-	    		writer.write(NEWLINE);
-	    	}
+	    	for(int i=0; i<_PrecedingDeclarations.length; i++)
+	    		f.write(_PrecedingDeclarations[i]).nl();
     	}
-    	if(_ForwardSpecifier!=null) {
-    		_ForwardSpecifier.writeTo(param, writer);
-	    	writer.write(" ");
-    	}
+    	if(_ForwardSpecifier!=null)
+            f.write(_ForwardSpecifier);
     	
-    	writer.write("class ");
-    	writer.write(_ClassName);
+        f.p("class").p(_ClassName);
 
-    	if(_BackwardSpecifier!=null) {
-	    	writer.write(" ");
-    		_BackwardSpecifier.writeTo(param, writer);
-    	}
+    	if(_BackwardSpecifier!=null)
+            f.write(_BackwardSpecifier);
     	
-    	writer.write(" {");
-    	writer.write(NEWLINE);
-    	param.incrementIndent();
+        f.p('{');
+        f.in();
+        f.nl();
     	
-    	if(_Members!=null) {
-    		for(int i=0; i<_Members.size(); i++) {
-    			((VariableDeclaration)_Members.get(i)).state(param, writer);
-    		}
-    	}
-    	writer.write(NEWLINE);
-    	if(_Methods!=null) {
-    		for(int i=0; i<_Methods.size(); i++) {
-    			((MethodDefinition)_Methods.get(i)).writeTo(param, writer);
-    		}
-    	}
+		for(int i=0; i<_Members.size(); i++)
+			((VariableDeclaration)_Members.get(i)).state(f);
+            
+    	f.nl();
+        
+		for(int i=0; i<_Methods.size(); i++)
+			((MethodDefinition)_Methods.get(i)).writeTo(f);
     	
     	if(_LanguageSpecificStrings!=null) {
-    		for(int i=0; i<_LanguageSpecificStrings.size(); i++) {
-    			((LanguageSpecificString)_LanguageSpecificStrings.get(i)).writeTo(param, writer);
-    		}
+    		for(int i=0; i<_LanguageSpecificStrings.size(); i++)
+    			f.write((LanguageSpecificString)_LanguageSpecificStrings.get(i));
     	}
     	
-    	
-    	param.decrementIndent();
-    	writer.write("}");
-    	writer.write(NEWLINE);
+    	f.out();
+        f.nl().p('}');
     }
 
 }

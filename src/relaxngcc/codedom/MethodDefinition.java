@@ -7,7 +7,7 @@ import java.util.Iterator;
 
 /**
  */
-public class MethodDefinition extends CodeDOMRoot {
+public class MethodDefinition {
 
 	private LanguageSpecificString _ForwardSpecifier;
 	private TypeDescriptor _ReturnType;
@@ -41,47 +41,29 @@ public class MethodDefinition extends CodeDOMRoot {
     /** Gets a reference to the method body. */
     public StatementVector body() { return _Body; }
 
-    public void writeTo(OutputParameter param, Writer writer) throws IOException {
+    public void writeTo( Formatter f ) throws IOException {
 
-    	writeIndent(param, writer);
-
-    	if(_ForwardSpecifier!=null) {
-    		_ForwardSpecifier.writeTo(param, writer);
-	    	writer.write(" ");
-    	}
+    	if(_ForwardSpecifier!=null)
+            f.write(_ForwardSpecifier);
     	
-    	if(_ReturnType!=null) {
-    		_ReturnType.writeTo(param, writer);
-	    	writer.write(" ");
-    	}
-    		
-    	writer.write(_Name);
-		writer.write("(");
+    	if(_ReturnType!=null)
+            f.type(_ReturnType);
+        
+        f.p(_Name).p('(');
         
         boolean first=true;
         for (Iterator itr = _Params.iterator(); itr.hasNext();) {
-            if(!first)  writer.write(", ");
+            if(!first)  f.p(',');
             first = false;
-            VariableDeclaration v = (VariableDeclaration) itr.next();
-            v.declare(param,writer);
+            
+            f.declare((VariableDeclaration) itr.next());
         }
-		writer.write(")");
+        f.p(')');
 		
-    	if(_BackwardSpecifier!=null) {
-	    	writer.write(" ");
-    		_BackwardSpecifier.writeTo(param, writer);
-    	}
+    	if(_BackwardSpecifier!=null)
+            f.write(_BackwardSpecifier);
     	
-    	writer.write(" {");
-    	writer.write(NEWLINE);
-    	
-    	param.incrementIndent();
-        _Body.writeTo(param, writer);
-    	param.decrementIndent();
-        
-    	writeIndent(param, writer);
-    	writer.write("}");
-    	writer.write(NEWLINE);
+        f.state(_Body).nl();
     	
     }
 

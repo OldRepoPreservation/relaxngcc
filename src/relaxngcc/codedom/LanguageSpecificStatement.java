@@ -11,7 +11,7 @@ import java.io.Writer;
  * To enable and disable the creation of type comments go to
  * Window>Preferences>Java>Code Generation.
  */
-public class LanguageSpecificStatement extends CodeDOMRoot implements Statement {
+public class LanguageSpecificStatement implements Statement {
 
 	private LanguageSpecificString _Content;
 	
@@ -19,11 +19,8 @@ public class LanguageSpecificStatement extends CodeDOMRoot implements Statement 
 		_Content = content;
 	}
 
-    public void state(OutputParameter param, Writer writer) throws IOException {
-    	writeIndent(param, writer);
-    	_Content.writeTo(param, writer);
-    	writer.write(";");
-    	writer.write(NEWLINE);
+    public void state(Formatter f) throws IOException {
+        f.write(_Content).eos().nl();
     }
 
 }

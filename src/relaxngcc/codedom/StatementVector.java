@@ -9,17 +9,15 @@ import java.util.Vector;
  * 
  * simple collection of Statement objects
  */
-public class StatementVector extends CodeDOMRoot {
+public class StatementVector implements Statement {
 
-	private Vector _Statements;
+	private final Vector _Statements = new Vector();
 	
-	public StatementVector() {
-		_Statements = new Vector();
-	}
-	public StatementVector(Statement s) {
-		_Statements = new Vector();
-		_Statements.add(s);
-	}
+	public StatementVector() {}
+    public StatementVector(Statement s) {
+        this();
+        add(s);
+    }
 	
 	public void add(Statement s) {
 		if(s==null) throw new IllegalArgumentException("parameter is null");
@@ -65,9 +63,12 @@ public class StatementVector extends CodeDOMRoot {
 
 	public int size() { return _Statements.size(); }
 	
-	public void writeTo(OutputParameter param, Writer writeTo) throws IOException {
-		for(int i=0; i<_Statements.size(); i++) {
-			((Statement)_Statements.get(i)).state(param, writeTo);
-		}
+	public void state(Formatter f) throws IOException {
+        f.p('{').nl().in();
+        
+		for(int i=0; i<_Statements.size(); i++)
+            f.state( (Statement)_Statements.get(i) );
+        
+        f.out().p('}').nl();
 	}
 }

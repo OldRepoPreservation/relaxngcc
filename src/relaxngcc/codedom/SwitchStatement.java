@@ -6,7 +6,7 @@ import java.util.Vector;
 
 /**
  */
-public class SwitchStatement extends CodeDOMRoot implements Statement {
+public class SwitchStatement implements Statement {
 
 	private class Block {
 		ConstantExpression _Expr;
@@ -36,49 +36,31 @@ public class SwitchStatement extends CodeDOMRoot implements Statement {
 		_DefaultBlock = statements;
 	}
 
-    public void state(OutputParameter param, Writer writer) throws IOException {
+    public void state(Formatter f) throws IOException {
 
-        writeIndent(param, writer);
-        writer.write("switch(");
-        _CheckValue.express(param, writer);
-        writer.write(") {");
-        writer.write(NEWLINE);
-        param.incrementIndent();
+        f.p("switch").p('(').express(_CheckValue).p(')').p('{').nl();
         
     	for(int i=0; i<_Blocks.size(); i++) {
-	    	Block block = (Block)_Blocks.get(i);
-	    	writeIndent(param, writer);
-	    	writer.write("case ");
-	    	block._Expr.express(param, writer);
-	    	writer.write(":");
-	    	writer.write(NEWLINE);
+	    	final Block block = (Block)_Blocks.get(i);
+            
+            f.p("case").express(block._Expr).p(':').nl();
 	    	
-	    	param.incrementIndent();
-	    	block._Statements.writeTo(param, writer);
-	    	writeIndent(param, writer);
-	    	writer.write("break;");
-	    	writer.write(NEWLINE);
-	    	param.decrementIndent();
-
+            f.in();
+            f.state(block._Statements);
+            f.p("break").eos().nl();
+            f.out();
     	}
     	
     	if(_DefaultBlock!=null) {
-	    	writeIndent(param, writer);
-	    	writer.write("default:");
-	    	writer.write(NEWLINE);
+            f.p("default:").nl();
 	    	
-	    	param.incrementIndent();
-    		_DefaultBlock.writeTo(param, writer);
-	    	writeIndent(param, writer);
-	    	writer.write("break;");
-	    	writer.write(NEWLINE);
-	    	param.decrementIndent();
+            f.in();
+            f.state(_DefaultBlock);
+            f.p("break").eos().nl();
+            f.out();
     	}
-
-        param.decrementIndent();
-        writeIndent(param, writer);
-        writer.write("}");
-    	writer.write(NEWLINE);
+        
+        f.p('}').nl();
     }
 
 }

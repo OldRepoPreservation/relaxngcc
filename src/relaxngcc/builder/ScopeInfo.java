@@ -504,7 +504,7 @@ public final class ScopeInfo
                     new TypeDescriptor(constructorParams[i].javatype),
                     '_'+constructorParams[i].name);
                 cotr1.body().assign(
-                    new VariableExpression("runtime"),
+                    new VariableExpression(constructorParams[i].name),
                     v );
             }
             

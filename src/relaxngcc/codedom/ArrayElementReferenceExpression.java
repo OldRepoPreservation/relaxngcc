@@ -15,11 +15,9 @@ public class ArrayElementReferenceExpression extends Expression {
 		_Index = index;
 	}
 
-    public void express(OutputParameter param, Writer writer) throws IOException {
-    	_Array.express(param, writer);
-    	writer.write("[");
-    	_Index.express(param, writer);
-    	writer.write("]");
+    public void express( Formatter f) throws IOException {
+    	_Array.express(f);
+        f.p('[').express(_Index).p(']');
     }
 
 }

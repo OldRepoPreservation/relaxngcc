@@ -25,7 +25,7 @@ import relaxngcc.grammar.Grammar;
 import relaxngcc.grammar.PatternFunction;
 import relaxngcc.grammar.Scope;
 import relaxngcc.runtime.NGCCRuntime;
-import relaxngcc.codedom.OutputParameter;
+import relaxngcc.codedom.JavaFormatter;
 import relaxngcc.codedom.Language;
 
 /**
@@ -177,9 +177,8 @@ public class NGCCGrammar {
                 f.delete();
                 
                 
-                OutputParameter param = new OutputParameter(Language.JAVA);
                 Writer writer = new OutputStreamWriter(new FileOutputStream(f));
-                w.output().writeTo(param, writer);
+                w.output().writeTo(new JavaFormatter(writer));
                 writer.close();
                 f.setReadOnly();
             }

@@ -25,32 +25,26 @@ public class VariableDeclaration extends Expression implements Statement {
 		_InitialValue = initialvalue;
 	}
 	
-    public void express(OutputParameter param, Writer writer) throws IOException {
+    public void express( Formatter f ) throws IOException {
         // as a reference
-        writer.write(_Name);
+        f.p(_Name);
     }
 
-    public void declare(OutputParameter param, Writer writer) throws IOException {
+    public void declare( Formatter f ) throws IOException {
         // as mod type name [=init]
-        writeIndent(param, writer);
 
-        if(_Modifier != null) {
-            _Modifier.writeTo(param, writer);
-            writer.write(" ");
-        }
-        _Type.writeTo(param, writer);
-        writer.write(" ");
-        writer.write(_Name);
-        if(_InitialValue != null) {
-            writer.write(" = ");
-            _InitialValue.express(param, writer);
-        }
+        if(_Modifier != null)
+            f.write(_Modifier);
+        
+        f.type(_Type).p(_Name);
+        
+        if(_InitialValue != null)
+            f.p('=').express(_InitialValue);
     }
 
-    public void state(OutputParameter param, Writer writer) throws IOException {
+    public void state( Formatter f ) throws IOException {
         // as a statement
-        declare(param,writer);
-    	writer.write(";");
-    	writer.write(NEWLINE);
+        declare(f);
+        f.eos().nl();
     }
 }

@@ -21,12 +21,8 @@ public class CastExpression extends Expression {
 		_Expression = expr;
 	}
 
-    public void express(OutputParameter param, Writer writer) throws IOException {
-    	writer.write("((");
-    	_Type.writeTo(param, writer);
-    	writer.write(")");
-    	_Expression.express(param, writer);
-        writer.write(")");
+    public void express( Formatter f ) throws IOException {
+        f.p("((").type(_Type).p(")").express(_Expression).p(")");
     }
 
 }

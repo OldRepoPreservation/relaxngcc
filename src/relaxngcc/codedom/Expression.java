@@ -5,13 +5,13 @@ import java.io.Writer;
 
 /**
  */
-public abstract class Expression extends CodeDOMRoot {
+public abstract class Expression {
     /** Invokes a method on this expression. */
     public MethodInvokeExpression invoke( String method ) {
         return new MethodInvokeExpression(this,method);
     }
 
     /** Prints itself as an expression. */
-    protected abstract void express( OutputParameter param, Writer writer) throws IOException;
+    protected abstract void express( Formatter f ) throws IOException;
 
 }

@@ -15,10 +15,8 @@ public class PropertyReferenceExpression extends Expression {
 		_PropertyName = propertyname;
 	}
 
-    public void express(OutputParameter param, Writer writer) throws IOException {
-    	_Object.express(param, writer);
-    	writer.write(".");
-    	writer.write(_PropertyName);
+    public void express(Formatter f) throws IOException {
+    	f.express(_Object).p('.').p(_PropertyName);
     }
 
 }

@@ -35,31 +35,28 @@ public class MethodInvokeExpression extends Expression implements Statement {
         return this;
     }
 	
-    public void state(OutputParameter param, Writer writer) throws IOException {
-        express(param,writer);
-        writer.write(';');
+    public void state(Formatter f) throws IOException {
+        express(f);
+        f.eos().nl();
     }
 
-    public void express(OutputParameter param, Writer writer) throws IOException {
+    public void express(Formatter f) throws IOException {
     	
     	if(_Object != null) {
-	    	_Object.express(param, writer);
-    		writer.write(".");
+            f.express(_Object).p('.');
     	}
-    	writer.write(_MethodName);
-    	writer.write("(");
+        f.p(_MethodName).p('(');
     	
         boolean first = true;
         for (Iterator itr = _Args.iterator(); itr.hasNext();) {
             
-            if(!first)  writer.write(",");
+            if(!first)  f.p(',');
             first = false;
             
-            Expression arg = (Expression) itr.next();
-			arg.express(param, writer);
+            f.express( (Expression) itr.next() );
 		}
         
-    	writer.write(")");
+        f.p(')');
     }
 
 }

@@ -20,26 +20,24 @@ public class ObjectCreateExpression extends Expression implements Statement {
         return this;
     }
 
-    public void express(OutputParameter param, Writer writer) throws IOException {
-    	writer.write("new ");
-    	_ClassName.writeTo(param, writer);
-    	writer.write("(");
+    public void express(Formatter f) throws IOException {
+        f.p("new").type(_ClassName).p('(');
     	
         boolean first = true;
         for (Iterator itr = _Args.iterator(); itr.hasNext();) {
-            if(!first)  writer.write(",");
+            if(!first)  f.p(',');
             first = false;
             
             Expression arg = (Expression) itr.next();
-            arg.express(param,writer);
+            f.express(arg);
         }
         
-    	writer.write(")");
+    	f.p(')');
     }
 
-    public void state(OutputParameter param, Writer writer) throws IOException {
-        express(param,writer);
-        writer.write(';');
+    public void state(Formatter f) throws IOException {
+        express(f);
+        f.eos().nl();
     }
     
 }

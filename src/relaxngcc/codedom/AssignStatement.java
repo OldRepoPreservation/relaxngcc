@@ -5,7 +5,7 @@ import java.io.Writer;
 
 /**
  */
-public class AssignStatement extends CodeDOMRoot implements Statement {
+public class AssignStatement implements Statement {
 
 	private Expression _Destination;
 	private Expression _Source;
@@ -17,12 +17,7 @@ public class AssignStatement extends CodeDOMRoot implements Statement {
 	}
 	
 
-    public void state(OutputParameter param, Writer writer) throws IOException {
-    	writeIndent(param, writer);
-    	_Destination.express(param, writer);
-    	writer.write(" = ");
-    	_Source.express(param, writer);
-    	writer.write(";");
-    	writer.write(NEWLINE);
+    public void state(Formatter f) throws IOException {
+        f.express(_Destination).p('=').express(_Source).eos().nl();
     }
 }
