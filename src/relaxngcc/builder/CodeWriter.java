@@ -432,7 +432,7 @@ public class CodeWriter
             Alphabet.VALUE_TEXT|Alphabet.DATA_TEXT|Alphabet.REF_BLOCK ); //Text();
             
 		printSection("text");
-		_output.println("public void text(String value) throws SAXException");
+		_output.println("public void text(String ___$value) throws SAXException");
 		_output.println("{");
 		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.VALUE_TEXT);
 		while(states.hasNext())
@@ -446,11 +446,11 @@ public class CodeWriter
 				StringBuffer buf = new StringBuffer();
 				String alias = a.getAlias();
 				if(alias!=null)
-					buf.append(alias + "=value;");
+					buf.append(alias + "=___$value;");
 				buf.append(transitionCode(tr));
 				
 				if(a.isValueText())
-					bi.addConditionalCode(st, "value.equals(\""
+					bi.addConditionalCode(st, "___$value.equals(\""
                         + a.asValueText().getValue() + "\")", buf.toString());
 				else	
 					bi.addElseCode(st, buf.toString());
@@ -468,7 +468,7 @@ public class CodeWriter
                 || ref_block.hasFirstAlphabet(Alphabet.VALUE_TEXT)) {
                     bi.addPrologue(st,
                         buildCodeToSpawnChild("text",ref_tr,
-                            "value"));
+                            "___$value"));
                     break;
                 }
             }
