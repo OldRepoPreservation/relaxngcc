@@ -14,12 +14,19 @@
   <distributionSite>relaxngcc.sf.net</distributionSite>
   <distributionDirectory>/home/groups/r/re/relaxngcc/htdocs/maven-repository</distributionDirectory>
   
+  <package>relaxngcc</package>
   
   <repository>
     <connection>scm:cvs:pserver:anonymous@cvs.sourceforge.net:/cvsroot/relaxngcc:relaxngcc</connection>
     <url>http://cvs.sourceforge.net/viewcvs.py/relaxngcc/</url>
   </repository>
   <developers>
+    <developer>
+      <name>Daisuke Okajima</name>
+      <id>okajima</id>
+      <email>daisuke.okajima@nifty.com</email>
+      <organization></organization>
+    </developer>
     <developer>
       <name>Kohsuke Kawaguchi</name>
       <id>kkawa</id>
@@ -80,4 +87,15 @@
       </resource> 
     </resources> 
   </build>
+  
+  <reports>
+    <report>maven-changelog-plugin</report>
+    <report>maven-changes-plugin</report>
+    <report>maven-developer-activity-plugin</report>
+    <report>maven-file-activity-plugin</report>
+    <report>maven-javadoc-plugin</report>
+    <report>maven-license-plugin</report>
+    <!--report>maven-pmd-plugin</report-->
+    <!--report>maven-tasklist-plugin</report-->
+  </reports>
 </project>
