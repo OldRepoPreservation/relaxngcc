@@ -121,10 +121,10 @@ public class CodeWriter
 		_Info.printHeaderSection(out, _Options, _Grammar.getGlobalImport());
         writeAcceptableStates();
         
-        writeEventHandler(Alphabet.START_ELEMENT,   "enterElement" );
-        writeEventHandler(Alphabet.END_ELEMENT,     "leaveElement");
-        writeEventHandler(Alphabet.START_ATTRIBUTE, "enterAttribute" );
-        writeEventHandler(Alphabet.END_ATTRIBUTE,   "leaveAttribute");
+        writeEventHandler(Alphabet.ENTER_ELEMENT,   "enterElement" );
+        writeEventHandler(Alphabet.LEAVE_ELEMENT,     "leaveElement");
+        writeEventHandler(Alphabet.ENTER_ATTRIBUTE, "enterAttribute" );
+        writeEventHandler(Alphabet.LEAVE_ATTRIBUTE,   "leaveAttribute");
     
 		writeTextHandler();
 		writeAttributeHandler();
@@ -184,7 +184,7 @@ public class CodeWriter
 			
             while(transitions.hasNext()) {
 				Transition tr = (Transition)transitions.next();
-				Alphabet a = tr.getAlphabet();
+				Alphabet.Markup a = tr.getAlphabet().asMarkup();
 				bi.addConditionalCode(st, 
 					a.getKey().createJudgementClause(_Info, "uri", "localName"),
 					transitionCode(tr));
@@ -195,14 +195,13 @@ public class CodeWriter
 			while(transitions.hasNext())
 			{
 				Transition ref_tr = (Transition)transitions.next();
-				ScopeInfo ref_block = _Grammar.getScopeInfoByName(ref_tr.getAlphabet().getValue());
-				Iterator first_alphabets = ref_block.iterateFirstAlphabets();
+				ScopeInfo ref_block = ref_tr.getAlphabet().asRef().getTargetScope();
 				boolean first_clause = true;
 				String clause = "";
+                Iterator first_alphabets = ref_block.iterateFirstAlphabets(type);
 				while(first_alphabets.hasNext())
 				{
-					Alphabet a = (Alphabet)first_alphabets.next();
-					if(a.getType()!=type)  continue;
+					Alphabet.Markup a = (Alphabet.Markup)first_alphabets.next();
 					if(!first_clause) clause += "|| ";
 					clause += "(" +  a.getKey().createJudgementClause(_Info, "uri", "localName") + ") ";
 					first_clause = false;
@@ -221,26 +220,23 @@ public class CodeWriter
 		while(states.hasNext())
 		{
 			State st = (State)states.next();
-			Iterator follows = _Info.iterateFollowAlphabets();
+			Iterator follows = _Info.iterateFollowAlphabets(type);
 			while(follows.hasNext())
 			{
-				Alphabet f = (Alphabet)follows.next();
-				if(f.getType()==type)
-				{
-                    String action = MessageFormat.format(
-                        "runtime.revertToParentFrom{0}({1},cookie, uri,localName,qname);",
-                        new Object[]{
-                            capitalize(eventName),
-                            _Info.getReturnVariable(),
-                        });
-                        
-					if(st.getActionOnExit()!=null)
-                        action = st.getActionOnExit() + action;
-					bi.addConditionalCode(
-                        st,
-                        f.getKey().createJudgementClause(_Info, "uri", "localName"),
-                        action);
-				}
+				Alphabet.Markup f = (Alphabet.Markup)follows.next();
+                String action = MessageFormat.format(
+                    "runtime.revertToParentFrom{0}({1},cookie, uri,localName,qname);",
+                    new Object[]{
+                        capitalize(eventName),
+                        _Info.getReturnVariable(),
+                    });
+                    
+				if(st.getActionOnExit()!=null)
+                    action = st.getActionOnExit() + action;
+				bi.addConditionalCode(
+                    st,
+                    f.getKey().createJudgementClause(_Info, "uri", "localName"),
+                    action);
 			}
 		}
 		
@@ -267,10 +263,9 @@ public class CodeWriter
     private String buildCodeToSpawnChild(String eventName,Transition ref_tr,
         String eventParams) {
         
-        Alphabet alpha = ref_tr.getAlphabet();
+        Alphabet.Ref alpha = ref_tr.getAlphabet().asRef();
         StringBuffer code = new StringBuffer();
-        ScopeInfo ref_block =
-            _Grammar.getScopeInfoByName(alpha.getValue());
+        ScopeInfo ref_block = alpha.getTargetScope();
         
         if(ref_tr.getAction()!=null) code.append(ref_tr.getAction());
         
@@ -304,28 +299,29 @@ public class CodeWriter
 	//outputs text consumption handler. this handler branches by output method
 	private void writeTextHandler() {
 		Iterator states = _Info.iterateStatesHaving(
-            Alphabet.FIXED_VALUE|Alphabet.TYPED_VALUE|Alphabet.REF_BLOCK ); //Text();
+            Alphabet.VALUE_TEXT|Alphabet.DATA_TEXT|Alphabet.REF_BLOCK ); //Text();
             
 		printSection("text");
 		_output.println("public void text(String value) throws SAXException");
 		_output.println("{");
-		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.TYPED_VALUE);
+		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.VALUE_TEXT);
 		while(states.hasNext())
 		{
 			State st = (State)states.next();
-			Iterator transitions = st.iterateTransitions(Alphabet.FIXED_VALUE|Alphabet.TYPED_VALUE);
+			Iterator transitions = st.iterateTransitions(Alphabet.VALUE_TEXT|Alphabet.DATA_TEXT);
 			while(transitions.hasNext())
 			{
 				Transition tr = (Transition)transitions.next();
-				Alphabet a = tr.getAlphabet();
+				Alphabet.Text a = tr.getAlphabet().asText();
 				StringBuffer buf = new StringBuffer();
-				String alias = tr.getAlphabet().getAlias();
+				String alias = a.getAlias();
 				if(alias!=null)
 					buf.append(alias + "=value;");
 				buf.append(transitionCode(tr));
 				
-				if(a.getType()==Alphabet.FIXED_VALUE)
-					bi.addConditionalCode(st, "value.equals(\"" + a.getValue() + "\")", buf.toString());
+				if(a.isValueText())
+					bi.addConditionalCode(st, "value.equals(\""
+                        + a.asValueText().getValue() + "\")", buf.toString());
 				else	
 					bi.addElseCode(st, buf.toString());
             }
@@ -336,10 +332,10 @@ public class CodeWriter
             while(transitions.hasNext())
             {
                 Transition ref_tr = (Transition)transitions.next();
-                ScopeInfo ref_block = _Grammar.getScopeInfoByName(ref_tr.getAlphabet().getValue());
+                ScopeInfo ref_block = ref_tr.getAlphabet().asRef().getTargetScope();
                 
-                if(ref_block.hasFirstAlphabet(Alphabet.TYPED_VALUE)
-                || ref_block.hasFirstAlphabet(Alphabet.FIXED_VALUE)) {
+                if(ref_block.hasFirstAlphabet(Alphabet.DATA_TEXT)
+                || ref_block.hasFirstAlphabet(Alphabet.VALUE_TEXT)) {
                     bi.addPrologue(st,
                         buildCodeToSpawnChild("text",ref_tr,
                             "value"));
@@ -382,15 +378,15 @@ public class CodeWriter
             Iterator trans =st.iterateTransitions(Alphabet.REF_BLOCK);
             while(trans.hasNext()) {
                 Transition tr = (Transition)trans.next();
+                Alphabet.Ref a = tr.getAlphabet().asRef();
                 
                 if(processedTransitions.add(tr)) {
                     _output.println("case "+tr.getUniqueId()+":");
                     
                     // if there is an alias, assign to that variable
-                    String alias = tr.getAlphabet().getAlias();
+                    String alias = a.getAlias();
                     if(alias!=null) {
-                        ScopeInfo childBlock = _Grammar.getScopeInfoByName(
-                            tr.getAlphabet().getValue());
+                        ScopeInfo childBlock = a.getTargetScope();
         
                         _output.println(MessageFormat.format(
                             "this.{0}=({1})result;",
@@ -400,7 +396,7 @@ public class CodeWriter
                     StringBuffer buf= new StringBuffer();
                     appendStateTransition(buf, tr.nextState());
                     
-                    if(tr.nextState().hasTransition(Alphabet.START_ATTRIBUTE))
+                    if(tr.nextState().hasTransition(Alphabet.ENTER_ATTRIBUTE))
                         _output.println("processAttribute();");
                         
                     _output.println(buf);
@@ -429,18 +425,18 @@ public class CodeWriter
 		if(_Options.debug)
 			_output.println("System.err.println(\"" + _Info.getNameForTargetLang() + ":processAttribute \" + runtime.getCurrentAttributes().getLength() + \",\" + _ngcc_current_state);"); 
 		
-		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.START_ATTRIBUTE);
+		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.ENTER_ATTRIBUTE);
 		
 		while(states.hasNext())
 		{
 			State st = (State)states.next();
 			if(!needToCheckAttribute(st)) continue;
 			
-			Iterator transitions = st.iterateTransitions(Alphabet.START_ATTRIBUTE);
+			Iterator transitions = st.iterateTransitions(Alphabet.ENTER_ATTRIBUTE);
 			while(transitions.hasNext())
 			{
 				Transition tr = (Transition)transitions.next();
-				Alphabet a = tr.getAlphabet();
+				Alphabet.EnterAttribute a = tr.getAlphabet().asEnterAttribute();
 				
 				
                 bi.addConditionalCode(st,
@@ -525,13 +521,13 @@ public class CodeWriter
 	}
     private boolean needToCheckAttribute(State s)
     {
-    	if(s.hasTransition(Alphabet.START_ATTRIBUTE)) return true;
+    	if(s.hasTransition(Alphabet.ENTER_ATTRIBUTE)) return true;
     	Iterator it = s.iterateTransitions(Alphabet.REF_BLOCK);
     	while(it.hasNext())
     	{
     		Transition tr = (Transition)it.next();
-			ScopeInfo sc = _Grammar.getScopeInfoByName(tr.getAlphabet().getValue());
-            if(sc.hasFirstAlphabet(Alphabet.END_ATTRIBUTE)) return true;
+			ScopeInfo sc = tr.getAlphabet().asRef().getTargetScope();
+            if(sc.hasFirstAlphabet(Alphabet.LEAVE_ATTRIBUTE)) return true;
     	}
     	return false;
     }
@@ -632,14 +628,16 @@ public class CodeWriter
 		boolean first = true;
 		while(alphabets.hasNext())
 		{
-			Alphabet a = (Alphabet)alphabets.next();
-			if(a.getType()!=Alphabet.START_ATTRIBUTE) continue;
+			Alphabet _a = (Alphabet)alphabets.next();
+            if(!_a.isEnterAttribute())   continue;
+            
+            NameClass name = _a.asEnterAttribute().getKey();
 			
 			if(!first) code.append(" || ");
 			code.append("runtime.getAttributeIndex(");
-			code.append(sci.getNSStringConstant(a.getKey().getNSURI()));
+			code.append(sci.getNSStringConstant(name.getNSURI()));
 			code.append(", \"");
-			code.append(a.getKey().getName());
+			code.append(name.getName());
 			code.append("\")!=-1");
 			first = false;
 		}

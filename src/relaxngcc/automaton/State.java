@@ -162,7 +162,7 @@ public class State implements Comparable
 			if(tr==newtransition) continue;
 			Alphabet existing_alphabet = tr.getAlphabet();
             
-            if(a.getType()==Alphabet.TYPED_VALUE && existing_alphabet.getType()==Alphabet.TYPED_VALUE)
+            if(a.isText())
             	printAmbiguousTransitionsWarning(tr, newtransition);
 			else if(existing_alphabet.equals(a) && tr.nextState()!=newtransition.nextState())
             {
@@ -231,7 +231,8 @@ public class State implements Comparable
 		while(refs.hasNext())
 		{
 			Transition ref = (Transition)refs.next();
-			ScopeInfo sci = gr.getScopeInfoByName(ref.getAlphabet().getValue());
+			ScopeInfo sci = ref.getAlphabet().asRef().getTargetScope();
+            
 			Iterator as = alphabets.iterator();
 			while(as.hasNext())
 			{

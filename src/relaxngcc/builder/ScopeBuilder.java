@@ -257,7 +257,8 @@ public class ScopeBuilder
                 ScopeInfo info = b.getScopeInfo();
                 _ScopeInfo.addChildScope(info);
                 State head = createState(child, ctx);
-                head.addTransition(createTransition(Alphabet.createRef(tempname), destination));
+                head.addTransition(createTransition(
+                    new Alphabet.Ref(_Grammar,tempname), destination));
                 destination = head;
 				
 				b.buildAutomaton();
@@ -345,7 +346,7 @@ public class ScopeBuilder
 			nc = NameClass.fromElementElement(_ScopeInfo, exp, (String)_Namespaces.peek());
 		
 		State tail = createState(exp, ctx);
-		Transition te = createTransition(new Alphabet(Alphabet.END_ELEMENT, nc), destination);
+		Transition te = createTransition(new Alphabet.LeaveElement(nc), destination);
 		addAction(te);
 		if(ctx.getInterleaveBranchRoot()!=null) te.setEnableState(ctx.getInterleaveBranchRoot());
 		tail.addTransition(te);
@@ -354,7 +355,7 @@ public class ScopeBuilder
 		newctx.setInterleaveBranchRoot(null);
 		State middle = traverseNodeList(exp.getChildNodes(), newctx, tail);
 		State head = createState(exp, ctx);
-		Transition ts = createTransition(new Alphabet(Alphabet.START_ELEMENT, nc), middle);
+		Transition ts = createTransition(new Alphabet.EnterElement(nc), middle);
 		addAction(ts);
 		if(ctx.getInterleaveBranchRoot()!=null) ts.setDisableState(ctx.getInterleaveBranchRoot());
 		head.addTransition(ts);
@@ -377,7 +378,7 @@ public class ScopeBuilder
 
         
         State tail = createState(exp, ctx);
-        Transition te = createTransition(new Alphabet(Alphabet.END_ATTRIBUTE, nc), destination);
+        Transition te = createTransition(new Alphabet.LeaveAttribute(nc), destination);
         addAction(te);
 //??        if(ctx.getInterleaveBranchRoot()!=null) te.setEnableState(ctx.getInterleaveBranchRoot());
         tail.addTransition(te);
@@ -386,7 +387,7 @@ public class ScopeBuilder
 //??        newctx.setInterleaveBranchRoot(null);
         State middle = traverseNodeList(exp.getChildNodes(), ctx/*newctx*/, tail);
         State head = createState(exp, ctx);
-        Transition ts = createTransition(new Alphabet(Alphabet.START_ATTRIBUTE, nc), middle);
+        Transition ts = createTransition(new Alphabet.EnterAttribute(nc), middle);
         addAction(ts);
 //??        if(ctx.getInterleaveBranchRoot()!=null) ts.setDisableState(ctx.getInterleaveBranchRoot());
         head.addTransition(ts);
@@ -416,7 +417,7 @@ public class ScopeBuilder
 		if(alias!=null)   _ScopeInfo.addAlias(alias, mdt.getXSTypeName());
         
 		State result = createState(exp, ctx);
-		Transition t = createTransition(new Alphabet(mdt, alias), destination);
+		Transition t = createTransition(new Alphabet.DataText(mdt, alias), destination);
 		addAction(t);
 		result.addTransition(t);
 		return result;
@@ -428,7 +429,7 @@ public class ScopeBuilder
 		if(alias!=null)	_ScopeInfo.addAlias(alias, "string");
         
 		State result = createState(exp, ctx);
-		Transition t = createTransition(Alphabet.createFixedValue(exp.getFullText(), alias), destination);
+		Transition t = createTransition(new Alphabet.ValueText(exp.getFullText(), alias), destination);
 		addAction(t);
 		result.addTransition(t);
 		return result;
@@ -440,7 +441,8 @@ public class ScopeBuilder
         if(alias!=null) {
 			_ScopeInfo.addAlias(alias, "string");
 			State result = createState(exp, ctx);
-			Transition t = createTransition(new Alphabet(MetaDataType.STRING, alias), destination);
+			Transition t = createTransition(
+                new Alphabet.DataText(MetaDataType.STRING, alias), destination);
 			addAction(t);
 			result.addTransition(t);
 			return result;
@@ -555,7 +557,8 @@ public class ScopeBuilder
 				_ScopeInfo.addUserDefinedAlias(alias,
                     target._ScopeInfo.getReturnType());
 			
-			Transition t = createTransition(Alphabet.createRef(
+			Transition t = createTransition(new Alphabet.Ref(
+                _Grammar,
                 exp.getAttribute("name"), alias,
                 exp.attributeNGCC("with-params",null)),
                 destination);

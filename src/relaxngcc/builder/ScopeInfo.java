@@ -114,10 +114,22 @@ public final class ScopeInfo
     
     
 	public Iterator iterateFirstAlphabets()  { return _FirstAlphabet.iterator(); }
-	public Iterator iterateFollowAlphabets() { return _FollowAlphabet.iterator(); }
+    /** Iterates FIRST alphabets that match the given type mask. */
+	public Iterator iterateFirstAlphabets( int typeMask ) {
+        return new TypeIterator(iterateFirstAlphabets(),typeMask);
+    }
+    
+    public Iterator iterateFollowAlphabets() { return _FollowAlphabet.iterator(); }
+    /** Iterates FOLLOW alphabets that match the given type mask. */
+    public Iterator iterateFollowAlphabets( int typeMask ) {
+        return new TypeIterator(iterateFollowAlphabets(),typeMask);
+    }
+    
+    
 	public boolean isFollowAlphabet(Alphabet a) { return _FollowAlphabet.contains(a); }
 	public boolean isFirstAlphabet(Alphabet a) { return _FirstAlphabet.contains(a); }
-	
+    
+    
     public Iterator iterateChildScopes() { return _ChildScopes.iterator(); }
     
     /**
@@ -133,15 +145,8 @@ public final class ScopeInfo
         return itr.hasNext();
     }
     
-    public boolean containsFollowAttributeAlphabet()
-    {
-    	Iterator it = _FollowAlphabet.iterator();
-    	while(it.hasNext())
-    	{
-    		Alphabet a = (Alphabet)it.next();
-    		if(a.getType()==Alphabet.START_ATTRIBUTE) return true;
-    	}
-    	return false;
+    public boolean containsFollowAttributeAlphabet() {
+        return iterateFollowAlphabets(Alphabet.ENTER_ATTRIBUTE).hasNext();
     }
     
     /**
@@ -276,7 +281,7 @@ public final class ScopeInfo
      * alphabets.
      */
 	public Iterator iterateStatesHaving( int alphabetTypes ) {
-        return new TypeIterator(alphabetTypes);
+        return new TypeIterator(iterateAllStates(),alphabetTypes);
     }
     
 	public Iterator iterateAcceptableStates() {
@@ -290,9 +295,9 @@ public final class ScopeInfo
         return _AllStates.iterator();
     }
     
-    private class TypeIterator extends SelectiveIterator {
-        TypeIterator( int _typeMask ) {
-            super(_AllStates.iterator());
+    private static class TypeIterator extends SelectiveIterator {
+        TypeIterator( Iterator base, int _typeMask ) {
+            super(base);
             this.typeMask=_typeMask;
         }
         private final int typeMask;
@@ -336,8 +341,8 @@ public final class ScopeInfo
 		{
 			Transition tr = (Transition)it.next();
 			Alphabet a = tr.getAlphabet();
-			if(a.getType()==Alphabet.REF_BLOCK)
-				_ContainingScopeForFirstAlphabet.add(_Grammar.getScopeInfoByName(a.getValue()));
+            if(a.isRef())
+				_ContainingScopeForFirstAlphabet.add(a.asRef().getTargetScope());
 			else
 				_FirstAlphabet.add(a);
 		}
@@ -390,7 +395,7 @@ public final class ScopeInfo
 			while(trs.hasNext())
 			{
 				Transition tr = (Transition)trs.next();
-				ScopeInfo target = _Grammar.getScopeInfoByName(tr.getAlphabet().getValue());
+				ScopeInfo target = tr.getAlphabet().asRef().getTargetScope();
 				State next = tr.nextState();
 				if(next.isAcceptable())
 				{
@@ -402,8 +407,9 @@ public final class ScopeInfo
 				while(next_trs.hasNext())
 				{
 					Alphabet next_alphabet = ((Transition)next_trs.next()).getAlphabet();
-					if(next_alphabet.getType()==Alphabet.REF_BLOCK)
-						target._FollowAlphabet.addAll(_Grammar.getScopeInfoByName(next_alphabet.getValue())._FirstAlphabet);
+					if(next_alphabet.isRef())
+						target._FollowAlphabet.addAll(
+                            next_alphabet.asRef().getTargetScope()._FirstAlphabet);
 					else
 						target._FollowAlphabet.add(next_alphabet);
 				}
