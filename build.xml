@@ -29,10 +29,6 @@
 			<!-- source file -->
 			<arg path="src/relaxngcc/parser/relaxng.rng"/>
 		</java>
-		<!-- this file needs to be overridden -->
-		<delete file="src/relaxngcc/parser/state/name.java"/>
-		<copy tofile="src/relaxngcc/parser/state/name.java"
-		        file="src/relaxngcc/parser/state/name.jav_" />
 	</target>
 	
 	<!-- compile Java source files -->
