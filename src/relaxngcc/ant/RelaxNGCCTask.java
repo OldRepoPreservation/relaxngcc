@@ -33,6 +33,8 @@ public class RelaxNGCCTask extends Task {
 	private File source;
     /** Target directory. */
 	private File target;
+    /** Directory to output automata gif files. */
+    private File automataDir;
 
 	public void execute() throws BuildException {
 		if( source==null )
@@ -50,6 +52,8 @@ public class RelaxNGCCTask extends Task {
         opt.sourcefile = source;
         opt.targetdir = target;
         opt.smartOverwrite = true;
+        
+        opt.printAutomata = automataDir;
         
         try {
             RelaxNGCC.run(opt);
@@ -70,5 +74,8 @@ public class RelaxNGCCTask extends Task {
 		this.target = file;
 	}
 
+    public void setAutomata( String dir ) {
+        automataDir = project.resolveFile(dir);
+    }
 
 }
