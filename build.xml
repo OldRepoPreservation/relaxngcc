@@ -9,7 +9,7 @@
 		</uptodate>
 	</target>
 	
-	<!-- run RELAXNGCC -->
+	<!-- use bootstrap RelaxNGCC to compile the parser -->
 	<target name="ngcc" unless="ngcc.notrequired" depends="ngcc-check">
 		<mkdir dir="src/relaxngcc/parser/automata"/>
 		<delete dir="src/relaxngcc/parser/automata" includes="*.gif" />
@@ -34,6 +34,10 @@
 	<!-- compile Java source files -->
 	<target name="compile" depends="ngcc">
 		<mkdir dir="bin"/>
+		<javacc target="src/relaxngcc/javabody/JavaBodyParser.jj"
+			outputdirectory="src/relaxngcc/javabody"
+			javacchome="lib/JavaCC"
+			static="false"/>
 		<javac
 			srcdir="src"
 			destdir="bin"
@@ -95,8 +99,37 @@ Class-Path: crimson.jar relaxngDatatype.jar xsdlib.jar msv.jar jaxp-api.jar
 		</zip>
 	</target>
 	
+	
+	<!-- use working copy of RelaxNGCC to compile the parser. useful for test -->
+	<target name="self-ngcc">
+		<mkdir dir="src/relaxngcc/parser/automata"/>
+		<delete dir="src/relaxngcc/parser/automata" includes="*.gif" />
+		<delete dir="src/relaxngcc/parser/state" includes="*.java" />
+		<java classname="relaxngcc.RelaxNGCC" fork="true">
+			<!-- enable debug statements -->
+			<arg value="-d"/>
+			
+			<!-- dump automata -->
+			<arg value="--print-automata"/>
+			<arg path="src/relaxngcc/parser/automata"/>
+			
+			<!-- specify output directory -->
+			<arg value="--target"/>
+			<arg path="src/relaxngcc/parser/state" />
+			
+			<!-- source file -->
+			<arg path="src/relaxngcc/parser/relaxng.rng"/>
+			
+			<classpath path="bin"/>
+			<classpath path="src"/>
+			<classpath path="lib/relaxngDatatype.jar"/>
+		</java>
+	</target>
+	
+	
 	<target name="clean">
 		<delete dir="javadoc"/>
 		<delete dir="bin"/>
+		<delete dir="src/relaxngcc/parser/state" includes="*.java" />
 	</target>
 </project>
