@@ -5,6 +5,7 @@ import org.xml.sax.SAXException;
 
 import relaxngcc.NGCCGrammar;
 import relaxngcc.grammar.Grammar;
+import relaxngcc.grammar.NGCCDefineParam;
 import relaxngcc.grammar.Pattern;
 import relaxngcc.grammar.RefPattern;
 import relaxngcc.parser.state.Start;
@@ -49,6 +50,7 @@ public class RootParserRuntime extends ParserRuntime {
         } else {
             // if the parsed tree doesn't have the enclosing &lt;grammar>, add one.
             grammar = new Grammar(null);
+            grammar.setParam(new NGCCDefineParam("RelaxNGCC_Result",null,null,null,null));
             grammar.append(p,null);
         }
         

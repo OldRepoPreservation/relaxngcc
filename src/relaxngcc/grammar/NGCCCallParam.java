@@ -11,7 +11,19 @@ public class NGCCCallParam {
         this.alias = _alias;
     }
     
-    public final String alias;
-    public final String withParams;
+    private final String alias;
+    private String withParams;
+    
+	public String getAlias() {
+		return alias;
+	}
+
+	public String getWithParams() {
+		return withParams;
+	}
+
+	public void setWithParams(String withParams) {
+		this.withParams = withParams;
+	}
 }
 

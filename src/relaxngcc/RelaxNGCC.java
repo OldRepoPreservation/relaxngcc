@@ -156,23 +156,26 @@ public class RelaxNGCC
         
         if(msg==null)       s.println(msg);
         
-        s.println("RELAX NG Compiler Compiler 0.8");
+        s.println("RELAX NG Compiler Compiler 1.0");
         s.println("   Copyright(c) Daisuke Okajima and Kohsuke Kawaguchi 2001-2002");
         s.println();
         s.println("[Usage]");
         s.println("relaxngcc.jar [options] <grammarfile>");
         s.println();
         s.println("[Options]");
-        s.println(" --msv");
-        s.println("   generates code based on TypedContentHandler interface of MSV.");
-        s.println(" --typedsax");
-        s.println("   generates code that depends on only XML Schema Datatype Library, not MSV.");
-        s.println(" --nonxml");
-        s.println("   declares that the input grammar is written in the non-XML syntax.");
-        s.println(" --plainsax(default)");
-        s.println("   generates code that depends on only SAX2 parser. This is the most simple case but no datatypes are supported.");
+// --plainsax mode is the only mode that works right now.
+//        s.println(" --msv");
+//        s.println("   generates code based on TypedContentHandler interface of MSV.");
+//        s.println(" --typedsax");
+//        s.println("   generates code that depends on only XML Schema Datatype Library, not MSV.");
+//        s.println(" --nonxml");
+//        s.println("   declares that the input grammar is written in the non-XML syntax.");
+//        s.println(" --plainsax(default)");
+//        s.println("   generates code that depends on only SAX2 parser. This is the most simple case but no datatypes are supported.");
         s.println(" --target <dir>");
         s.println("   specifies the source code output location.");
+        s.println(" --debug");
+        s.println("   emit a lot of debug codes in the generated code");
         s.println();
         s.println(" For more information, see http://www.relaxngcc.sourceforge.net/ ");
         s.println();

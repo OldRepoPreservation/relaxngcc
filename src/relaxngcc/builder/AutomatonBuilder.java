@@ -119,7 +119,7 @@ public class AutomatonBuilder implements PatternFunction
         
         State tail = createState(pattern);
         Transition te = createTransition(new Alphabet.LeaveElement(nc), destination);
-        addAction(te,true);
+        addAction(te,false);
         if(ctx.getInterleaveBranchRoot()!=null) te.setEnableState(ctx.getInterleaveBranchRoot());
         tail.addTransition(te);
         
@@ -155,7 +155,7 @@ public class AutomatonBuilder implements PatternFunction
         State tail = createState(pattern);
         Transition te = createTransition(new Alphabet.LeaveAttribute(nc),
             destination /*createState(exp,ctx)*/);
-        addAction(te,true);
+        addAction(te,false);
         tail.addTransition(te);
   
         destination = tail;
@@ -241,13 +241,25 @@ public class AutomatonBuilder implements PatternFunction
     
     public Object choice( ChoicePattern pattern ) {
         
-        State dest = destination;
-        addAction(destination,true);
+        State dest = addAction(destination,true);
         
-        State head = (State)pattern.p1.apply(this);
+        
+        // a branch could be empty, in that case head could be returned
+        // as the head of a branch. This would cause a weird effect.
+        // so we should better create a new state.
+        State head = createState(pattern);
         
         destination = dest;
-        State member = (State)pattern.p2.apply(this);
+        processChoiceBranch(head,pattern.p2);
+        destination = dest;
+        processChoiceBranch(head,pattern.p1);
+        
+        return head;
+    }
+    
+    private void processChoiceBranch( State head, Pattern pattern ) {
+        
+        State member = (State)pattern.apply(this);
         
         head.mergeTransitions(member);
         
@@ -270,26 +282,24 @@ public class AutomatonBuilder implements PatternFunction
             // this is a variation of ambiguity which we need to
             // detect.
             head.setAcceptable(true);
+            head.addActionsOnExit(member.getActionsOnExit());
         }
-        
-        return head;
     }
 	
 
     public Object interleave( InterleavePattern pattern ) {
-        State tail = destination;
         Context oldContext = ctx;
         
-        addAction(destination,true);
+        State tail = addAction(destination,true);
         
         State head = createState(pattern);
         ctx = new Context(ctx);
         ctx.setInterleaveBranchRoot(head);
 
-        tail.addStateForWait(processInterleaveBranch(pattern.p1,head));
         tail.addStateForWait(processInterleaveBranch(pattern.p2,head));
+        tail.addStateForWait(processInterleaveBranch(pattern.p1,head));
         
-        addAction(head,true);
+        head = addAction(head,true);
         ctx = oldContext;
         return head;
     }
@@ -307,10 +317,9 @@ public class AutomatonBuilder implements PatternFunction
 
 
     public Object oneOrMore(OneOrMorePattern pattern) {
-        State tail = destination;
-        addAction(destination,true);
+        State tail = addAction(destination,true);
         State head = (State)pattern.p.apply(this);
-        addAction(head,true); //addAction must be before mergeTransition
+        head = addAction(head,true); //addAction must be before mergeTransition
         tail.mergeTransitions(head);
         return head;
     }
@@ -324,13 +333,13 @@ public class AutomatonBuilder implements PatternFunction
         
         ScopeInfo targetScope = grammar.getScopeInfo(pattern.target);
         
-        String alias = pattern.param.alias;
+        String alias = pattern.param.getAlias();
         if(alias!=null)
             _ScopeInfo.addUserDefinedAlias(alias,
                 targetScope.scope.getParam().returnType);
         
         Transition t = createTransition(new Alphabet.Ref(
-            targetScope, alias, pattern.param.withParams, _OrderCounter++),
+            targetScope, alias, pattern.param.getWithParams(), _OrderCounter++),
             destination);
         head.addTransition(t);
 
@@ -347,46 +356,74 @@ public class AutomatonBuilder implements PatternFunction
     }
 	
     
-	private State createState(Pattern source/*read from field --, ScopeBuildingContext ctx*/)
-	{
+	private State createState(Pattern source) {
 		State s = new State(_ScopeInfo, ctx.getCurrentThreadIndex(), _ScopeInfo.getStateCount(), source);
 		_ScopeInfo.addState(s);
 		return s;
 	}
-	private Transition createTransition(Alphabet key, State destination)
-	{
+    
+	private Transition createTransition(Alphabet key, State destination) {
 		Transition t = new Transition(key, destination);
 		return t;
 	}
-	private void addAction(Transition t,boolean prologue)
-	{
-		if(preservedAction.length()!=0)
-		{
-            ScopeInfo.Action action = _ScopeInfo.createAction(preservedAction);
-            preservedAction = new StringBuffer();
-            
-            if(prologue)    t.insertPrologueAction(action);
-            else            t.insertEpilogueAction(action);
-		}
+    
+	private void addAction(Transition t,boolean prologue) {
+		if(preservedAction.length()==0)   return;
+        
+        ScopeInfo.Action action = _ScopeInfo.createAction(preservedAction);
+        preservedAction = new StringBuffer();
+        
+        if(prologue)    t.insertPrologueAction(action);
+        else            t.insertEpilogueAction(action);
 	}
+    
     /**
      * Adds the specified action as a prologue/epilogue action
      * to all the transitions that leave the given state.
+     * 
+     * <p>
+     * To avoid causing unexpected modification, a State object
+     * will be copied and the new state will be returned
+     * 
+     * <p>
+     * Consider a process of building (A|(B,cc:java)) where
+     * A and B are elements and cc:java is an associated java action,
+     * if we don't copy the state before adding actions to it, then
+     * we end up creating the following automaton:
+     * 
+     * <pre><xmp>
+     * s1 --- A ---> s2+action (final state)
+     *  |             ^
+     *  +---- B -----+
+     * </xmp></pre>
+     * 
+     * which is incorrect, because we don't want cc:java to be executed
+     * when we see A.
+     * 
+     * <p>
+     * Copying a state will prevent this side-effect.
      */
-	private void addAction(State s,boolean prologue)
-	{
-        if(preservedAction.length()!=0) {
-            ScopeInfo.Action act = _ScopeInfo.createAction(preservedAction);
-            preservedAction = new StringBuffer();
-            
-			Iterator it = s.iterateTransitions();
-			while(it.hasNext()) {
-                Transition t = (Transition)it.next();
-                if(prologue)    t.insertPrologueAction(act);
-                else            t.insertEpilogueAction(act);
-            }
-            				
-			s.addActionOnExit(act);
-		}
+	private State addAction(State s,boolean prologue) {
+        if(preservedAction.length()==0) return s;
+        
+        ScopeInfo.Action act = _ScopeInfo.createAction(preservedAction);
+        preservedAction = new StringBuffer();
+        
+        State ss = createState(s.locationHint);
+        ss.mergeTransitions(s);
+        if(s.isAcceptable()) {
+            ss.setAcceptable(true);
+            ss.addActionsOnExit(s.getActionsOnExit());
+        }
+        
+		Iterator it = ss.iterateTransitions();
+		while(it.hasNext()) {
+            Transition t = (Transition)it.next();
+            if(prologue)    t.insertPrologueAction(act);
+            else            t.insertEpilogueAction(act);
+        }
+        				
+		ss.addActionOnExit(act);
+        return ss;
 	}
 }

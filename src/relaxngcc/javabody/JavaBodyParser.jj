@@ -1000,6 +1000,14 @@ void Arguments() :
   "(" [ ArgumentList() ] ")"
 }
 
+// added by Kohsuke
+void Semicolon() :
+{}
+{
+  ";"
+}
+// until here by Kohsuke
+
 void ArgumentList() :
 {}
 {

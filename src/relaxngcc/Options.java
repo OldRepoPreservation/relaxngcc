@@ -64,6 +64,8 @@ public class Options
 //    				style = STYLE_PLAIN_SAX;
     			else if(args[i].equals("-d"))
     				debug = true;
+                else if(args[i].equals("--debug"))
+                    debug = true;
                 else if(args[i].equals("--print-automata"))
                     printAutomata = new File(args[++i]);
                 else if(args[i].equals("--print-first-follow"))
@@ -81,7 +83,8 @@ public class Options
             }
 		}
         
-        // TODO: check if sourcefile==null
+        if(sourcefile==null)
+            throw new CommandLineException("grammar file is missing");
         
         if(targetdir==null) {
             // compute the default target directory

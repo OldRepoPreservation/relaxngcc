@@ -56,12 +56,14 @@
       </element>
       <element name="attribute">
         <ref name="name" cc:alias="name" cc:with-params="true" />
-        <optional>
+        <choice>
           <ref name="patterns" cc:alias="p"/>
-        </optional>
+          <!-- if it doesn't have a child pattern, it can have cc:alias -->
+          <ref name="NGCC-alias" cc:alias="alias"/>
+        </choice>
         <cc:java>
           // if there is no child pattern, assume &lt;text>.
-          if(p==null)  p = new DataPattern(new MetaDataType("string"),null);
+          if(p==null)  p = new DataPattern(new MetaDataType("string"),alias);
           p = new AttributePattern(name,p);
         </cc:java>
       </element>
@@ -118,20 +120,20 @@
           p = new InterleavePattern( new DataPattern(new MetaDataType("string"),null), p );
         </cc:java>
       </element>
-      <element name="ref">
-        <ref name="NGCC-call" cc:alias="params" />
-        <attribute name="name">
-          <text cc:alias="target" />
-        </attribute>
-        <cc:java>
-          p = new RefPattern(runtime.grammar.getOrCreate(target),params);
-        </cc:java>
-      </element>
+      <group>
+        <element name="ref">
+          <ref name="NGCC-call" cc:alias="params" />
+          <attribute name="name" cc:alias="target" />
+          <cc:java>
+            p = new RefPattern(
+                runtime.grammar.getOrCreate(target),params);
+          </cc:java>
+        </element>
+        <ref name="NGCC-withParams" cc:with-params="params"/>
+      </group>
       <element name="parentRef">
         <ref name="NGCC-call" cc:alias="params" />
-        <attribute name="name">
-          <text cc:alias="target" />
-        </attribute>
+        <attribute name="name" cc:alias="target" />
         <cc:java>
           // refers to the parent grammar,
           // instead of the current grammar
@@ -165,9 +167,7 @@
         </cc:java>
       </element>
       <element name="data">
-        <attribute name="type">
-          <data type="NCName" cc:alias="typeName"/>
-        </attribute>
+        <attribute name="type" cc:alias="typeName" />
         <zeroOrMore>
           <element name="param">
             <attribute name="name" />
@@ -232,9 +232,7 @@
           </cc:java>
         </element>
         <element name="include">
-          <attribute name="href">
-            <text cc:alias="href" />
-          </attribute>
+          <attribute name="href" cc:alias="href" />
           <cc:java>
             runtime.processInclude(href);
           </cc:java>
@@ -266,9 +264,7 @@
   
   <define name="define-element" cc:class="DefineElement">
     <element name="define">
-      <attribute name="name">
-        <text cc:alias="name"/>
-      </attribute>
+      <attribute name="name" cc:alias="name" />
       <ref name="pattern-definition"
         cc:with-params="runtime.grammar.getOrCreate(name)"/>
     </element>
@@ -277,9 +273,7 @@
   <define name="pattern-definition" cc:class="PatternDefinition"
     cc:params="Scope scope">
     <optional>
-      <attribute name="combine">
-        <text cc:alias="combine" />
-      </attribute>
+      <attribute name="combine" cc:alias="combine" />
     </optional>
     <ref name="NGCC-define" cc:alias="param" cc:with-params="scope.name" />
     <cc:java>
@@ -401,14 +395,30 @@
       NGCCCallParam param;
     </cc:java-body>
     <optional>
-      <attribute name="cc:with-params">
-        <text cc:alias="withParams"/>
-      </attribute>
+      <attribute name="cc:with-params" cc:alias="withParams" />
     </optional>
     <ref name="NGCC-alias" cc:alias="alias"/>
     <cc:java>
       param = new NGCCCallParam(withParams,alias);
     </cc:java>
+  </define>
+  
+  
+  <!--
+    additional <cc:withParams> that can be inserted by TextSyntaxInternalizer.
+  -->
+  <define name="NGCC-withParams" cc:class="NGCCwithParams" cc:params="NGCCCallParam param">
+    <optional>
+      <element name="cc:withParams">
+        <text cc:alias="moreParams"/>
+        <cc:java>
+          if(param.getWithParams()!=null)
+            // TODO: error report "@cc:with-params is present"
+            ;
+          param.setWithParams(moreParams);
+        </cc:java>
+      </element>
+    </optional>
   </define>
   
   
@@ -425,29 +435,19 @@
       NGCCDefineParam param;
     </cc:java-body>
     <optional>
-      <attribute name="cc:class">
-        <text cc:alias="className"/>
-      </attribute>
+      <attribute name="cc:class" cc:alias="className" />
     </optional>
     <optional>
-      <attribute name="cc:params">
-        <text cc:alias="params"/>
-      </attribute>
+      <attribute name="cc:params" cc:alias="params" />
     </optional>
     <optional>
-      <attribute name="cc:access">
-        <text cc:alias="access"/>
-      </attribute>
+      <attribute name="cc:access" cc:alias="access" />
     </optional>
     <optional>
-      <attribute name="cc:return-type">
-        <text cc:alias="returnType"/>
-      </attribute>
+      <attribute name="cc:return-type" cc:alias="returnType"/>
     </optional>
     <optional>
-      <attribute name="cc:return-value">
-        <text cc:alias="returnValue"/>
-      </attribute>
+      <attribute name="cc:return-value" cc:alias="returnValue"/>
     </optional>
     <cc:java>
       param = new NGCCDefineParam(className,access,returnType,returnValue,params);
@@ -459,10 +459,9 @@
   <define name="NGCC-alias" cc:class="NGCCalias"
     cc:return-type="String" cc:return-value="alias">
     <optional>
-      <attribute name="cc:alias">
-        <text cc:alias="alias"/>
-      </attribute>
+      <attribute name="cc:alias" cc:alias="alias"/>
     </optional>
   </define>
+
 
 </grammar>

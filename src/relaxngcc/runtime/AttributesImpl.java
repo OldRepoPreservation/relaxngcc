@@ -2,7 +2,7 @@
 // Written by David Megginson, sax@megginson.com
 // NO WARRANTY!  This class is in the public domain.
 
-// $Id: AttributesImpl.java,v 1.2 2002/06/12 15:34:44 kkawa Exp $
+// $Id: AttributesImpl.java,v 1.3 2002/06/17 12:06:15 kkawa Exp $
 
 //fixed bug at removeAttribute!! by Daisuke OKAJIMA 2002.4.21
 
@@ -554,7 +554,7 @@ public class AttributesImpl implements Attributes
      */
     private void ensureCapacity (int n)
     {
-	if (n > 0 && data == null) {
+	if (n > 0 && (data == null || data.length==0)) {
 	    data = new String[25];
 	}
 
