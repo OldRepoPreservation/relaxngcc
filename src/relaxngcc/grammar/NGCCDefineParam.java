@@ -1,5 +1,9 @@
 package relaxngcc.grammar;
 
+import relaxngcc.codedom.Expression;
+import relaxngcc.codedom.LanguageSpecificExpression;
+import relaxngcc.codedom.TypeDescriptor;
+
 /**
  * NGCC Parameter for scope definitions.
  * 
@@ -17,8 +21,8 @@ public class NGCCDefineParam {
         
         this.className = _className;
         this.access = _access;
-        this.returnType = _returnType;
-        this.returnValue = _returnValue;
+        this.returnType = new TypeDescriptor(_returnType);
+        this.returnValue = new LanguageSpecificExpression(_returnValue);
         this.params = _params;
     }
     
@@ -29,10 +33,10 @@ public class NGCCDefineParam {
     public final String access;
     
     /** Return-type from this state. */
-    public final String returnType;
+    public final TypeDescriptor returnType;
     
     /** Return-value from this state. */
-    public final String returnValue;
+    public final Expression returnValue;
     
     /** Additional parameters to this state */
     public final String params;

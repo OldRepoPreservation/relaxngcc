@@ -469,11 +469,10 @@ public class CodeWriter
 	    
 	    if(tr==REVERT_TO_PARENT) {
             
-            String retValue = _Info.scope.getParam().returnValue;
-            String retType  = _Info.scope.getParam().returnType;
+            TypeDescriptor retType  = _Info.scope.getParam().returnType;
             String boxType = getJavaBoxType(retType);
             
-            Expression r = new LanguageSpecificExpression(_Info.scope.getParam().returnValue);
+            Expression r = _Info.scope.getParam().returnValue;
             if(boxType!=null)
                 r = new TypeDescriptor(boxType)._new().arg(r);
             
@@ -688,9 +687,9 @@ public class CodeWriter
             "float","Float",
             "double","Double"};
     
-    private String getJavaBoxType( String name ) {
+    private String getJavaBoxType( TypeDescriptor type ) {
         for( int i=0; i<boxTypes.length; i+=2 )
-            if( name.equals(boxTypes[i]) )
+            if( boxTypes[i].equals(type.name) )
                 return boxTypes[i+1];
         return null;
     }
@@ -734,16 +733,15 @@ public class CodeWriter
                     String alias = a.getAlias();
                     if(alias!=null) {
                         ScopeInfo childBlock = a.getTargetScope();
-                        String returnType = childBlock.scope.getParam().returnType;
+                        TypeDescriptor returnType = childBlock.scope.getParam().returnType;
                         
                         String boxType = getJavaBoxType(returnType);
                         Expression rhs;
                         if(boxType==null)
-                            rhs = new CastExpression(
-                                new TypeDescriptor(returnType), $result);
+                            rhs = new CastExpression( returnType, $result);
                         else
                             rhs = new CastExpression( new TypeDescriptor(boxType),
-                                $result).invoke(returnType+"Value");
+                                $result).invoke(returnType.name+"Value");
                             
                         block.assign( $this.prop(alias), rhs );
                     }

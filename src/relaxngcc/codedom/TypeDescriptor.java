@@ -27,15 +27,17 @@ public class TypeDescriptor {
 
 	private TypeDescriptor(int type) {
 		_Type = type;
+        name = null;
 	}
 
 
-	private int _Type;
-	private String _Name;
+	private final int _Type;
+	public final String name;
+    
 	
 	public TypeDescriptor(String classname) {
 		_Type = TYPE_OBJECT;
-		_Name = classname;
+		name = classname;
 	}
     
     /** Creates a new instance of this type. */
@@ -46,7 +48,7 @@ public class TypeDescriptor {
 	public void writeTo( Formatter f ) throws IOException {
 		switch(_Type) {
 			case TYPE_OBJECT:
-				f.p(_Name);
+				f.p(name);
 				break;
 			case TYPE_VOID:
 				f.p("void");

@@ -266,10 +266,10 @@ public final class ScopeInfo
     
 	private class Alias
 	{
+        public final TypeDescriptor type;
 		public final String name;
-		public final String javatype;
 		public final boolean isUserObject;
-		public Alias(String n, String t, boolean user) { name=n; javatype=t; isUserObject=user; }
+		public Alias(TypeDescriptor t, String n, boolean user) { name=n; type=t; isUserObject=user; }
         
         /**
          * Once a variable is declared, this field will hold a reference to it.
@@ -298,7 +298,7 @@ public final class ScopeInfo
                 String varname = pair.substring(idx+1).trim();
                 
                 vec.add(
-                    addAlias(varname,vartype));
+                    addAlias(new TypeDescriptor(vartype), varname ));
             }
         }
         constructorParams = (Alias[])vec.toArray(new Alias[vec.size()]);
@@ -377,8 +377,8 @@ public final class ScopeInfo
 		_AllStates.add(state);
 	}
 	
-	public Alias addAlias(String name, String classname) {
-        Alias a = new Alias(name, classname, true);
+	public Alias addAlias(TypeDescriptor type, String name) {
+        Alias a = new Alias(type, name, true);
 		aliases.put(name,a);
         return a;
 	}
@@ -459,7 +459,7 @@ public final class ScopeInfo
 			if(/*options.style==Options.STYLE_PLAIN_SAX &&*/ !a.isUserObject)
                 type = TypeDescriptor.STRING;
 			else
-                type = new TypeDescriptor(a.javatype);
+                type = a.type;
                 
             classdef.addMember( new LanguageSpecificString("private"), type, a.name);
 		}
@@ -503,7 +503,7 @@ public final class ScopeInfo
             // append additional constructor arguments
             for( int i=0; i<constructorParams.length; i++ ) {
                 Variable v = cotr1.param(
-                    new TypeDescriptor(constructorParams[i].javatype),
+                    constructorParams[i].type,
                     '_'+constructorParams[i].name);
                 cotr1.body().assign( THIS.prop(constructorParams[i].name),
                     v );
@@ -535,7 +535,7 @@ public final class ScopeInfo
             // append additional constructor arguments
             for( int i=0; i<constructorParams.length; i++ ) {
                 Variable v = cotr2.param(
-                    new TypeDescriptor(constructorParams[i].javatype),
+                    constructorParams[i].type,
                     '_'+constructorParams[i].name);
                 callThis.arg(v);
             }
