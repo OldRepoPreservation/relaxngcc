@@ -512,7 +512,7 @@ public class ScopeBuilder
         ScopeInfo.Action action_last = null;
         
         if(preservedAction.length()!=0)
-            _ScopeInfo.createAction(preservedAction);
+            action_last = _ScopeInfo.createAction(preservedAction);
         // TODO: isn't this a bug? I mean, we end up adding the same action
         // to two different places - Kohsuke
         
@@ -528,11 +528,13 @@ public class ScopeBuilder
 	}
 	private State processOptional(NGCCElement exp, ScopeBuildingContext ctx, State destination)
 	{
-        // TODO: isn't this a bug? I mean, we end up adding the same action
-        // to two different places - Kohsuke
         ScopeInfo.Action action_last = null;
-        if(preservedAction.length()!=0)
+        if(preservedAction.length()!=0) {
+            // REVISIT: in the original code, preservedAction was not
+            // reset. But I believe that was wrong - Kohsuke 
             action_last = _ScopeInfo.createAction(preservedAction);
+            preservedAction = new StringBuffer();
+        }
             
 		addAction(destination);
 		State head = traverseNodeList(exp.getChildNodes(), ctx, destination);
@@ -559,9 +561,10 @@ public class ScopeBuilder
 		else
 		{
 			ScopeInfo.Action action = null;
-            if(preservedAction!=null)
+            if(preservedAction.length()!=0)
                 action = _ScopeInfo.createAction(preservedAction);
-            // TODO: seems like this is also a bug?
+            // TODO: seems like this is also a bug --- why don't we need to
+            // reset preserved action?
             
 			addAction(destination);
 			
