@@ -7,7 +7,11 @@ private void echo(String s) { System.err.println(s); System.err.flush(); }
 </c:java-body>
 <start c:class="Test">
   <element name="root">
-    <oneOrMore><element name="test-optional" ><ref name="optional"/></element></oneOrMore>
+    <oneOrMore>
+      <element name="test-optional" >
+        <ref name="optional"/>
+      </element>
+    </oneOrMore>
     <element name="test-oneormore"><ref name="oneormore"/></element>
     <element name="test-zeroormore"><ref name="zeroormore"/></element>
     <element name="test-group"><ref name="group"/></element>
@@ -17,69 +21,69 @@ private void echo(String s) { System.err.println(s); System.err.flush(); }
 </start>
 
 <define name="optional">
-  <c:java>echo("optional-start");</c:java>
+  echo("optional-start");
   <optional>
-    <c:java>echo("optional-1");</c:java>
+    echo("optional-1");
     <element name="foo"><text/></element>
-    <c:java>echo("optional-2");</c:java>
+    echo("optional-2");
   </optional>
-  <c:java>echo("optional-end");</c:java>
+  echo("optional-end");
 </define>
 
 <define name="oneormore">
-  <c:java>echo("oneormore-start");</c:java>
+  echo("oneormore-start");
   <oneOrMore>
-    <c:java>echo("oneormore-1");</c:java>
+    echo("oneormore-1");
     <element name="foo"><text/></element>
-    <c:java>echo("oneormore-2");</c:java>
+    echo("oneormore-2");
   </oneOrMore>
-  <c:java>echo("oneormore-end");</c:java>
+  echo("oneormore-end");
 </define>
 
 <define name="zeroormore">
-  <c:java>echo("zeroormore-start");</c:java>
+  echo("zeroormore-start");
   <zeroOrMore>
-    <c:java>echo("zeroormore-1");</c:java>
+    echo("zeroormore-1");
     <element name="foo"><text/></element>
-    <c:java>echo("zeroormore-2");</c:java>
+    echo("zeroormore-2");
   </zeroOrMore>
-  <c:java>echo("zeroormore-end");</c:java>
+  echo("zeroormore-end");
 </define>
 
 <define name="group">
-  <c:java>echo("group-start");</c:java>
+  echo("group-start");
   <group>
-    <c:java>echo("group-1");</c:java>
+    echo("group-1");
     <element name="foo"><text/></element>
-    <c:java>echo("group-2");</c:java>
+    echo("group-2");
     <element name="foo"><text/></element>
-    <c:java>echo("group-3");</c:java>
+    echo("group-3");
   </group>
-  <c:java>echo("group-end");</c:java>
+  echo("group-end");
 </define>
 
 <define name="choice">
-  <c:java>echo("choice-start");</c:java>
+  echo("choice-start");
   <choice>
-    <c:java>echo("choice-1");</c:java>
+    echo("choice-1");
     <element name="foo1"><text/></element>
-    <c:java>echo("choice-2");</c:java>
+    echo("choice-2");
     <element name="foo2"><text/></element>
-    <c:java>echo("choice-3");</c:java>
+    echo("choice-3");
   </choice>
-  <c:java>echo("choice-end");</c:java>
+  echo("choice-end");
 </define>
 
 <define name="interleave">
-  <c:java>echo("interleave-start");</c:java>
+  echo("interleave-start");
   <interleave>
-    <c:java>echo("interleave-1");</c:java>
+    echo("interleave-1");
     <element name="foo1"><text/></element>
-    <c:java>echo("interleave-2");</c:java>
+    echo("interleave-2");
     <element name="foo2"><text/></element>
-    <c:java>echo("interleave-3");</c:java>
+    echo("interleave-3");
   </interleave>
-  <c:java>echo("interleave-end");</c:java>
+  echo("interleave-end");
 </define>
 
 </grammar>

@@ -9,22 +9,6 @@ import java.io.File;
 
 public class NGCCUtil
 {
-	public static String combineURL(String base, String relative)
-	{
-		try
-		{
-			//As for common case, 'base' and 'relative' are local file names.
-			File parent = new File(base).getParentFile();
-			File result;
-			if(parent==null)
-				result = new File(relative);
-			else
-				result = new File(parent, relative);
-			return result.getCanonicalPath();
-		}
-		catch(java.io.IOException e) { return null; } //!!後でましなハンドリングへ変更すること
-	}
-	
 	public static String XSDTypeToJavaType(String xsd)
 	{
 		if(xsd.equals("float")) return "Float";
@@ -44,14 +28,5 @@ public class NGCCUtil
 		   || xsd.equals("dateTime") || xsd.equals("gYear") || xsd.equals("gYearMonth")
 		   || xsd.equals("gMonth") || xsd.equals("gMonthDay") || xsd.equals("gDay")) return "GregorianCalendar";
 		return "String"; //if none of previous types match
-	}
-	
-	public static String getFileNameFromPath(String path)
-	{
-		int n = path.indexOf('/');
-		if(n!=-1) return path.substring(n+1);
-		n = path.indexOf('\\');
-		if(n!=-1) return path.substring(n+1);
-		return path;
 	}
 }

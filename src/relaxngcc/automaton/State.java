@@ -5,44 +5,64 @@
  */
 
 package relaxngcc.automaton;
-import java.util.*;
 import java.io.PrintStream;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.Vector;
 
-import relaxngcc.NGCCGrammar;
-import relaxngcc.dom.NGCCElement;
+import org.xml.sax.Locator;
+
 import relaxngcc.builder.ScopeInfo;
+import relaxngcc.grammar.Pattern;
+import relaxngcc.util.SelectiveIterator;
+import relaxngcc.codedom.CDBlock;
 
 /**
  * A State object has zero or more Transition objects
  */
-public class State implements Comparable
+public final class State implements Comparable
 {
-	public static final int LISTMODE_PRESERVE = 0;
-	public static final int LISTMODE_ON = 1;
-	public static final int LISTMODE_OFF = 2;
-
 	private Set _AllTransitions;
-	private Set _StartElementTransitions; //collection of startElement type transitions
-	private Set _EndElementTransitions; //collection of endElement type transitions
-	private Set _TextTransitions; //collection of text type transitions
-	private Set _AttributeTransitions; //collection of attribute type transitions
-	private Set _RefTransitions; //collection of ref type transitions 
-	private Set _ReversalTransitions; //collection of transitions that comes to this state from other state
     
 	//acceptable or not
 	private boolean _Acceptable;
 	public void setAcceptable(boolean newvalue) { _Acceptable=newvalue; }
 	public boolean isAcceptable() { return _Acceptable; }
 	
-	private String _ActionOnExit;
-	public String getActionOnExit() { return _ActionOnExit; }
-	public void addActionOnExit(String code) { _ActionOnExit = (_ActionOnExit==null)? code : code + _ActionOnExit; }
+    // joinable or not.
+    // TODO: probably we don't need to distinguish final states and join states.
+    private boolean _join=false;
+    public void markAsJoin() { _join=true; }
+    public boolean isJoinState() { return _join; }
+    
+    /** Actions that get executed when the execution leaves this state. */
+	private final Vector actionsOnExit = new Vector();
+    
+    public ScopeInfo.Action[] getActionsOnExit() {
+        return (ScopeInfo.Action[])actionsOnExit.toArray(new ScopeInfo.Action[0]);
+    }
+    /** Gets the code to invoke exit-actions. */
+	public CDBlock invokeActionsOnExit() {
+        CDBlock sv = new CDBlock();
+        for( int i=0; i<actionsOnExit.size(); i++ )
+            sv.add(((ScopeInfo.Action)actionsOnExit.get(i)).invoke());
+        return sv;
+    }
+    
+	public void addActionOnExit(ScopeInfo.Action act) {
+       actionsOnExit.add(0,act);
+    }
+    public void addActionsOnExit(ScopeInfo.Action[] act) {
+        for( int i=act.length-1; i>=0; i-- )
+            addActionOnExit(act[i]);
+    }
 	 
-	//for interleave support
-	private State _MeetingDestination;
-	private Set _StateForWait;
-
-	private ScopeInfo _Container;
+    /** ScopeInfo that owns this state. */
+	private final ScopeInfo _Container;
+    public ScopeInfo getContainer() { return _Container; }
 	
 	//index identifies this state in a scope as an integer
 	public int getIndex() { return _Index; }
@@ -50,265 +70,246 @@ public class State implements Comparable
 	
 	public int getThreadIndex() { return _ThreadIndex; }
 	private int _ThreadIndex;
-
-	private NGCCElement _LocationHint;
 	
-	//about list operation
-	private int _ListMode;
-	public void setListMode(int n) { _ListMode=n; }
-	public int getListMode() { return _ListMode; }
-	
-	//constructor
-    public State(ScopeInfo container, int thread, int index, NGCCElement e)
+    /** Pattern from which this state was created. */
+    public final Pattern locationHint;
+    
+    /**
+     * 
+     * @param location
+     *      Indicates the pattern object from which this state is created.
+     */
+    public State(ScopeInfo container, int thread, int index, Pattern location )
 	{
 		_Container = container;
-		_LocationHint = e;
 		_AllTransitions = new HashSet();
-		_StartElementTransitions = new HashSet();
-		_EndElementTransitions = new HashSet();
-		_TextTransitions = new HashSet();
-		_AttributeTransitions = new HashSet();
-		_RefTransitions = new HashSet();
-        
-        _ReversalTransitions = new HashSet();
         
 		_Acceptable = false;
 		_Index = index;
 		_ThreadIndex = thread;
-		_ListMode = LISTMODE_PRESERVE;
+        this.locationHint = location;
     }
 
-	public void addTransition(Transition t)
-	{
+	public void addTransition(Transition t) {
 		_AllTransitions.add(t);
-		switch(t.getAlphabet().getType())
-		{
-			case Alphabet.START_ELEMENT:
-				addTransitionWithCheck(_StartElementTransitions, t, null);
-				break;
-			case Alphabet.END_ELEMENT:
-				addTransitionWithCheck(_EndElementTransitions, t, null);
-				break;
-			case Alphabet.START_ATTRIBUTE:
-				addTransitionWithCheck(_AttributeTransitions, t, null);
-				break;
-			case Alphabet.TYPED_VALUE:
-			case Alphabet.FIXED_VALUE:
-				addTransitionWithCheck(_TextTransitions, t, null);
-				break;
-			case Alphabet.REF_BLOCK:
-				addTransitionWithCheck(_RefTransitions, t, null);
-				break;
-		}
 	}
-	
-	public boolean hasStartElementTransition() { return !_StartElementTransitions.isEmpty(); }
-	public boolean hasEndElementTransition()   { return !_EndElementTransitions.isEmpty(); }
-	public boolean hasAttributeTransition()    { return !_AttributeTransitions.isEmpty(); }
-	public boolean hasTextTransition()         { return !_TextTransitions.isEmpty(); }
-	public boolean hasRefTransition()          { return !_RefTransitions.isEmpty(); }
 
-	public Iterator iterateTransitions()             { return _AllTransitions.iterator(); }
-	public Iterator iterateStartElementTransitions() { return _StartElementTransitions.iterator(); }
-	public Iterator iterateEndElementTransitions()   { return _EndElementTransitions.iterator(); }
-	public Iterator iterateAttributeTransitions()    { return _AttributeTransitions.iterator(); }
-	public Iterator iterateTextTransitions()         { return _TextTransitions.iterator(); }
-	public Iterator iterateRefTransitions()          { return _RefTransitions.iterator(); }
-	public Iterator iterateReversalTransitions()     { return _ReversalTransitions.iterator(); }
-    
-	public Set firstStartElementAlphabets() { return transitionsToFirstAlphabets(_StartElementTransitions); }
-	public Set firstTextAlphabets()         { return transitionsToFirstAlphabets(_TextTransitions); }
-	public Set firstAttributeAlphabets()    { return transitionsToFirstAlphabets(_AttributeTransitions); }
+    public void removeTransition( Transition t) {
+        _AllTransitions.remove(t);
+    }
 	
-	public void addReversalTransition(Transition t) { _ReversalTransitions.add(t); }
+    private class TypeIterator extends SelectiveIterator {
+        TypeIterator( int _typeMask ) {
+            super(_AllTransitions.iterator());
+            this.typeMask=_typeMask;
+        }
+        private final int typeMask;
+        protected boolean filter( Object o ) {
+            return (((Transition)o).getAlphabet().getType()&typeMask)!=0;
+        }
+    }
+
+    public Iterator iterateTransitions() { return _AllTransitions.iterator(); }
+
+    /**
+     * Checks if this state has transitions with
+     * at least one of given types of alphabets.
+     * 
+     * @param alphabetTypes
+     *      OR-ed combination of alphabet types you want to iterate.
+     */
+    public boolean hasTransition( int alphabetTypes ) {
+        return new TypeIterator(alphabetTypes).hasNext();
+    }
     
-	public void mergeTransitions(State s)
-	{
-		mergeTransitions(s, null);
-	}
-	public void mergeTransitions(State s, String action)
-	{
-		addTransitionsWithCheck(_StartElementTransitions, s._StartElementTransitions, action);
-		addTransitionsWithCheck(_EndElementTransitions, s._EndElementTransitions, action);
-		addTransitionsWithCheck(_AttributeTransitions, s._AttributeTransitions, action);
-		addTransitionsWithCheck(_TextTransitions, s._TextTransitions, action);
-		addTransitionsWithCheck(_RefTransitions, s._RefTransitions, action);
-		_AllTransitions.addAll(s._AllTransitions);
-	}
-	
-	public int compareTo(Object obj)
-	{
-		if(!(obj instanceof State)) throw new ClassCastException("not State object");
-		
-		return _Index-((State)obj)._Index;
+    /**
+     * Iterate transitions with specified alphabets.
+     * 
+     * @param alphabetTypes
+     *      OR-ed combination of alphabet types you want to iterate.
+     */
+    public Iterator iterateTransitions( int alphabetTypes ) {
+        return new TypeIterator(alphabetTypes);
+    }
+        
+    public int compareTo(Object obj) {
+        if(!(obj instanceof State)) throw new ClassCastException("not State object");
+        
+        return _Index-((State)obj)._Index;
+    }
+    
+    public void mergeTransitions(State s) {
+        if(this==s)
+            // this causes ConcurrentModificationException.
+            // so we need to treat this as a special case.
+            // 
+            // merging a state to itself without any action
+            // is a no-operation. so we can just return.
+            return;
+        mergeTransitions(s, null);
+    }
+    
+    /**
+     * For all the transitions leaving from the specified state,
+     * add it to this state by appending the specified action
+     * (possibly null) at the head of its prologue actions.
+     */
+	public void mergeTransitions(State s, ScopeInfo.Action action) {
+        Iterator itr = s.iterateTransitions();
+        while(itr.hasNext())
+            // TODO: why there needs to be two methods "addTransitionWithCheck" and "addTransition"?
+            addTransitionWithCheck( (Transition)itr.next(), action );
 	}
 	
 	//reports if this state has ambiguous transitions. [target] is a set of Transitions.
-	private void addTransitionWithCheck(Set currentTransitions, Transition newtransition, String action)
+    /**
+     * Adds the specified transition to this state,
+     * and reports any ambiguity error if detected.
+     */
+	private void addTransitionWithCheck(
+        Transition newtransition, ScopeInfo.Action action)
 	{
 		Alphabet a = newtransition.getAlphabet();
-		Iterator it = currentTransitions.iterator();
-		while(it.hasNext())
-		{
+        
+		Iterator it = iterateTransitions();
+		while(it.hasNext()) {
 			Transition tr = (Transition)it.next();
-			if(tr==newtransition) continue;
 			Alphabet existing_alphabet = tr.getAlphabet();
             
-            if(a.getType()==Alphabet.TYPED_VALUE && existing_alphabet.getType()==Alphabet.TYPED_VALUE)
-            	printAmbiguousTransitionsWarning(tr, newtransition);
-			else if(existing_alphabet.equals(a) && tr.nextState()!=newtransition.nextState())
-            {
-                if(newtransition.getAction()==null && tr.getAction()==null) //if both of them have no action, merge is possible
-                {
-                    tr.nextState().mergeTransitions(newtransition.nextState());
-                    Iterator r = newtransition.nextState().iterateReversalTransitions();
-                    while(r.hasNext())
-                        ((Transition)r.next()).changeDestination(tr.nextState());
-					return; //ignores newtransition
+            // I don't see why this constitutes ambiguity -kk
+//            if(a.isText())
+//            	printAmbiguousTransitionsWarning(tr, newtransition);
+//			else
+
+            if(existing_alphabet.equals(a)) {
+                if(tr.nextState()==newtransition.nextState()) {
+                    if(action==null)
+                        return; // trying to add the same transition. no-op.
+                    else
+                        // the same transition is being added but with an action.
+                        // I guess this is ambiguous, but not sure. - Kohsuke
+                        printAmbiguousTransitionsWarning(tr, newtransition);
+                } else {
+	                if(!newtransition.hasAction() && !tr.hasAction()) {
+	                    // only if both of them have no action, we can merge them.
+	                    tr.nextState().mergeTransitions(newtransition.nextState());
+						return; //ignores newtransition
+	                } else
+	            		printAmbiguousTransitionsWarning(tr, newtransition);
                 }
-                else
-            		printAmbiguousTransitionsWarning(tr, newtransition);
             }
 		}
 		
+        // always make a copy, because we might modify actions later.
+        // in general, it is dangerous to share transitions.
+        newtransition = (Transition)newtransition.clone();
+        
 		if(action!=null)
-		{
-			newtransition = (Transition)newtransition.clone();
-			newtransition.appendActionAtHead(action);
-		}
+			newtransition.insertPrologueAction(action);
 		
-        currentTransitions.add(newtransition);
-        newtransition.nextState().addReversalTransition(newtransition);
+        _AllTransitions.add(newtransition);
 	}
-	private void addTransitionsWithCheck(Set target, Set newtransitions, String action)
-	{
-		Iterator it = newtransitions.iterator();
-		while(it.hasNext()) addTransitionWithCheck(target, (Transition)it.next(), action);
-	}
-	
-	private static Set transitionsToFirstAlphabets(Set transitions)
-	{
-		Set result = new HashSet();
-		Iterator it = transitions.iterator();
-		while(it.hasNext())
-		{
-			Transition t = (Transition)it.next();
-			result.add(t.getAlphabet());
-		}
-		return result;
-	}
-	
-	public void checkFirstAlphabetAmbiguousity()
-	{
-		TreeSet alphabets = new TreeSet();
-		Iterator trs = _AllTransitions.iterator();
-		while(trs.hasNext())
-		{
-			Transition tr = (Transition)trs.next();
-			if(tr.getAlphabet().getType()!=Alphabet.REF_BLOCK) alphabets.add(tr.getAlphabet());
-		}
-		
-		NGCCGrammar gr = _Container.getGrammar();
-		Iterator refs = iterateRefTransitions();
-		while(refs.hasNext())
-		{
-			Transition ref = (Transition)refs.next();
-			ScopeInfo sci = gr.getScopeInfoByName(ref.getAlphabet().getValue());
-			Iterator as = alphabets.iterator();
-			while(as.hasNext())
-			{
-				Alphabet a = (Alphabet)as.next();
-				if(sci.isFirstAlphabet(a))
-				{
-					printAmbiguousTransitionAndFirstWarning(ref);
-					break;
-				}
-			}
-		}
-	}
-	
-	public void checkFollowAlphabetAmbiguousity()
-	{
-		if(!_Acceptable) return;
-	
-		Iterator it = _AllTransitions.iterator();
-		while(it.hasNext())
-		{
-			Transition t = (Transition)it.next();
-			Alphabet a = t.getAlphabet();
-			if(_Container.isFollowAlphabet(a))
-				printAmbiguousTransitionAndFollowWarning(t);
-		}
-			
-	}
-	
+
 	private void printAmbiguousTransitionsWarning(Transition a, Transition b)
 	{
 		PrintStream s = System.err;
 		printStateWarningHeader(s);
-		s.print(" has ambiguous transitions about following alphabets, ");
+		s.print(" has ambiguous transitions: ");
 		s.print(a.getAlphabet().toString());
-		s.print("(to state<");
+		s.print("(to #");
 		s.print(a.nextState().getIndex());
-		s.print(">) and ");
+		s.print(") and ");
 		s.print(b.getAlphabet().toString());
-		s.print("(to state<");
+		s.print("(to #");
 		s.print(b.nextState().getIndex());
-		s.println(">).");
-		
+		s.println(".)");
+        a.getAlphabet().printLocator(s);
+        b.getAlphabet().printLocator(s);
 	}
-	private void printAmbiguousTransitionAndFirstWarning(Transition t)
-	{
-		PrintStream s = System.err;
-		printStateWarningHeader(s);
-		s.print(" has ambiguous transitions about FIRST alphabets, ");
-		s.print(t.getAlphabet().toString());
-		s.print("(to state<");
-		s.print(t.nextState().getIndex());
-		s.println(">).");
-	}
-	private void printAmbiguousTransitionAndFollowWarning(Transition t)
-	{
-		PrintStream s = System.err;
-		printStateWarningHeader(s);
-		s.print(" has ambiguous transitions about FOLLOW alphabets, ");
-		s.print(t.getAlphabet().toString());
-		s.print("(to state<");
-		s.print(t.nextState().getIndex());
-		s.println(">).");
-	}
-	private void printStateWarningHeader(PrintStream s)
-	{
+    
+	private void printStateWarningHeader(PrintStream s) {
 		s.print("[Warning] ");
-		String path = null;
-		try
-		{
-			if(_LocationHint!=null) path = _LocationHint.getPath();
-		}
-		catch(UnsupportedOperationException e) {}
-		
-		s.print("The state <");
+
+		s.print("State #");
 		s.print(_Index);
-		if(path!=null)
-		{
-			s.print("> generated at or near ");
-			s.print(path);
-		}
-		else
-		{
-			s.print("> whose path information is not available");
-		}
-		
-		s.print(" in ");
-		s.print(_Container.getLocation());
+		s.print(" of ");
+        s.print(_Container.scope.name);
+        // TODO: location
+//		s.print(_Container.getLocation());
 	}
-	//for interleave support
-	public void setMeetingDestination(State s) { _MeetingDestination=s; }
-	public State getMeetingDestination() { return _MeetingDestination; }
-	public void addStateForWait(State s)
-	{
-		if(_StateForWait==null) _StateForWait = new TreeSet();
-		_StateForWait.add(s);
-	}
-	public Iterator iterateStatesForWait() { return _StateForWait.iterator(); }
+
+    /**
+     * Gets all the states reachable from this state.
+     */
+    public State[] getReachableStates() {
+        HashSet s = new HashSet();
+        getReachableStates(s);
+        return (State[]) s.toArray(new State[s.size()]);
+    }
+    
+    private void getReachableStates( Set r ) {
+        for (Iterator itr = iterateTransitions(); itr.hasNext();) {
+            Transition t = (Transition) itr.next();
+            if(r.add(t.nextState()))
+                t.nextState().getReachableStates(r);
+        }
+    }
+    
+    
+    /**
+     * Computes HEAD set of this state.
+     * 
+     * See {@link Head} for the definition.
+     */
+    public Set head( boolean includeEE ) {
+        Set s = new HashSet();
+        head(s,includeEE);
+        return s;
+    }
+    
+    /**
+     * Internal function to compute HEAD.
+     */
+    void head( Set result, boolean includeEE ) {
+        
+        if(isAcceptable() && includeEE )
+            result.add(Head.EVERYTHING_ELSE);
+        
+        Iterator itr = iterateTransitions();
+        while(itr.hasNext()) {
+            Transition t = (Transition)itr.next();
+            t.head( result, includeEE );
+        }
+    }
+    
+    /**
+     * Computes ATTHEAD set of this state and returns them
+     * in a sorted order.
+     * 
+     * See {@link HEAD} for the definition.
+     */
+    public Set attHead() {
+        Set r = new TreeSet(Alphabet.orderComparator);
+        attHead(r);
+        return r;
+    }
+    
+    // internal-version
+    private void attHead( Set result ) {
+        Iterator itr = iterateTransitions();
+        while(itr.hasNext()) {
+            Transition t = (Transition)itr.next();
+            Alphabet a = t.getAlphabet();
+            
+            if(a.isEnterAttribute())
+                result.add(a);
+            else
+            if(a.isRef()) {
+                // ref[X] itself will be included in ATTHEAD
+                result.add(a);
+                if(a.asRef().getTargetScope().isNullable())
+                    t.nextState().attHead(result);
+            }
+        }
+    }
 }

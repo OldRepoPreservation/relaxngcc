@@ -1,0 +1,174 @@
+<?xml version="1.0"?>
+<project name="RELAXNGCC" basedir="." default="jar">
+
+	<!-- check if the parser generator needs to be run -->
+	<target name="ngcc-check">
+		<uptodate property="ngcc.notrequired"
+		  targetfile="src/relaxngcc/parser/state/Start.java">
+			<srcfiles dir="src/relaxngcc/parser" includes="*.rng"/>
+		</uptodate>
+	</target>
+	
+	<!-- use bootstrap RelaxNGCC to compile the parser -->
+	<target name="ngcc" unless="ngcc.notrequired" depends="ngcc-check">
+		<mkdir dir="src/relaxngcc/parser/automata"/>
+		<delete dir="src/relaxngcc/parser/automata" includes="*.gif" />
+		<delete dir="src/relaxngcc/parser/state" includes="*.java" />
+		<java jar="lib/bootstrap-relaxngcc.jar" fork="true">
+			<!-- enable debug statements -->
+			<!--arg value="-d"/-->
+			
+			<!-- dump automata -->
+			<arg value="--print-automata"/>
+			<arg path="src/relaxngcc/parser/automata"/>
+			
+			<!-- specify output directory -->
+			<arg value="--target"/>
+			<arg path="src/relaxngcc/parser/state" />
+			
+			<!-- source file -->
+			<arg path="src/relaxngcc/parser/relaxng.rng"/>
+		</java>
+	</target>
+	
+	<!-- compile Java source files -->
+	<target name="compile" depends="ngcc">
+		<mkdir dir="bin"/>
+		<javacc target="src/relaxngcc/javabody/JavaBodyParser.jj"
+			outputdirectory="src/relaxngcc/javabody"
+			javacchome="lib/JavaCC"
+			static="false"/>
+		<javac
+			srcdir="src"
+			destdir="bin"
+			debug="on"
+			optimize="off"
+			classpath="lib">
+			
+			<classpath>
+				<fileset dir="lib" includes="*.jar"/>
+			</classpath>
+		</javac>
+	</target>
+	
+	<!-- generate javadoc documentation from the working copy -->
+	<target name="javadoc" depends="compile">
+		<mkdir dir="javadoc"/>
+		<javadoc	locale="en_US"
+					sourcepath="src"
+					destdir="javadoc"
+					windowtitle="RelaxNGCC"
+					public="yes"
+					>
+				
+			<package name="relaxngcc.*"/>
+			<classpath>
+				<fileset dir="lib" includes="*.jar"/>
+			</classpath>
+		</javadoc>
+	</target>
+	
+	<!-- document generation -->
+	<target name="doc">
+		<javac srcdir="docgen" destdir="docgen" />
+		
+		<mkdir dir="htdocs/en"/>
+		<mkdir dir="htdocs/ja"/>
+		<copy todir="htdocs/ja">
+			<fileset dir="htdocs">
+				<include name="*.*"/>
+			</fileset>
+		</copy>
+		<copy todir="htdocs/en">
+			<fileset dir="htdocs">
+				<include name="*.*"/>
+			</fileset>
+		</copy>
+		
+		<java classname="DocGen" fork="true">
+			<classpath path="docgen"/>
+			<arg value="ja"/>
+			<arg value="htdocs/*.htm"/>
+		</java>
+		<java classname="DocGen" fork="true">
+			<classpath path="docgen"/>
+			<arg value="en"/>
+			<arg value="htdocs/*.htm"/>
+		</java>
+	</target>
+	
+	<target name="jar" depends="compile">
+		<tstamp/>
+		
+<echo file="bin/METAINF.MF"
+>Version: ${DSTAMP}
+Main-Class: relaxngcc.RelaxNGCC
+Class-Path: crimson.jar relaxngDatatype.jar xsdlib.jar msv.jar jaxp-api.jar
+</echo>
+		<jar jarfile="relaxngcc.jar" compress="false" manifest="bin/METAINF.MF">
+			<fileset dir="src" includes="**/*.properties"/>
+			<fileset dir="src" includes="**/*.xsl"/>
+			<fileset dir="src" includes="relaxngcc/runtime/*.java"/>
+			<fileset dir="bin" includes="**/*.class"/>
+		</jar>
+		<delete file="bin/METAINF.MF"/>
+	</target>
+	
+	<!-- create a distribution package -->
+	<target name="release" depends="jar,javadoc,doc">
+		<tstamp />
+		<property name="stage" value="relaxngcc-${DSTAMP}"/>
+		
+		<!-- creates distribution package -->
+		<mkdir dir="package" />
+		<zip	zipfile="package/${stage}.zip">
+			<zipfileset dir="." includes="relaxngcc.jar" fullpath="${stage}/relaxngcc.jar" />
+			<zipfileset dir="src" includes="**/*.*" prefix="${stage}/src" />
+			<zipfileset dir="sample" includes="**/*.*" prefix="${stage}/sample" />
+			<zipfileset dir="htdocs" includes="ja/*.*,en/*.*" prefix="${stage}/doc">
+				<exclude name="**/.cvsignore"/>
+			</zipfileset>
+			<zipfileset dir="doc" includes="**/*.*" prefix="${stage}"/>
+			<zipfileset dir="lib" prefix="${stage}">
+				<include name="relaxngDatatype.jar" />
+				<include name="xerces.jar" />
+				<include name="msv.jar" />
+				<include name="xsdlib.jar" />
+			</zipfileset>
+		</zip>
+	</target>
+	
+	
+	<!-- use working copy of RelaxNGCC to compile the parser. useful for test -->
+	<target name="self-ngcc">
+		<mkdir dir="src/relaxngcc/parser/automata"/>
+		<delete dir="src/relaxngcc/parser/automata" includes="*.gif" />
+		<delete dir="src/relaxngcc/parser/state" includes="*.java" />
+		<java classname="relaxngcc.RelaxNGCC" fork="true">
+			<!-- enable debug statements -->
+			<arg value="-d"/>
+			
+			<!-- dump automata -->
+			<arg value="--print-automata"/>
+			<arg path="src/relaxngcc/parser/automata"/>
+			
+			<!-- specify output directory -->
+			<arg value="--target"/>
+			<arg path="src/relaxngcc/parser/state" />
+			
+			<!-- source file -->
+			<arg path="src/relaxngcc/parser/relaxng.rng"/>
+			
+			<classpath path="bin"/>
+			<classpath path="src"/>
+			<classpath path="lib/relaxngDatatype.jar"/>
+		</java>
+	</target>
+	
+	
+	<target name="clean">
+		<delete dir="javadoc"/>
+		<delete dir="bin"/>
+		<delete dir="src/relaxngcc/parser/state" includes="*.java" />
+	</target>
+</project>
