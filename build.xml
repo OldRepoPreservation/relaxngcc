@@ -69,7 +69,9 @@
 	</target>
 	
 	<!-- document generation -->
-	<target name="doc" depends="compile">
+	<target name="doc">
+		<javac srcdir="docgen" destdir="docgen" />
+		
 		<mkdir dir="htdocs/en"/>
 		<mkdir dir="htdocs/ja"/>
 		<copy todir="htdocs/ja">
@@ -84,13 +86,13 @@
 		</copy>
 		
 		<java classname="DocGen" fork="true">
-			<classpath path="bin"/>
+			<classpath path="docgen"/>
 			<arg value="ja"/>
 			<arg value="htdocs/*.htm"/>
 			<arg value="htdocs/*.html"/>
 		</java>
 		<java classname="DocGen" fork="true">
-			<classpath path="bin"/>
+			<classpath path="docgen"/>
 			<arg value="en"/>
 			<arg value="htdocs/*.htm"/>
 			<arg value="htdocs/*.html"/>
