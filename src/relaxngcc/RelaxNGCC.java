@@ -150,6 +150,8 @@ public class RelaxNGCC {
         s.println("   don't generate files if they are up-to-date.");
         s.println(" --debug");
         s.println("   emit a lot of debug codes in the generated code");
+        s.println(" --print-automata <dir>");
+        s.println("   print automata in gif files. Need GraphViz.");
         s.println();
         s.println(" For more information, see http://www.relaxngcc.sourceforge.net/ ");
         s.println();

@@ -51,9 +51,7 @@ public class Options
             if(args[i].charAt(0)=='-') {
                 if(args[i].equals("--target"))
                     targetdir = new File(args[++i]);
-                else if(args[i].equals("-d"))
-                    debug = true;
-                else if(args[i].equals("--debug"))
+                else if(args[i].equals("-d") || args[i].equals("--debug"))
                     debug = true;
                 else if(args[i].equals("--print-automata")) {
                     printAutomata = new File(args[++i]);
