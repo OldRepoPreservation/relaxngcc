@@ -3,19 +3,11 @@
 	Note:
 		attributes that are only applicable to the root element (cc:package
 		and cc:runtime-type) are handled by the ParserRuntime class.
-	
-	TODO:
-		due to a bug in the classic parser wrt  handling QName, we don't use
-		QNames for now. Once the new parser becomes stable, modify this grammar
-		to use QName (such as <element name="cc:java-import">)
 -->
-<!DOCTYPE grammar [
-	<!ENTITY ccNSURI "http://www.xml.gr.jp/xmlns/relaxngcc">
-]>
 <grammar datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes"
          ns="http://relaxng.org/ns/structure/1.0"
          xmlns="http://relaxng.org/ns/structure/1.0"
-         xmlns:cc="&ccNSURI;"
+         xmlns:cc="http://www.xml.gr.jp/xmlns/relaxngcc"
          
          cc:runtime-type="relaxngcc.parser.ParserRuntime"
          cc:package="relaxngcc.parser.state">
@@ -218,7 +210,7 @@
           runtime.grammar = runtime.grammar.parent;
         </cc:java>
       </element>
-      <element name="java" ns="&ccNSURI;">
+      <element name="cc:java">
         <text cc:alias="value"/>
         <cc:java> p = new JavaBlock(value); </cc:java>
       </element>
@@ -233,7 +225,7 @@
         <element name="div">
           <ref name="grammar-content"/>
         </element>
-        <element name="java-import" ns="&ccNSURI;">
+        <element name="cc:java-import">
           <text cc:alias="value"/>
           <cc:java>
             runtime.appendGlobalImport(value);
@@ -294,7 +286,7 @@
       scope.setParam(param);
     </cc:java>
     <optional>
-      <element name="java-import" ns="&ccNSURI;">
+      <element name="cc:java-import">
         <text cc:alias="value"/>
         <cc:java>
           scope.appendImport(value);
@@ -304,7 +296,7 @@
     
     <!-- TODO: interleave -->
     <zeroOrMore>
-      <element name="java-body" ns="&ccNSURI;">
+      <element name="cc:java-body">
         <text cc:alias="value"/>
         <cc:java>
           scope.appendBody(value);
@@ -316,7 +308,7 @@
       scope.append(p,combine);
     </cc:java>
     <zeroOrMore>
-      <element name="java-body" ns="&ccNSURI;">
+      <element name="cc:java-body">
         <text cc:alias="value"/>
         <cc:java>
           scope.appendBody(value);
@@ -409,7 +401,7 @@
       NGCCCallParam param;
     </cc:java-body>
     <optional>
-      <attribute name="with-params" ns="&ccNSURI;">
+      <attribute name="cc:with-params">
         <text cc:alias="withParams"/>
       </attribute>
     </optional>
@@ -433,27 +425,27 @@
       NGCCDefineParam param;
     </cc:java-body>
     <optional>
-      <attribute name="class" ns="&ccNSURI;">
+      <attribute name="cc:class">
         <text cc:alias="className"/>
       </attribute>
     </optional>
     <optional>
-      <attribute name="params" ns="&ccNSURI;">
+      <attribute name="cc:params">
         <text cc:alias="params"/>
       </attribute>
     </optional>
     <optional>
-      <attribute name="access" ns="&ccNSURI;">
+      <attribute name="cc:access">
         <text cc:alias="access"/>
       </attribute>
     </optional>
     <optional>
-      <attribute name="return-type" ns="&ccNSURI;">
+      <attribute name="cc:return-type">
         <text cc:alias="returnType"/>
       </attribute>
     </optional>
     <optional>
-      <attribute name="return-value" ns="&ccNSURI;">
+      <attribute name="cc:return-value">
         <text cc:alias="returnValue"/>
       </attribute>
     </optional>
@@ -467,7 +459,7 @@
   <define name="NGCC-alias" cc:class="NGCCalias"
     cc:return-type="String" cc:return-value="alias">
     <optional>
-      <attribute name="alias" ns="&ccNSURI;">
+      <attribute name="cc:alias">
         <text cc:alias="alias"/>
       </attribute>
     </optional>
