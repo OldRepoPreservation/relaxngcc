@@ -47,8 +47,12 @@ public class RelaxNGCCTask extends Task {
 		if( target==null )
             throw new BuildException("The targetdir attribute is required",location);
 
-        if( !dependsSet.isEmpty() && !producesSet.isEmpty()
-        &&  findTimestamp(dependsSet,true) < findTimestamp(producesSet,false) ) {
+        long srcTime = findTimestamp(dependsSet,true);
+        long dstTime = findTimestamp(producesSet,false);
+        log("the source time stamp is      "+srcTime, Project.MSG_VERBOSE);
+        log("the destination time stamp is "+dstTime, Project.MSG_VERBOSE);
+        
+        if( srcTime < dstTime ) {
             log("skipped RelaxNGCC because files are up-to-date");
             return;
         }
