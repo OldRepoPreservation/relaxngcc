@@ -160,13 +160,10 @@ public class CodeWriter
                 Map.Entry e = (Map.Entry)i.next();
                 State st = (State)e.getKey();
                 
-                Expression condition = null;
-                if(st.getThreadIndex()==-1)
-                    condition = BinaryOperatorExpression.EQ(new VariableExpression("_ngcc_current_state"), new ConstantExpression(st.getIndex()));
-                else
-                	condition = BinaryOperatorExpression.EQ(
-                        new VariableExpression("_ngcc_threaded_state").arrayRef(new ConstantExpression(st.getThreadIndex())),
-                        new ConstantExpression(st.getIndex()));
+                Expression condition = BinaryOperatorExpression.EQ(
+                    (st.getThreadIndex()==-1) ?
+                        $state : getThreadStateExp(st.getThreadIndex()),
+                     new ConstantExpression(st.getIndex()));
                     
                 StatementVector whentrue = ((CodeAboutState)e.getValue()).output(errorHandleMethod);
                 
@@ -260,15 +257,38 @@ public class CodeWriter
 
 
 
+    private ClassDefinition classdef;
+    /** Reference to _ngcc_current_state. */
+    private Expression $state;
+    /** Reference to _ngcc_threaded_state. */
+    private Expression $threadState;
+    private Expression getThreadStateExp( int idx ) {
+        return $threadState.arrayRef(idx);
+    }
+    /** Reference to runtime. */
+    private Expression $runtime;
     
+    /** Reference to "super". */
+    private static final Expression $super = ConstantExpression.SUPER;
     
+    /** Reference to "this". */
+    private static final Expression $this = ConstantExpression.THIS;
     
 	public ClassDefinition output() throws IOException {
-		ClassDefinition classdef = _Info.createClassCode(_Options,_Grammar.globalImportDecls);
+		classdef = _Info.createClassCode(_Options,_Grammar.globalImportDecls);
         
-        classdef.addMember(new LanguageSpecificString("private"), TypeDescriptor.STRING, "uri");
-        classdef.addMember(new LanguageSpecificString("private"), TypeDescriptor.STRING, "localName");
-        classdef.addMember(new LanguageSpecificString("private"), TypeDescriptor.STRING, "qname");
+        // create references to variables
+        $runtime = $this.prop("runtime");
+        $state = classdef.addMember(
+            new LanguageSpecificString("private"),
+            TypeDescriptor.INTEGER,
+            "_ngcc_current_state");
+            
+        if(_Info.getThreadCount()>0)
+            $threadState = classdef.addMember(
+                new LanguageSpecificString("private"),
+                new TypeDescriptor("int[]"),
+                "_ngcc_threaded_state");
         
         classdef.addMethod(createAcceptedMethod());
         
@@ -326,16 +346,15 @@ public class CodeWriter
         Expression statecheckexpression = null;
 		while(states.hasNext())
 		{
-            Expression temp = null;
 			State s = (State)states.next();
+            Expression temp = null;
 			if(s.getThreadIndex()==-1)
-				temp = BinaryOperatorExpression.EQ(new VariableExpression("_ngcc_current_state"), new ConstantExpression(s.getIndex()));
+				temp = $state;
 			else
-				temp = BinaryOperatorExpression.EQ(
-                    new VariableExpression("_ngcc_threaded_state")
-                        .arrayRef( new ConstantExpression(s.getThreadIndex())),
-                    new ConstantExpression(s.getIndex()));
+				temp = getThreadStateExp(s.getThreadIndex());
 			
+            temp = BinaryOperatorExpression.EQ( temp, new ConstantExpression(s.getIndex()) );
+            
 			statecheckexpression = (statecheckexpression==null)? temp : BinaryOperatorExpression.OR(temp, statecheckexpression);
         }
         
@@ -361,11 +380,13 @@ public class CodeWriter
             TypeDescriptor.VOID, eventName,
             new LanguageSpecificString("throws SAXException") );
         
-        method.param( TypeDescriptor.STRING, "uri" );
-        method.param( TypeDescriptor.STRING, "local" );
-        method.param( TypeDescriptor.STRING, "qname" );
+        Expression $uri = method.param( TypeDescriptor.STRING, "uri" );
+        Expression $localName = method.param( TypeDescriptor.STRING, "local" );
+        Expression $qname = method.param( TypeDescriptor.STRING, "qname" );
+        
+        Variable[] additionalVars = new Variable[additionalTypes.length];
         for( int i=0; i<additionalTypes.length; i++ )
-            method.param( additionalTypes[i], additionalArgs[i] );
+            additionalVars[i] = method.param( additionalTypes[i], additionalArgs[i] );
         
         StatementVector sv = method.body();
 		//printSection(eventName);
@@ -375,24 +396,23 @@ public class CodeWriter
         // accessed from action functions.
         // we should better not keep them at Runtime, because
         // this makes it impossible to emulate events.
-        sv.assign(new PropertyReferenceExpression(new VariableExpression("this"), "uri"), new VariableExpression("uri"));
-        sv.assign(new PropertyReferenceExpression(new VariableExpression("this"), "localName"), new VariableExpression("localName"));
-        sv.assign(new PropertyReferenceExpression(new VariableExpression("this"), "qname"), new VariableExpression("qname"));
+        sv.assign($super.prop("uri"),       $uri);
+        sv.assign($super.prop("localName"), $localName);
+        sv.assign($super.prop("qname"),     $qname);
             
 		if(_Options.debug) {
-			sv.invoke(
-                new VariableExpression("runtime"), "traceln")
+			sv.invoke( $runtime, "traceln")
                     .arg(new LanguageSpecificExpression(
                         new LanguageSpecificString("\""+eventName + " \"+qname+\" #\" + _ngcc_current_state")));
         }
         
 		SwitchBlockInfo bi = new SwitchBlockInfo(type);
 		Expression[] arguments = new Expression[3 + additionalArgs.length];
-		arguments[0] = new VariableExpression("uri");
-		arguments[1] = new VariableExpression("localName");
-		arguments[2] = new VariableExpression("qname");
+		arguments[0] = $uri;
+		arguments[1] = $localName;
+		arguments[2] = $qname;
 		for(int i=0; i<additionalArgs.length; i++)
-			arguments[3+i] = new VariableExpression(additionalArgs[i]);
+			arguments[3+i] = additionalVars[i];
 		
         Iterator states = _Info.iterateAllStates();
 		while(states.hasNext()) {
@@ -422,7 +442,7 @@ public class CodeWriter
 		}
         
         Statement eh = new MethodInvokeExpression("unexpected"+capitalize(eventName))
-                .arg(new VariableExpression("qname"));
+                .arg($qname);
 		sv.add(bi.output(eh));
 
 		
@@ -452,24 +472,22 @@ public class CodeWriter
             String retType  = _Info.scope.getParam().returnType;
             String boxType = getJavaBoxType(retType);
             
-            Expression r = new VariableExpression(_Info.scope.getParam().returnValue);
+            Expression r = new LanguageSpecificExpression(_Info.scope.getParam().returnValue);
             if(boxType!=null)
-                r = new ObjectCreateExpression( new TypeDescriptor(boxType) ).arg(r);
+                r = new TypeDescriptor(boxType)._new().arg(r);
             
 	    	StatementVector sv = current.invokeActionsOnExit();
-	    	sv.invoke(
-	    		new VariableExpression("runtime"),
-	    		"revertToParentFrom"+capitalize(eventName))
+	    	sv.invoke( $runtime, "revertToParentFrom"+capitalize(eventName))
                     .arg(r)
-                    .arg(new VariableExpression("cookie"))
+                    .arg($super.prop("cookie"))
                     .args(additionalparams);
 	    	return sv;
         }
         
         if(tr.getAlphabet().isEnterElement()) {
         	StatementVector sv = new StatementVector();
-            sv.invoke( new VariableExpression("runtime"), "pushAttributes")
-                    .arg(new VariableExpression("attrs"));
+            sv.invoke( $runtime, "pushAttributes")
+                    .arg(new LanguageSpecificExpression("attrs"));
             sv.add(buildMoveToStateCode(tr));
             
             return sv;
@@ -480,7 +498,7 @@ public class CodeWriter
             Alphabet.Text ta = tr.getAlphabet().asText();
             String alias = ta.getAlias();
             if(alias!=null)
-                sv.assign(new VariableExpression(alias), new VariableExpression("___$value"));
+                sv.assign(new LanguageSpecificExpression(alias), new LanguageSpecificExpression("___$value"));
             sv.add(buildMoveToStateCode(tr));
             
             return sv;
@@ -521,14 +539,14 @@ public class CodeWriter
         String extraarg = alpha.getParams();
         
         ObjectCreateExpression oe = 
-            new ObjectCreateExpression(new TypeDescriptor(ref_block.getClassName()))
-                .arg(new VariableExpression("this")) //TODO: literal 'this' is specific to programming language 
-                .arg(new VariableExpression("runtime"))
+            new TypeDescriptor(ref_block.getClassName())._new()
+                .arg($this)
+                .arg($runtime)
                 .arg(new ConstantExpression(ref_tr.getUniqueId()));
         if(extraarg.length()>0)
             oe.arg(new LanguageSpecificExpression(extraarg.substring(1)));
             
-        sv.decl(new TypeDescriptor("NGCCHandler"), "h", oe );
+        Expression $h = sv.decl(new TypeDescriptor("NGCCHandler"), "h", oe );
         
         
         if(_Options.debug) {
@@ -539,12 +557,11 @@ public class CodeWriter
                     new Integer(ref_tr.nextState().getIndex())
                 }));
                 
-        	sv.invoke(new VariableExpression("runtime"), "traceln").arg(msg);
+        	sv.invoke($runtime, "traceln").arg(msg);
         }
         
-        sv.invoke( new VariableExpression("runtime"), "spawnChildFrom"+capitalize(eventName))
-            .arg(new VariableExpression("h"))
-            .args(eventParams);
+        sv.invoke($runtime, "spawnChildFrom"+capitalize(eventName))
+            .arg($h).args(eventParams);
                 
         return sv;
     }
@@ -564,20 +581,19 @@ public class CodeWriter
         if(tr.getDisableState()!=null) {
         	Expression dest;
             if(tr.getDisableState().getThreadIndex()==-1)
-                dest = new VariableExpression("_ngcc_current_state");
+                dest = $state;
             else
-                dest = new VariableExpression("_ngcc_threaded_state").arrayRef(
-                    new ConstantExpression(tr.getDisableState().getThreadIndex()));
+                dest = getThreadStateExp(tr.getDisableState().getThreadIndex());
+            
             sv.assign(dest, new ConstantExpression(-1));
         }
         
         if(tr.getEnableState()!=null) {
         	Expression dest;
             if(tr.getEnableState().getThreadIndex()==-1)
-                dest = new VariableExpression("_ngcc_current_state");
+                dest = $state;
             else
-                dest = new VariableExpression("_ngcc_threaded_state").arrayRef(
-                    new ConstantExpression(tr.getEnableState().getThreadIndex()));
+                dest = getThreadStateExp(tr.getEnableState().getThreadIndex());
         
             sv.assign(dest, new ConstantExpression(tr.getEnableState().getIndex()));
         }
@@ -604,12 +620,12 @@ public class CodeWriter
             "text",
             new LanguageSpecificString("throws SAXException"));
 		
-        method.param( TypeDescriptor.STRING, "___$value" );
+        Variable $value = method.param( TypeDescriptor.STRING, "___$value" );
         
 		StatementVector sv = method.body();
 		
         if(_Options.debug) {
-        	sv.invoke( new VariableExpression("runtime"), "trace")
+        	sv.invoke( $runtime, "trace" )
                 .arg(new LanguageSpecificExpression(new LanguageSpecificString("\"text '\"+___$value.trim()+\"' #\" + _ngcc_current_state")));
         }
 
@@ -633,10 +649,9 @@ public class CodeWriter
                 if(!a.isText())
                     continue;   // we are not interested in this attribute now.
                 
-                StatementVector code = buildTransitionCode(st,tr,"text",new Expression[]{ new VariableExpression("___$value") });
+                StatementVector code = buildTransitionCode(st,tr,"text",new Expression[]{ $value });
                 if(a.isValueText())
-                    bi.addConditionalCode(st, 
-                        new VariableExpression("___$value").invoke("equals")
+                    bi.addConditionalCode(st, $value.invoke("equals")
                             .arg( new ConstantExpression(a.asValueText().getValue())), code);
                 else {
                     dataPresent = true;
@@ -647,12 +662,12 @@ public class CodeWriter
             // if there is EVERYTHING_ELSE transition, add an else clause.
             Transition tr = table.getEverythingElse(st);
             if(tr!=null && !dataPresent)
-                bi.addElseCode(st, buildTransitionCode(st,tr,"text",new Expression[]{ new VariableExpression("___$value") }));
+                bi.addElseCode(st, buildTransitionCode(st,tr,"text",new Expression[]{ $value }));
         }
         
         Statement errorHandler = null;
         if(_Options.debug)
-            errorHandler = new VariableExpression("runtime").invoke("traceln")
+            errorHandler = $runtime.invoke("traceln")
                     .arg(new ConstantExpression("ignored"));
 		sv.add(bi.output(errorHandler));
         
@@ -687,18 +702,18 @@ public class CodeWriter
             "onChildCompleted",
             new LanguageSpecificString("throws SAXException") );
 
-        method.param( new TypeDescriptor("Object"), "result" );
-        method.param( TypeDescriptor.INTEGER, "cookie" );
-        method.param( TypeDescriptor.BOOLEAN, "needAttCheck" );
+        Variable $result = method.param( new TypeDescriptor("Object"), "result" );
+        Variable $cookie = method.param( TypeDescriptor.INTEGER, "cookie" );
+        Variable $attCheck = method.param( TypeDescriptor.BOOLEAN, "needAttCheck" );
         
         StatementVector sv = method.body();
         
         if(_Options.debug) {
-        	sv.invoke(new VariableExpression("runtime"), "traceln" )
+        	sv.invoke( $runtime, "traceln" )
                 .arg( new LanguageSpecificExpression("\"onChildCompleted(\"+cookie+\") back to "+_Info.getClassName()+"\""));
         }
         
-        SwitchStatement switchstatement = new SwitchStatement(new VariableExpression("cookie"));
+        SwitchStatement switchstatement = new SwitchStatement($cookie);
         
         Set processedTransitions = new HashSet();
         
@@ -724,20 +739,17 @@ public class CodeWriter
                         Expression rhs;
                         if(boxType==null)
                             rhs = new CastExpression(
-                                new TypeDescriptor(returnType), new VariableExpression("result"));
+                                new TypeDescriptor(returnType), $result);
                         else
                             rhs = new CastExpression( new TypeDescriptor(boxType),
-                                new VariableExpression("result")).invoke(returnType+"Value");
+                                $result).invoke(returnType+"Value");
                             
-                        block.assign(
-                        	new PropertyReferenceExpression(new VariableExpression("this"), alias),
-                        	rhs);
-                                
+                        block.assign( $this.prop(alias), rhs );
                     }
                     
                     block.add(tr.invokeEpilogueActions());
 
-                    appendStateTransition(block, tr.nextState(), "needAttCheck");
+                    appendStateTransition(block, tr.nextState(), $attCheck);
                         
                     switchstatement.addCase(new ConstantExpression(tr.getUniqueId()), block);
                 }
@@ -766,9 +778,9 @@ public class CodeWriter
 		
 		StatementVector sv = method.body();
         
-		sv.decl(TypeDescriptor.INTEGER, "ai");
+		Variable $ai = sv.decl(TypeDescriptor.INTEGER, "ai");
 		if(_Options.debug)
-			sv.invoke(new VariableExpression("runtime"), "traceln")
+			sv.invoke( $runtime, "traceln")
                 .arg( new LanguageSpecificExpression("\"processAttribute (\" + runtime.getCurrentAttributes().getLength() + \" atts) #\" + _ngcc_current_state")); 
 		
 		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.ENTER_ATTRIBUTE);
@@ -776,7 +788,7 @@ public class CodeWriter
         Iterator states = _Info.iterateAllStates();
         while(states.hasNext()) {
             State st = (State)states.next();
-            writeAttributeHandler(bi,st,st);
+            writeAttributeHandler(bi,st,st,$ai);
         }
         
         sv.add(bi.output(null));
@@ -784,21 +796,21 @@ public class CodeWriter
         return method;
     }
     
-    private void writeAttributeHandler( SwitchBlockInfo bi, State source, State current ) {
+    private void writeAttributeHandler( SwitchBlockInfo bi, State source, State current, Variable $ai ) {
         
         Set attHead = current.attHead();
         for(Iterator jtr=attHead.iterator(); jtr.hasNext(); ) {
             Alphabet a = (Alphabet)jtr.next();
             
             if(a.isRef()) {
-                writeAttributeHandler( bi, source, a.asRef().getTargetScope().getInitialState() );
+                writeAttributeHandler( bi, source, a.asRef().getTargetScope().getInitialState(), $ai );
             } else {
-                writeAttributeHandlerBlock( bi, source, a.asEnterAttribute() );
+                writeAttributeHandlerBlock( bi, source, a.asEnterAttribute(), $ai );
             }
         }
     }
 
-    private void writeAttributeHandlerBlock( SwitchBlockInfo bi, State st, Alphabet.EnterAttribute a ) {
+    private void writeAttributeHandlerBlock( SwitchBlockInfo bi, State st, Alphabet.EnterAttribute a, Variable $ai ) {
         
         NameClass nc = a.getKey();
         if(nc instanceof SimpleNameClass) {
@@ -810,8 +822,7 @@ public class CodeWriter
 	                    snc.nsUri, snc.localName})); //chotto sabori gimi
 	       
             StatementVector sv = new StatementVector();
-            sv.invoke(new VariableExpression("runtime"), "consumeAttribute")
-                .arg(new VariableExpression("ai"));
+            sv.invoke( $runtime, "consumeAttribute").arg($ai);
 	        	
 	        bi.addConditionalCode(st, condition, sv);
         } else {
@@ -831,27 +842,25 @@ public class CodeWriter
      *      should be called if and only if this variable is true.
      */
 	// What's the difference of this method and "buildMoveToStateCode"? - Kohsuke
-	private State appendStateTransition(StatementVector sv, State deststate, String flagVarName)
+	private State appendStateTransition(StatementVector sv, State deststate, Variable flagVar)
 	{
 		
 		Expression statevariable = null;
 		if(deststate.getThreadIndex()==-1)
-			statevariable = new VariableExpression("_ngcc_current_state");
+			statevariable = $state;
 		else
-			statevariable = new VariableExpression("_ngcc_threaded_state")
-                .arrayRef( new ConstantExpression(deststate.getThreadIndex()));
+			statevariable = getThreadStateExp(deststate.getThreadIndex());
 		
 		sv.assign(statevariable, new ConstantExpression(deststate.getIndex()));
 		
-		if(_Options.debug)
-        {
+		if(_Options.debug) {
         	String trace;	
             if(deststate.getThreadIndex()==-1)
                 trace = "-> #" + deststate.getIndex();
             else
                 trace = "-> #[" + deststate.getThreadIndex() + "]"+ deststate.getIndex();
 
-        	sv.invoke( new VariableExpression("runtime"), "traceln" )
+        	sv.invoke( $runtime, "traceln" )
                 .arg( new ConstantExpression(trace));
                
         }
@@ -859,24 +868,21 @@ public class CodeWriter
         if(!deststate.attHead().isEmpty()) {
         	
         	Statement processAttribute = new MethodInvokeExpression("processAttribute");
-            if(flagVarName!=null)
-                sv.add(new IfStatement(new VariableExpression(flagVarName), new StatementVector(processAttribute)));
+            if(flagVar!=null)
+                sv.add(new IfStatement(flagVar, new StatementVector(processAttribute)));
             else
 	            sv.add(processAttribute);
         }
 		
-		if(deststate.getMeetingDestination()!=null)
-		{
+		if(deststate.getMeetingDestination()!=null) {
 			Expression condition = null;
 			Iterator it = deststate.getMeetingDestination().iterateStatesForWait();
-			while(it.hasNext())
-			{
+			while(it.hasNext()) {
 				State s = (State)it.next();
 				if(s==deststate) continue;
 				
 				Expression t = BinaryOperatorExpression.EQ(
-					new VariableExpression("_ngcc_threaded_state")
-                        .arrayRef( new ConstantExpression(s.getThreadIndex())),
+                    getThreadStateExp(s.getThreadIndex()),
 					new ConstantExpression(s.getIndex()));
 				
 				condition = condition==null? t : BinaryOperatorExpression.AND(condition, t);

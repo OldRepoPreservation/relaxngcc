@@ -39,13 +39,13 @@ public class StatementVector implements Statement {
         return e;
     }
     /** Adds a new variable declaration. */
-    public VariableDeclaration decl(TypeDescriptor type, String name) {
-        VariableDeclaration d = new VariableDeclaration(null,type,name,null);
+    public Variable decl(TypeDescriptor type, String name) {
+        Variable d = new Variable(null,type,name,null);
         add(d);
         return d;
     }
-    public VariableDeclaration decl(TypeDescriptor type, String name, Expression init ) {
-        VariableDeclaration d = new VariableDeclaration(null,type,name,init);
+    public Variable decl(TypeDescriptor type, String name, Expression init ) {
+        Variable d = new Variable(null,type,name,init);
         add(d);
         return d;
     }

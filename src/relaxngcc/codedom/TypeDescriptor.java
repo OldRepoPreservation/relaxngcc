@@ -37,6 +37,11 @@ public class TypeDescriptor {
 		_Type = TYPE_OBJECT;
 		_Name = classname;
 	}
+    
+    /** Creates a new instance of this type. */
+    public ObjectCreateExpression _new() {
+        return new ObjectCreateExpression(this);
+    }
 
 	public void writeTo( Formatter f ) throws IOException {
 		switch(_Type) {

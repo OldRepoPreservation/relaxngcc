@@ -13,8 +13,25 @@ public abstract class Expression {
     }
     
     /** Refers to an item of the array */
-    public Expression arrayRef( Expression index ) {
-        return new ArrayElementReferenceExpression(this,index);
+    public Expression arrayRef( final Expression index ) {
+        return new Expression() {
+            public void express( Formatter f) throws IOException {
+                f.express(Expression.this).p('[').express(index).p(']');
+            }
+        };
+    }
+    
+    public Expression arrayRef( int index ) {
+        return arrayRef( new ConstantExpression(index) );
+    }
+    
+    /** Refers to a property of this expression. */
+    public Expression prop( final String name ) {
+        return new Expression() {
+            public void express(Formatter f) throws IOException {
+                f.express(Expression.this).p('.').p(name);
+            }
+        };
     }
 
     /** Prints itself as an expression. */

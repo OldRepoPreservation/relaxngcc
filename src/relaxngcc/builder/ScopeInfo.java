@@ -52,12 +52,9 @@ public final class ScopeInfo
 	private Map _NSURItoStringConstant;
 	
 	private State _InitialState;
-    /**
-     * Code that gets executed at the beginning of this scope.
-     */
-    // TODO: initial action is not used!
-	private Action _InitialAction;
+    
 	private int _ThreadCount;
+    public int getThreadCount() { return _ThreadCount; }
 
     /**
      * See {@link NullableChecker} for the definition of nullability.
@@ -68,9 +65,8 @@ public final class ScopeInfo
 	public boolean isNullable() { return _Nullable; }	
     
     public void setNullable(boolean v) { _Nullable = v; }
-	public void setInitialState(State s, Action initAction) {
+	public void setInitialState(State s) {
         _InitialState = s;
-        _InitialAction = initAction;
     }
 	public void setThreadCount(int n) { _ThreadCount = n; } 
 	
@@ -274,7 +270,13 @@ public final class ScopeInfo
 		public final String javatype;
 		public final boolean isUserObject;
 		public Alias(String n, String t, boolean user) { name=n; javatype=t; isUserObject=user; }
+        
+        /**
+         * Once a variable is declared, this field will hold a reference to it.
+         */
+        Variable decl;
 	}
+    
     /** All the aliases indexed by their names. */
 	private final Map aliases = new Hashtable();
 	
@@ -442,17 +444,6 @@ public final class ScopeInfo
                 (String)e.getValue(),
                 new ConstantExpression((String)e.getKey()));
 		}
-		//data member
-		classdef.addMember(
-            new LanguageSpecificString("private"),
-            TypeDescriptor.INTEGER,
-            "_ngcc_current_state");
-            
-		if(_ThreadCount>0)
-			classdef.addMember(
-                new LanguageSpecificString("private"),
-                new TypeDescriptor("int[]"),
-                "_ngcc_threaded_state");
         
         // aliases
         Iterator itr = aliases.values().iterator();
@@ -463,13 +454,38 @@ public final class ScopeInfo
             // don't write it again.
             if(userDefinedFields.contains(a.name))
                 continue;
-                
+            
+            TypeDescriptor type;
 			if(/*options.style==Options.STYLE_PLAIN_SAX &&*/ !a.isUserObject)
-				classdef.addMember(new LanguageSpecificString("private"), TypeDescriptor.STRING, a.name);
+                type = TypeDescriptor.STRING;
 			else
-				classdef.addMember(new LanguageSpecificString("private"), new TypeDescriptor(a.javatype), a.name);
+                type = new TypeDescriptor(a.javatype);
+                
+            classdef.addMember( new LanguageSpecificString("private"), type, a.name);
 		}
+
+        Variable $runtime;
+        {// runtime field and the getRuntime method.
+            String runtimeBaseName = "relaxngcc.runtime.NGCCRuntime";
+            if(options.usePrivateRuntime) runtimeBaseName = "NGCCRuntime";
+    
+            
+            $runtime = classdef.addMember(
+                new LanguageSpecificString("protected final"),
+                new TypeDescriptor(grammar.getRuntimeTypeShortName()), "runtime" );
+            
+            MethodDefinition getRuntime = new MethodDefinition(
+                new LanguageSpecificString("public final"),
+                new TypeDescriptor(runtimeBaseName),
+                "getRuntime", null );
+            classdef.addMethod(getRuntime);
+            
+            getRuntime.body()._return($runtime);
+        }
         
+        
+        Expression THIS = ConstantExpression.THIS;
+        Expression SUPER = ConstantExpression.SUPER;
         
         {// internal constructor
             MethodDefinition cotr1 = new MethodDefinition(
@@ -478,28 +494,27 @@ public final class ScopeInfo
             classdef.addMethod(cotr1);
             
             // add three parameters (parent,runtime,cookie) and call the super class initializer.
-            VariableDeclaration $parent = cotr1.param( new TypeDescriptor("NGCCHandler"), "_parent" );
-            VariableDeclaration $runtime = cotr1.param( new TypeDescriptor(grammar.getRuntimeTypeShortName()), "_runtime" );
-            VariableDeclaration $cookie = cotr1.param( TypeDescriptor.INTEGER, "_cookie" );
+            Variable $parent = cotr1.param( new TypeDescriptor("NGCCHandler"), "_parent" );
+            Variable $_runtime = cotr1.param( new TypeDescriptor(grammar.getRuntimeTypeShortName()), "_runtime" );
+            Variable $cookie = cotr1.param( TypeDescriptor.INTEGER, "_cookie" );
             cotr1.body().invoke("super").arg($parent).arg($cookie);
-            cotr1.body().assign(new VariableExpression("runtime"),$runtime);
+            cotr1.body().assign($runtime,$_runtime);
             
             // append additional constructor arguments
             for( int i=0; i<constructorParams.length; i++ ) {
-                VariableDeclaration v = cotr1.param(
+                Variable v = cotr1.param(
                     new TypeDescriptor(constructorParams[i].javatype),
                     '_'+constructorParams[i].name);
-                cotr1.body().assign(
-                    new VariableExpression(constructorParams[i].name),
+                cotr1.body().assign( THIS.prop(constructorParams[i].name),
                     v );
             }
             
             // move to the initial state
-            cotr1.body().assign( new VariableExpression("_ngcc_current_state"),
+            cotr1.body().assign( THIS.prop("_ngcc_current_state"),
                 new ConstantExpression(_InitialState.getIndex()) );
     
             if(_ThreadCount>0)
-                cotr1.body().assign( new VariableExpression("_ngcc_threaded_state"),
+                cotr1.body().assign( SUPER.prop("_ngcc_threaded_state"),
                     new LanguageSpecificExpression("new int[" + _ThreadCount + "]"));
         }        
 		
@@ -509,17 +524,17 @@ public final class ScopeInfo
                     null, param.className, null );
             classdef.addMethod(cotr2);
 
-            VariableDeclaration $runtime = cotr2.param( new TypeDescriptor(grammar.getRuntimeTypeShortName()), "_runtime" );
+            Variable $_runtime = cotr2.param( new TypeDescriptor(grammar.getRuntimeTypeShortName()), "_runtime" );
             
             // call the primary constructor
             MethodInvokeExpression callThis = cotr2.body().invoke("this")
                 .arg( ConstantExpression.NULL )
-                .arg( $runtime )
+                .arg( $_runtime )
                 .arg( new ConstantExpression(-1) );
             
             // append additional constructor arguments
             for( int i=0; i<constructorParams.length; i++ ) {
-                VariableDeclaration v = cotr2.param(
+                Variable v = cotr2.param(
                     new TypeDescriptor(constructorParams[i].javatype),
                     '_'+constructorParams[i].name);
                 callThis.arg(v);
@@ -527,21 +542,6 @@ public final class ScopeInfo
         }
 
 
-        String runtimeBaseName = "relaxngcc.runtime.NGCCRuntime";
-        if(options.usePrivateRuntime) runtimeBaseName = "NGCCRuntime";
-
-        
-        classdef.addMember(new LanguageSpecificString("protected final"), new TypeDescriptor(grammar.getRuntimeTypeShortName()), "runtime");
-        
-        {
-            MethodDefinition getRuntime = new MethodDefinition(
-                new LanguageSpecificString("public final"),
-                new TypeDescriptor(runtimeBaseName),
-                "getRuntime", null );
-            classdef.addMethod(getRuntime);
-            
-            getRuntime.body()._return(new VariableExpression("runtime"));
-        }
         		
         // action functions
         for( int i=0; i<actions.size(); i++ )

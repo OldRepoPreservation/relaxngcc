@@ -35,6 +35,9 @@ public abstract class NGCCHandler {
      */
     protected final int cookie;
     
+    // used to copy parameters to (enter|leave)(Element|Attribute) events.
+    protected String localName,uri,qname;
+    
     protected abstract void enterElement(String uri, String localName, String qname,Attributes atts) throws SAXException;
     protected abstract void leaveElement(String uri, String localName, String qname) throws SAXException;
     protected abstract void text(String value) throws SAXException;

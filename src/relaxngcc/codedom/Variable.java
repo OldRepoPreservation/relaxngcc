@@ -7,7 +7,7 @@ import java.io.Writer;
  * Variable. Can be used as an Expression to refer to this variable.
  * 
  */
-public class VariableDeclaration extends Expression implements Statement {
+public class Variable extends Expression implements Statement {
 
     private LanguageSpecificString _Modifier;
 	private TypeDescriptor _Type;
@@ -15,7 +15,7 @@ public class VariableDeclaration extends Expression implements Statement {
 	private Expression _InitialValue;
 
     // not directly creatable. Use appropriate factory methods.
-	VariableDeclaration(
+	Variable(
         LanguageSpecificString modifier,
         TypeDescriptor type, String name, Expression initialvalue) {
             

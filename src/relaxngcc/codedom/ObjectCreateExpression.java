@@ -11,7 +11,8 @@ public class ObjectCreateExpression extends Expression implements Statement {
     private final TypeDescriptor _ClassName;
     private final ArrayList _Args = new ArrayList();
     
-    public ObjectCreateExpression(TypeDescriptor classname ) {
+    /** use TypeDescriptor._new */
+    ObjectCreateExpression(TypeDescriptor classname ) {
     	_ClassName = classname;
     }
     

@@ -25,21 +25,21 @@ public class ClassDefinition {
 	}
 
     /** Adds a new member declaration. */
-	public VariableDeclaration addMember(
+	public Variable addMember(
         LanguageSpecificString modifier,
         TypeDescriptor type, String name, Expression initialValue) {
             
-        VariableDeclaration var = new VariableDeclaration(modifier,type,name,initialValue);
+        Variable var = new Variable(modifier,type,name,initialValue);
 		_Members.add(var);
         return var;
 	}
 
-    public VariableDeclaration addMember(
+    public Variable addMember(
         LanguageSpecificString modifier, TypeDescriptor type, String name) {
         
         return addMember(modifier,type,name,null);
     }
-
+    
 	public void addMethod(MethodDefinition methoddef) {
 		_Methods.add(methoddef);
 	}
@@ -66,7 +66,7 @@ public class ClassDefinition {
         f.nl();
     	
 		for(int i=0; i<_Members.size(); i++)
-			((VariableDeclaration)_Members.get(i)).state(f);
+			((Variable)_Members.get(i)).state(f);
             
     	f.nl();
         

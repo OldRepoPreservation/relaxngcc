@@ -24,20 +24,23 @@ public class ConstantExpression extends Expression {
 		_Type = TypeDescriptor.TYPE_STRING;
 		_StringVal = value;
 	}
+    
+    
+    private static class Atom extends Expression {
+        private Atom( String _token ) { this.token = _token; }
+        private final String token;
+        public void express(Formatter f) throws IOException {
+            f.p(token);
+        }
+    }
+    
 
-	public static final ConstantExpression NULL;
+	public static final Expression NULL = new Atom("null");
+    public static final Expression THIS = new Atom("this");
+    public static final Expression SUPER = new Atom("super");
 	
-	private ConstantExpression() {}
-	static {
-		NULL = new ConstantExpression();
-		NULL._Type = TypeDescriptor.TYPE_OBJECT;
-	}
-
     public void express(Formatter f) throws IOException {
     	switch(_Type) {
-    		case TypeDescriptor.TYPE_OBJECT:
-    		   	f.p("null");
-    		   	break;
     		case TypeDescriptor.TYPE_INTEGER:
     		   	f.p(Integer.toString(_IntVal));
     		   	break;

@@ -134,7 +134,7 @@ public abstract class Formatter {
     }
     
     /** Outputs VariableDeclaration as a declaration. */
-    public final Formatter declare( VariableDeclaration v ) throws IOException {
+    public final Formatter declare( Variable v ) throws IOException {
         v.declare(this);
         return this;
     }

@@ -101,11 +101,8 @@ public class AutomatonBuilder implements PatternFunction
 //			initial = processRelaxNGNode(_Root, ctx, finalstate);
 		
         _ScopeInfo.setThreadCount(_ThreadCount);
-        // TODO: don't we need to reset the preservedAction variable? - Kohsuke
-		_ScopeInfo.setInitialState(initial,
-            (preservedAction.length()!=0)?
-                _ScopeInfo.createAction(preservedAction):
-                null);
+        
+		_ScopeInfo.setInitialState(initial);
         
         _ScopeInfo.copyAttributeHandlers();
         
