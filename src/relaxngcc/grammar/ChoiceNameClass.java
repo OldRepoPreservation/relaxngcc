@@ -18,4 +18,8 @@ public class ChoiceNameClass extends NameClass {
     public Object apply(NameClassFunction f) {
         return f.choice(nc1,nc2);
     }
+    
+    public String toString() {
+        return nc1.toString()+'|'+nc2.toString();
+    }
 }
