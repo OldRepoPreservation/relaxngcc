@@ -6,7 +6,7 @@
 		<javacc
 			target="src/relaxngcc/javabody/JavaBodyParser.jj"
 			outputdirectory="src/relaxngcc/javabody"
-			javacchome="lib/javacc" />
+			javacchome="lib/javacc" static="false" />
 	</target>
 	
 	
