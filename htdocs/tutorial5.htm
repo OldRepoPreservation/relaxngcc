@@ -7,7 +7,7 @@
 <body>
 <h1>RelaxNGCC <?ja?>チュートリアル５<?/ja?><?en?>Tutorial 5<?/en?></h1>
 <div align=right>
-	$Revision: 1.1 $ by <a href="mailto:kk@kohsuke.org">Kohsuke Kawaguchi</a>
+	$Revision: 1.2 $ by <a href="mailto:kk@kohsuke.org">Kohsuke Kawaguchi</a>
 </div>
 
 <p>
@@ -18,7 +18,7 @@
 
 <h2>How NGCCRuntime work?</h2>
 <p>
-	The primary role of <tt>NGCCRuntime</tt> is to receive SAX events and choreograph <tt>NGCCHandler</tt>-derived classes, which are generated from the schema. For this purpose, it implements <tt>XMLFilter</tt>. In turn, each <tt>NGCCHandler</tt> class has the <tt>runtime</tt> field, which points back to the instance of <tt>NGCCRuntime</tt> in charge.
+	The primary role of <tt>NGCCRuntime</tt> is to receive SAX events and choreograph <tt>NGCCHandler</tt>-derived classes, which are generated from the schema. For this purpose, it implements <tt>XMLFilter</tt>. In turn, each <tt>NGCCHandler</tt> class has the <tt>$runtime</tt> field, which points back to the instance of <tt>NGCCRuntime</tt> in charge.
 </p><p>
 	RelaxNGCC allows applications to use its own class instead of <tt>NGCCRuntime</tt>, provided that it extends <tt>NGCCRuntime</tt>. There you define your own methods and fields, and you can have your <tt>NGCCHandler</tt>s use those methods and fields.
 </p><p>
@@ -47,12 +47,12 @@ public class MyRuntime extends NGCCRuntime {
   >
   &lt;text/>
   <em>&lt;cc:java>
-    runtime.sayHello();
+    $runtime.sayHello();
   &lt;/cc:java></em>
 &lt;/element>
 </pre>
 <p>
-	Each handler class will be generated with the <tt>runtime</tt> field declared as the specified type (when you don't specify <tt>cc:runtime-type</tt>, it will still be declared but as the default <tt>NGCCRuntime</tt> type.)
+	Each handler class will be generated with the <tt>$runtime</tt> field declared as the specified type (when you don't specify <tt>cc:runtime-type</tt>, it will still be declared but as the default <tt>NGCCRuntime</tt> type.)
 	
 	Thus to access the runtime, you simply need to use this field, as shown in the example.
 </p>
@@ -98,7 +98,7 @@ public class MyRuntime extends NGCCRuntime {
               &lt;nsName/>
             &lt;/except>
           &lt;/anyName>
-          <em>runtime.redirectSubtree(domBuilder,uri,localName,qname);</em>
+          <em>$runtime.redirectSubtree(domBuilder,uri,localName,qname);</em>
           &lt;empty/>
         &lt;/element>
         <em>Document result = domBuilder.getDocument();</em>
