@@ -33,6 +33,29 @@ import org.xml.sax.helpers.XMLFilterImpl;
 public class NGCCRuntime implements ValidationContext, ContentHandler {
     
     public NGCCRuntime() {
+        reset();
+    }
+
+    /**
+     * Cleans up all the data structure so that the object can be reused later.
+     * Normally, applications do not need to call this method directly,
+     * 
+     * as the runtime resets itself after the endDocument method.
+     */
+    public void reset() {
+        attStack.clear();
+        currentAtts = null;
+        currentHandler = null;
+        handlerStack.clear();
+        indent=0;
+        listMode = false;
+        locator = null;
+        namespaces.clear();
+        needIndent = true;
+        redirect = null;
+        redirectionDepth = 0;
+        text = new StringBuffer();
+        
         // add a dummy attributes at the bottom as a "centinel."
         attStack.push(new AttributesImpl());
     }
@@ -297,8 +320,11 @@ public class NGCCRuntime implements ValidationContext, ContentHandler {
         
         // pass around an "impossible" token.
         currentHandler.leaveElement(IMPOSSIBLE,IMPOSSIBLE,IMPOSSIBLE);
+        
+        reset();
     }
     public void startDocument() {}
+
 
 //
 //
