@@ -351,9 +351,13 @@ public class AutomatonBuilder implements PatternFunction
 
 
     public Object oneOrMore(OneOrMorePattern pattern) {
-        State tail = addAction(destination,true);
+        destination = addAction(destination,true);
+        
+        State tail = destination;   // remember the current destination
+        
         State head = (State)pattern.p.apply(this);
         head = addAction(head,true); //addAction must be before mergeTransition
+        
         tail.mergeTransitions(head);
         return head;
     }
