@@ -307,11 +307,16 @@ public class NGCCGrammar
 	}
     
     /** generates automaton gif files. */
-    public void dumpAutomata(File outDir) throws IOException, InterruptedException {
-        Iterator it = _Scopes.values().iterator();
-        while(it.hasNext()) {
-            ScopeInfo sci = ((ScopeBuilder)it.next()).getScopeInfo();
-            sci.dumpAutomaton(new File(outDir,sci.getNameForTargetLang()+".gif"));
+    public void dumpAutomata(File outDir) {
+        try {
+	        Iterator it = _Scopes.values().iterator();
+	        while(it.hasNext()) {
+	            ScopeInfo sci = ((ScopeBuilder)it.next()).getScopeInfo();
+	            sci.dumpAutomaton(new File(outDir,sci.getNameForTargetLang()+".gif"));
+	        }
+        } catch( Exception e ) {
+            System.out.println("failed to generate gif files");
+            e.printStackTrace();
         }
     }
 	
