@@ -12,7 +12,23 @@ import relaxngcc.NGCCGrammar;
 import relaxngcc.automaton.Alphabet;
 import relaxngcc.automaton.State;
 import relaxngcc.automaton.Transition;
-import relaxngcc.grammar.*;
+import relaxngcc.grammar.AttributePattern;
+import relaxngcc.grammar.ChoicePattern;
+import relaxngcc.grammar.DataPattern;
+import relaxngcc.grammar.ElementPattern;
+import relaxngcc.grammar.EmptyPattern;
+import relaxngcc.grammar.GroupPattern;
+import relaxngcc.grammar.InterleavePattern;
+import relaxngcc.grammar.JavaBlock;
+import relaxngcc.grammar.ListPattern;
+import relaxngcc.grammar.NameClass;
+import relaxngcc.grammar.NotAllowedPattern;
+import relaxngcc.grammar.OneOrMorePattern;
+import relaxngcc.grammar.Pattern;
+import relaxngcc.grammar.PatternFunction;
+import relaxngcc.grammar.RefPattern;
+import relaxngcc.grammar.Scope;
+import relaxngcc.grammar.ValuePattern;
 
 /**
  * Builds an automaton from {@link Scope} object.
