@@ -117,8 +117,6 @@ options {
 PARSER_BEGIN(JavaBodyParser)
 package relaxngcc.javabody;
 
-import java.util.Set;
-import java.util.TreeSet;
 
 /**
  * Parses Java code fragment inside &lt;cc:java-body>
@@ -183,7 +181,7 @@ public class JavaBodyParser
 		fields.add(fieldName);
 	}
 	
-	public final Set fields = new TreeSet();
+	public final java.util.Set fields = new java.util.TreeSet();
 }
 
 PARSER_END(JavaBodyParser)
