@@ -263,7 +263,7 @@ public class ScopeBuilder
                 _ScopeInfo.addChildScope(info);
                 State head = createState(child, ctx);
                 head.addTransition(createTransition(
-                    new Alphabet.Ref(_Grammar,tempname), destination));
+                    new Alphabet.Ref(info), destination));
                 destination = head;
 				
 				b.buildAutomaton();
@@ -593,8 +593,7 @@ public class ScopeBuilder
                     target._ScopeInfo.getReturnType());
 			
 			Transition t = createTransition(new Alphabet.Ref(
-                _Grammar,
-                exp.getAttribute("name"), alias,
+                target.getScopeInfo(), alias,
                 exp.attributeNGCC("with-params",null)),
                 destination);
 			head.addTransition(t);

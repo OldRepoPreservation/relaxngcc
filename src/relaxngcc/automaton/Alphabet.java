@@ -139,32 +139,23 @@ public abstract class Alphabet implements Comparable
     
     /** Alphabet of the type "ref." */
     public static class Ref extends Alphabet {
-        public Ref( NGCCGrammar _grammar, String _target, String _alias, String _params ) {
+        public Ref( ScopeInfo _target, String _alias, String _params ) {
             super( REF_BLOCK );
-            this.grammar = _grammar;
             this.target = _target;
             this.alias = _alias;
             this.params = _params;
         }
-        public Ref( NGCCGrammar _grammar, String _target ) {
-            this(_grammar,_target,null,null);
+        public Ref( ScopeInfo _target ) {
+            this(_target,null,null);
         }
         public Ref asRef() { return this; }
         
-        /**
-         * The grammar with which we resolve the target name.
-         * Note that we don't need to take this variable into account
-         * when comparing equality, because we only compare alphabets
-         * that belong to the same grammar.
-         */
-        private final NGCCGrammar grammar;
-        
         /** Name of the scope object to be spawned. */
-        private final String target;
+        private final ScopeInfo target;
 
         /** Gets the child scope to be spawned. */
         public ScopeInfo getTargetScope() {
-            return grammar.getScopeInfoByName(target);
+            return target;
         }
         
         /**
@@ -199,7 +190,8 @@ public abstract class Alphabet implements Comparable
             if(r!=0)    return r;
             
             Ref rhs = (Ref)o;
-            r = compare(target,rhs.target);
+            // TODO: alphabets are not comparable!
+            r = target.hashCode()-rhs.target.hashCode();
             if(r!=0)    return r;
             r = compare(alias,rhs.alias);
             if(r!=0)    return r;

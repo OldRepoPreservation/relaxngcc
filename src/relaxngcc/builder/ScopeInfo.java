@@ -597,6 +597,7 @@ public final class ScopeInfo
         
         String argList; // constructor arguments
         String argAssign;   // constructor aguments assignments
+        String argParam;
         {// build up constructor arguments
             StringBuffer buf = new StringBuffer();
             for( int i=0; i<constructorParams.length; i++ ) {
@@ -612,6 +613,13 @@ public final class ScopeInfo
                 buf.append(MessageFormat.format("this.{0}=_{0};\n",
                     new Object[]{constructorParams[i].name}));
             argAssign = buf.toString();
+
+            buf = new StringBuffer();
+            for( int i=0; i<constructorParams.length; i++ ) {
+                buf.append(",_");
+                buf.append(constructorParams[i].name);
+            }
+            argParam = buf.toString();
         }
         
 		//constructor
@@ -633,14 +641,12 @@ public final class ScopeInfo
 
         output.println(MessageFormat.format(
             "public {0}( {1} _runtime {2} ) '{'\n"+
-            "    super(null,-1);\n"+
-            "    this.runtime = _runtime;\n"+
-            "    {3}"+
+            "    this(null,_runtime,-1{3});\n"+
             "'}'",
             new Object[]{
                 getNameForTargetLang(),
                 _Grammar.getRuntimeTypeShortName(),
-                argList, argAssign }
+                argList, argParam }
         ));
 
         output.println(MessageFormat.format(
