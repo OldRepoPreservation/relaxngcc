@@ -6,39 +6,39 @@ import java.util.Vector;
 
 /**
  */
-public class IfStatement implements Statement {
+public class CDIfStatement implements CDStatement {
 	
 	private class Block {
-		Expression _Expr;
-		StatementVector _Statements;
+		CDExpression _Expr;
+		CDBlock _Statements;
 		
-		Block(Expression e, StatementVector s) {
+		Block(CDExpression e, CDBlock s) {
 			_Expr = e;
 			_Statements = s;
 		}
 	}
 	
 	private Vector _Blocks;
-	private StatementVector _ElseBlock;
+	private CDBlock _ElseBlock;
 	
-	public IfStatement(Expression expr, StatementVector true_case) {
+	public CDIfStatement(CDExpression expr, CDBlock true_case) {
 		_Blocks = new Vector();
 		if(expr==null) throw new IllegalArgumentException("expr is null");
 		_Blocks.add(new Block(expr, true_case));
 		_ElseBlock = null;
 	}
-	public void addClause(Expression expr, StatementVector statements) {
+	public void addClause(CDExpression expr, CDBlock statements) {
 		if(expr==null) throw new IllegalArgumentException("expr is null");
 		if(_ElseBlock!=null) throw new IllegalStateException("this IfStatement is closed already");
 		_Blocks.add(new Block(expr, statements));
 	}
-	public void closeClause(StatementVector statements) {
+	public void closeClause(CDBlock statements) {
 		if(_ElseBlock!=null) throw new IllegalStateException("this IfStatement is closed already");
 		_ElseBlock = statements;
 	}
 	
 	
-    public void state( Formatter f ) throws IOException {
+    public void state( CDFormatter f ) throws IOException {
 
     	for(int i=0; i<_Blocks.size(); i++) {
             final Block block = (Block)_Blocks.get(i);
@@ -47,7 +47,7 @@ public class IfStatement implements Statement {
             f.p("if").p('(').express(block._Expr).p(')');
             
             // not writing '{' causes ambiguity if the only statement
-            // inside it is another IfStatement.
+            // inside it is another CDIfStatement.
             // consider
             // if(x) if(y) a; else b;
             

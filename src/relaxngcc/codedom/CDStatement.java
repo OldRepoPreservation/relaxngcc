@@ -8,9 +8,9 @@ import java.io.Writer;
  * 
  * @author Daisuke OKAJIMA
  */
-public interface Statement {
+public interface CDStatement {
     /**
      * Prints itself as a statement.
      */
-    void state( Formatter f ) throws IOException;
+    void state( CDFormatter f ) throws IOException;
 }

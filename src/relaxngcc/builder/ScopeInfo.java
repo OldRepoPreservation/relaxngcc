@@ -46,31 +46,33 @@ public final class ScopeInfo
     /** Scope object to which this object is attached. */
     public final Scope scope;
     
-	private Set _AllStates;
+	private Set _allStates;
 //    private Set _ChildScopes; //child lambda scopes
     
 	private Map _NSURItoStringConstant;
+    public Iterator iterateNSURIConstants() {
+        return _NSURItoStringConstant.entrySet().iterator();
+    }
 	
-	private State _InitialState;
+    /** Automaton that represents this scope. */
+	private State _initialState;
+    public State getInitialState() { return _initialState; }
+    public void setInitialState(State s) {
+        _initialState = s;
+    }
     
-	private int _ThreadCount;
-    public int getThreadCount() { return _ThreadCount; }
+	private int _threadCount;
+    public int getThreadCount() { return _threadCount; }
 
     /**
      * See {@link NullableChecker} for the definition of nullability.
      */
     private boolean _Nullable;
-
-	public State getInitialState() { return _InitialState; }
 	public boolean isNullable() { return _Nullable; }	
-    
     public void setNullable(boolean v) { _Nullable = v; }
-	public void setInitialState(State s) {
-        _InitialState = s;
-    }
-	public void setThreadCount(int n) { _ThreadCount = n; } 
+	public void setThreadCount(int n) { _threadCount = n; } 
 	
-	public int getStateCount() { return _AllStates.size(); }
+	public int getStateCount() { return _allStates.size(); }
 	
     public String getClassName() {
         return scope.getParam().className;
@@ -79,7 +81,9 @@ public final class ScopeInfo
     /**
      * Parameters to the constructor. Array of Aliases.
      */
-    private Alias[] constructorParams;
+    private Alias[] _constructorParams;
+    
+    public Alias[] getConstructorParams() { return _constructorParams; }
     
     
     private class AlphabetIterator extends SelectiveIterator {
@@ -105,7 +109,7 @@ public final class ScopeInfo
      * it started.
      */
     public void copyAttributeHandlers() {
-        State[] states = (State[]) _AllStates.toArray(new State[_AllStates.size()]);
+        State[] states = (State[]) _allStates.toArray(new State[_allStates.size()]);
         for( int i=0; i<states.length; i++ ) {
             State st = states[i];
             
@@ -196,28 +200,33 @@ public final class ScopeInfo
             }
         }
         
-        _AllStates.retainAll(reachable);
+        _allStates.retainAll(reachable);
     }
     
 	//about header and body
-	private String _HeaderSection = "";
-	public void appendHeaderSection(String c) { _HeaderSection += c; }
+	private String _headerSection = "";
+	public void appendHeaderSection(String c) { _headerSection += c; }
+    public String getHeaderSection() { return _headerSection; }
     
     /** Name of fields defined in &lt;cc:java-body>. */
-    private final Set userDefinedFields = new HashSet();
+    private final Set _userDefinedFields = new HashSet();
+    public boolean isUserDefinedField( String name ) {
+        return _userDefinedFields.contains(name);
+    }
     
     //type usage information. these flags affect the output of import statements
-    private boolean _UsingBigInteger;
-    private boolean _UsingCalendar;
+    private boolean _usingBigInteger;
+    private boolean _usingCalendar;
     
 	
-    /** All actions in this scope. */
-    private final Vector actions = new Vector();
+    /** All _actions in this scope. */
+    private final Vector _actions = new Vector();
+    public Iterator iterateActions() { return _actions.iterator(); }
     
     /** Creates a new Action object inside this scope. */
     public Action createAction( String code ) {
         Action a = new Action(code);
-        actions.add(a);
+        _actions.add(a);
         return a;
     }
     public Action createAction( StringBuffer code ) {
@@ -230,7 +239,7 @@ public final class ScopeInfo
     public final class Action {
         private Action( String _codeFragment ) {
             this.codeFragment = _codeFragment;
-            this.uniqueId = actionIdGen++;
+            this.uniqueId = _actionIdGen++;
         }
         
         /** A code fragment that the user wrote. */
@@ -238,8 +247,8 @@ public final class ScopeInfo
         public String getCodeFragment() { return codeFragment; }
         
         /** Gets the code to invoke this action. */
-        public Statement invoke() {
-        	return new MethodInvokeExpression("action"+uniqueId);
+        public CDStatement invoke() {
+        	return new CDMethodInvokeExpression("action"+uniqueId).asStatement();
         }
         
         /** ID number that uniquely identifies this fragment. */
@@ -247,42 +256,32 @@ public final class ScopeInfo
         public int getUniqueId() { return uniqueId; }
         
         /** Generates the action function. */
-        void generate( ClassDefinition classdef ) {
-            MethodDefinition method = new MethodDefinition(
-                new LanguageSpecificString("private"),
-                TypeDescriptor.VOID,
+        void generate( CDClass classdef ) {
+            CDMethod method = new CDMethod(
+                new CDLanguageSpecificString("private"),
+                CDType.VOID,
                 "action"+uniqueId,
-                new LanguageSpecificString("throws SAXException") );
+                new CDLanguageSpecificString("throws SAXException") );
             
-            method.body().add(new LanguageSpecificString(codeFragment));
+            method.body().add(new CDLanguageSpecificString(codeFragment));
             
         	classdef.addMethod(method);
         }
     }
     
     /** used to generate unique IDs for Actions. */
-    private int actionIdGen = 0;
+    private int _actionIdGen = 0;
 	
     
-	private class Alias
-	{
-        public final TypeDescriptor type;
-		public final String name;
-		public Alias(TypeDescriptor t, String n) { name=n; type=t; }
-        
-        /**
-         * Once a variable is declared, this field will hold a reference to it.
-         */
-        Variable decl;
-	}
-    
     /** All the aliases indexed by their names. */
-	private final Map aliases = new Hashtable();
+	private final Map _aliases = new Hashtable();
+    /** Iterate all the aliases. */
+    public final Iterator iterateAliases() { return _aliases.entrySet().iterator(); }
 	
 	public ScopeInfo(NGCCGrammar g,Scope scope) {
 		grammar = g;
         this.scope = scope;
-		_AllStates = new HashSet();
+		_allStates = new HashSet();
 		_NSURItoStringConstant = new HashMap();
 
         Vector vec = new Vector();
@@ -297,10 +296,10 @@ public final class ScopeInfo
                 String varname = pair.substring(idx+1).trim();
                 
                 vec.add(
-                    addAlias(new TypeDescriptor(vartype), varname ));
+                    addAlias(new CDType(vartype), varname ));
             }
         }
-        constructorParams = (Alias[])vec.toArray(new Alias[vec.size()]);
+        _constructorParams = (Alias[])vec.toArray(new Alias[vec.size()]);
         
         
         if(scope.getBody()!=null) {
@@ -313,7 +312,7 @@ public final class ScopeInfo
 	            System.err.println("[Warning] unable to parse <java-body>");
 	        }
 	        
-	        userDefinedFields.addAll(p.fields);
+	        _userDefinedFields.addAll(p.fields);
         }
 	}
     
@@ -360,222 +359,35 @@ public final class ScopeInfo
     }
     
 	public Iterator iterateAcceptableStates() {
-        return new SelectiveIterator(_AllStates.iterator()) {
+        return new SelectiveIterator(_allStates.iterator()) {
             protected boolean filter( Object o ) {
                 return ((State)o).isAcceptable();
             }
         };
     }
     public Iterator iterateAllStates() {
-        return _AllStates.iterator();
+        return _allStates.iterator();
     }
     
     
 	
 	public void addState(State state) {
-		_AllStates.add(state);
+		_allStates.add(state);
 	}
 	
-	public Alias addAlias(TypeDescriptor type, String name) {
+	public Alias addAlias(CDType type, String name) {
         Alias a = new Alias(type, name);
-		aliases.put(name,a);
+		_aliases.put(name,a);
         return a;
 	}
 	
     /** Returns true if this is the start pattern. */
-    private boolean isRoot() { return scope.name==null; }
+    public boolean isRoot() { return scope.name==null; }
 
 	
-    /**
-     * Builds the code.
-     */
-	public ClassDefinition createClassCode(Options options, String globalimport)
-	{
-		StringBuffer buf = new StringBuffer();
-		
-        //notice
-        println(buf, options, "/* this file is generated by RelaxNGCC */");
-        //package
-        if(grammar.packageName.length()>0)
-            println(buf, options, "package " + grammar.packageName + ";");
-        
-        /*
-        //imports
-        if(_UsingBigInteger)
-            output.println("import java.math.BigInteger;");
-        if(_UsingCalendar)
-            output.println("import java.util.GregorianCalendar;");
-        */
-
-        println(buf, options, "import org.xml.sax.SAXException;");
-        println(buf, options, "import org.xml.sax.XMLReader;");
-        println(buf, options, "import org.xml.sax.Attributes;");
-        
-        if(!options.usePrivateRuntime)
-            println(buf, options, "import relaxngcc.runtime.NGCCHandler;");
-        if(!grammar.getRuntimeTypeFullName().equals(grammar.getRuntimeTypeShortName()))
-            println(buf, options, "import "+grammar.getRuntimeTypeFullName()+";");
-        
-        if(isRoot()) {
-            println(buf, options, "import javax.xml.parsers.SAXParserFactory;");
-            println(buf, options, "import org.xml.sax.XMLReader;");
-        }
-
-        println(buf, options, globalimport);
-        
-        if(scope.getImport()!=null)
-            println(buf, options, scope.getImport());
-
-        if(_HeaderSection.length()>0)
-            println(buf, options, _HeaderSection);
-        
-		//class name
-        NGCCDefineParam param = scope.getParam();
-        
-        ClassDefinition classdef = new ClassDefinition(new LanguageSpecificString[]{ new LanguageSpecificString(buf.toString()) }, new LanguageSpecificString(param.access), param.className, new LanguageSpecificString("extends NGCCHandler"));
-		//NSURI constants
-		Iterator uris = _NSURItoStringConstant.entrySet().iterator();
-		while(uris.hasNext()) {
-			Map.Entry e = (Map.Entry)uris.next();
-			classdef.addMember(
-                new LanguageSpecificString("public static final"),
-                TypeDescriptor.STRING,
-                (String)e.getValue(),
-                new ConstantExpression((String)e.getKey()));
-		}
-        
-        // aliases
-        Iterator itr = aliases.values().iterator();
-		while(itr.hasNext()) {
-			Alias a = (Alias)itr.next();
-            
-            // if the alias is already declared explicitly by the <java-body>,
-            // don't write it again.
-            if(userDefinedFields.contains(a.name))
-                continue;
-            
-            classdef.addMember( new LanguageSpecificString("private"), a.type, a.name);
-		}
-
-        Variable $runtime;
-        {// runtime field and the getRuntime method.
-            String runtimeBaseName = "relaxngcc.runtime.NGCCRuntime";
-            if(options.usePrivateRuntime) runtimeBaseName = "NGCCRuntime";
-    
-            
-            $runtime = classdef.addMember(
-                new LanguageSpecificString("protected final"),
-                new TypeDescriptor(grammar.getRuntimeTypeShortName()), "runtime" );
-            
-            MethodDefinition getRuntime = new MethodDefinition(
-                new LanguageSpecificString("public final"),
-                new TypeDescriptor(runtimeBaseName),
-                "getRuntime", null );
-            classdef.addMethod(getRuntime);
-            
-            getRuntime.body()._return($runtime);
-        }
-        
-        
-        Expression THIS = ConstantExpression.THIS;
-        Expression SUPER = ConstantExpression.SUPER;
-        
-        {// internal constructor
-            MethodDefinition cotr1 = new MethodDefinition(
-                new LanguageSpecificString("public"),
-                null, param.className, null );
-            classdef.addMethod(cotr1);
-            
-            // add three parameters (parent,runtime,cookie) and call the super class initializer.
-            Variable $parent = cotr1.param( new TypeDescriptor("NGCCHandler"), "_parent" );
-            Variable $_runtime = cotr1.param( new TypeDescriptor(grammar.getRuntimeTypeShortName()), "_runtime" );
-            Variable $cookie = cotr1.param( TypeDescriptor.INTEGER, "_cookie" );
-            cotr1.body().invoke("super").arg($parent).arg($cookie);
-            cotr1.body().assign($runtime,$_runtime);
-            
-            // append additional constructor arguments
-            for( int i=0; i<constructorParams.length; i++ ) {
-                Variable v = cotr1.param(
-                    constructorParams[i].type,
-                    '_'+constructorParams[i].name);
-                cotr1.body().assign( THIS.prop(constructorParams[i].name),
-                    v );
-            }
-            
-            // move to the initial state
-            cotr1.body().assign( THIS.prop("_ngcc_current_state"),
-                new ConstantExpression(_InitialState.getIndex()) );
-    
-            if(_ThreadCount>0)
-                cotr1.body().assign( SUPER.prop("_ngcc_threaded_state"),
-                    new LanguageSpecificString("new int[" + _ThreadCount + "]"));
-        }        
-		
-		{// external constructor
-            MethodDefinition cotr2 = new MethodDefinition(
-                    new LanguageSpecificString("public"),
-                    null, param.className, null );
-            classdef.addMethod(cotr2);
-
-            Variable $_runtime = cotr2.param( new TypeDescriptor(grammar.getRuntimeTypeShortName()), "_runtime" );
-            
-            // call the primary constructor
-            MethodInvokeExpression callThis = cotr2.body().invoke("this")
-                .arg( ConstantExpression.NULL )
-                .arg( $_runtime )
-                .arg( new ConstantExpression(-1) );
-            
-            // append additional constructor arguments
-            for( int i=0; i<constructorParams.length; i++ ) {
-                Variable v = cotr2.param(
-                    constructorParams[i].type,
-                    '_'+constructorParams[i].name);
-                callThis.arg(v);
-            }
-        }
-
-
-        		
-        // action functions
-        for( int i=0; i<actions.size(); i++ )
-            ((Action)actions.get(i)).generate(classdef);
-        
-		//simple entry point.
-		if(isRoot() && scope.getParam().params==null) {
-            String rt = grammar.packageName;
-            if(rt.length()!=0)  rt+='.';
-            rt+="NGCCRuntime";
-            
-            if(grammar.getRuntimeTypeFullName().equals(rt)) {
-                classdef.addLanguageSpecificString(new LanguageSpecificString(
-                    "    public static void main( String[] args ) throws Exception {\n"+
-                    "        SAXParserFactory factory = SAXParserFactory.newInstance();\n"+
-                    "        factory.setNamespaceAware(true);\n"+
-                    "        XMLReader reader = factory.newSAXParser().getXMLReader();\n"+
-                    "        NGCCRuntime runtime = new NGCCRuntime();\n"+
-                    "        reader.setContentHandler(runtime);\n"+
-                    "        for( int i=0; i<args.length; i++ ) {\n"+
-                    "            runtime.pushHandler(new "+getClassName()+"(runtime));\n"+
-                    "            reader.parse(args[i]);\n"+
-                    "            runtime.reset();\n"+
-                    "        }\n"+
-                    "    }"));
-            }
-        }
-        
-        return classdef;
-
-	}
 
     
 
-	public void printTailSection(ClassDefinition classdef, String globalbody)
-	{
-        if(scope.getBody()!=null)
-            classdef.addLanguageSpecificString(new LanguageSpecificString(scope.getBody()));
-        classdef.addLanguageSpecificString(new LanguageSpecificString(globalbody));
-	}
-	
 	public void dump(PrintStream strm)
 	{
 		strm.println("Scope " + scope.name);
@@ -697,7 +509,7 @@ public final class ScopeInfo
         return label.toString();
     }
     
-    private Set cachedHEAD = null;
+    private Set _cachedHEAD = null;
     
     /**
      * Computes the HEAD set of this scope (that doesn't include
@@ -707,9 +519,9 @@ public final class ScopeInfo
      */
     public void head( Set result ) {
         // to speed up computation, we will cache the computed value.
-        if(cachedHEAD==null)
-            cachedHEAD = getInitialState().head(false);
-        result.addAll(cachedHEAD);
+        if(_cachedHEAD==null)
+            _cachedHEAD = getInitialState().head(false);
+        result.addAll(_cachedHEAD);
     }
     
     /**
@@ -723,8 +535,4 @@ public final class ScopeInfo
     }
     
     
-    private static void println(StringBuffer buf, Options options, String data) {
-    	buf.append(data);
-    	buf.append(options.newline);
-    }
 }

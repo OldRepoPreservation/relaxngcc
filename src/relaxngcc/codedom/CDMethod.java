@@ -7,20 +7,20 @@ import java.util.Iterator;
 
 /**
  */
-public class MethodDefinition {
+public class CDMethod {
 
-	private LanguageSpecificString _PreModifier;
-	private TypeDescriptor _ReturnType;
+	private CDLanguageSpecificString _PreModifier;
+	private CDType _ReturnType;
 	private String _Name;
-	private LanguageSpecificString _PostModifier;
+	private CDLanguageSpecificString _PostModifier;
     /** Parameters to this method. List of VariableDeclaration. */
     private final ArrayList _Params = new ArrayList();
 	
-	private final StatementVector _Body = new StatementVector();
+	private final CDBlock _Body = new CDBlock();
 	
-	public MethodDefinition(LanguageSpecificString forwardspecifier,
-        TypeDescriptor returntype, String name,
-        LanguageSpecificString backwardspecifier ) {
+	public CDMethod(CDLanguageSpecificString forwardspecifier,
+        CDType returntype, String name,
+        CDLanguageSpecificString backwardspecifier ) {
 		
         _PreModifier = forwardspecifier;
 		_ReturnType = returntype;
@@ -32,16 +32,16 @@ public class MethodDefinition {
      * Adds a new parameter to this method and returns a reference
      * to it.
      */
-    public Variable param( TypeDescriptor type, String name ) {
-        Variable v = new Variable(null,type,name,null);
+    public CDVariable param( CDType type, String name ) {
+        CDVariable v = new CDVariable(null,type,name,null);
         _Params.add(v);
         return v;
     }
     
     /** Gets a reference to the method body. */
-    public StatementVector body() { return _Body; }
+    public CDBlock body() { return _Body; }
 
-    public void writeTo( Formatter f ) throws IOException {
+    public void writeTo( CDFormatter f ) throws IOException {
 
     	if(_PreModifier!=null)
             f.write(_PreModifier);
@@ -56,7 +56,7 @@ public class MethodDefinition {
             if(!first)  f.p(',');
             first = false;
             
-            f.declare((Variable) itr.next());
+            f.declare((CDVariable) itr.next());
         }
         f.p(')');
 		

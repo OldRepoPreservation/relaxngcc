@@ -6,37 +6,37 @@ import java.util.Vector;
 
 /**
  */
-public class SwitchStatement implements Statement {
+public class CDSwitchStatement implements CDStatement {
 
 	private class Block {
-		ConstantExpression _Expr;
-		StatementVector _Statements;
+		CDConstant _Expr;
+		CDBlock _Statements;
 		
-		Block(ConstantExpression e, StatementVector s) {
+		Block(CDConstant e, CDBlock s) {
 			_Expr = e;
 			_Statements = s;
 		}
 	}
 	
-	private Expression _CheckValue;
+	private CDExpression _CheckValue;
 	private Vector _Blocks;
-	private StatementVector _DefaultBlock;
+	private CDBlock _DefaultBlock;
 	
-	public SwitchStatement(Expression expr) {
+	public CDSwitchStatement(CDExpression expr) {
 		_CheckValue = expr;
 		_Blocks = new Vector();
 		_DefaultBlock = null;
 	}
-	public void addCase(ConstantExpression expr, StatementVector statements) {
+	public void addCase(CDConstant expr, CDBlock statements) {
 		if(_DefaultBlock!=null) throw new IllegalStateException("this SwitchStatement is closed already");
 		_Blocks.add(new Block(expr, statements));
 	}
-	public void setDefaultCase(StatementVector statements) {
+	public void setDefaultCase(CDBlock statements) {
 		if(_DefaultBlock!=null) throw new IllegalStateException("this SwitchStatement is closed already");
 		_DefaultBlock = statements;
 	}
 
-    public void state(Formatter f) throws IOException {
+    public void state(CDFormatter f) throws IOException {
 
         f.p("switch").p('(').express(_CheckValue).p(')').p('{').nl();
         

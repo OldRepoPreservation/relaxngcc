@@ -7,40 +7,39 @@ import java.util.Iterator;
 
 /**
  */
-public class MethodInvokeExpression extends Expression implements Statement {
+public class CDMethodInvokeExpression extends CDExpression {
 
-	private final Expression _Object;
+	private final CDExpression _Object;
 	private final String _MethodName;
     private final ArrayList _Args = new ArrayList();
 
-    // use the invoke method on Expression.
-	protected MethodInvokeExpression(Expression obj, String methodname) {
+    // use the invoke method on CDExpression.
+	protected CDMethodInvokeExpression(CDExpression obj, String methodname) {
 		_Object = obj;
 		_MethodName = methodname;
 	}
-	public MethodInvokeExpression(String methodname) {
+	public CDMethodInvokeExpression(String methodname) {
 		_Object = null;
 		_MethodName = methodname;
 	}
     
     /** Adds an argument to this invocation. */
-    public MethodInvokeExpression arg( Expression arg ) {
+    public CDMethodInvokeExpression arg( CDExpression arg ) {
         _Args.add(arg);
         return this;
     }
     /** Adds arguments to this invocation. */
-    public MethodInvokeExpression args( Expression[] args ) {
+    public CDMethodInvokeExpression args( CDExpression[] args ) {
         for( int i=0; i<args.length; i++ )
             arg( args[i] );
         return this;
     }
-	
-    public void state(Formatter f) throws IOException {
-        express(f);
-        f.eos().nl();
+    
+    public CDStatement asStatement() {
+        return new CDExpressionStatement(this);
     }
-
-    public void express(Formatter f) throws IOException {
+	
+    public void express(CDFormatter f) throws IOException {
     	
     	if(_Object != null) {
             f.express(_Object).p('.');
@@ -53,7 +52,7 @@ public class MethodInvokeExpression extends Expression implements Statement {
             if(!first)  f.p(',');
             first = false;
             
-            f.express( (Expression) itr.next() );
+            f.express( (CDExpression) itr.next() );
 		}
         
         f.p(')');

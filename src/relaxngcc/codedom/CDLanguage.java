@@ -8,7 +8,7 @@ package relaxngcc.codedom;
  * To enable and disable the creation of type comments go to
  * Window>Preferences>Java>Code Generation.
  */
-public class Language {
+public class CDLanguage {
     public static final int JAVA = 0;
     //following languages will be supported later
     //public static final int CSHARP = 1;

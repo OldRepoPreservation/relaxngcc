@@ -1,8 +1,8 @@
 package relaxngcc.grammar;
 
-import relaxngcc.codedom.Expression;
-import relaxngcc.codedom.LanguageSpecificString;
-import relaxngcc.codedom.TypeDescriptor;
+import relaxngcc.codedom.CDExpression;
+import relaxngcc.codedom.CDLanguageSpecificString;
+import relaxngcc.codedom.CDType;
 
 /**
  * NGCC Parameter for scope definitions.
@@ -21,8 +21,8 @@ public class NGCCDefineParam {
         
         this.className = _className;
         this.access = _access;
-        this.returnType = new TypeDescriptor(_returnType);
-        this.returnValue = new LanguageSpecificString(_returnValue);
+        this.returnType = new CDType(_returnType);
+        this.returnValue = new CDLanguageSpecificString(_returnValue);
         this.params = _params;
     }
     
@@ -33,10 +33,10 @@ public class NGCCDefineParam {
     public final String access;
     
     /** Return-type from this state. */
-    public final TypeDescriptor returnType;
+    public final CDType returnType;
     
     /** Return-value from this state. */
-    public final Expression returnValue;
+    public final CDExpression returnValue;
     
     /** Additional parameters to this state */
     public final String params;

@@ -6,22 +6,22 @@ import java.util.Iterator;
 
 /**
  */
-public class ObjectCreateExpression extends Expression implements Statement {
+public class CDObjectCreateExpression extends CDExpression implements CDStatement {
     
-    private final TypeDescriptor _ClassName;
+    private final CDType _ClassName;
     private final ArrayList _Args = new ArrayList();
     
-    /** use TypeDescriptor._new */
-    ObjectCreateExpression(TypeDescriptor classname ) {
+    /** use CDType._new */
+    CDObjectCreateExpression(CDType classname ) {
     	_ClassName = classname;
     }
     
-    public ObjectCreateExpression arg( Expression arg ) {
+    public CDObjectCreateExpression arg( CDExpression arg ) {
         _Args.add(arg);
         return this;
     }
 
-    public void express(Formatter f) throws IOException {
+    public void express(CDFormatter f) throws IOException {
         f.p("new").type(_ClassName).p('(');
     	
         boolean first = true;
@@ -29,14 +29,14 @@ public class ObjectCreateExpression extends Expression implements Statement {
             if(!first)  f.p(',');
             first = false;
             
-            Expression arg = (Expression) itr.next();
+            CDExpression arg = (CDExpression) itr.next();
             f.express(arg);
         }
         
     	f.p(')');
     }
 
-    public void state(Formatter f) throws IOException {
+    public void state(CDFormatter f) throws IOException {
         express(f);
         f.eos().nl();
     }

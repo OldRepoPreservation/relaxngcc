@@ -2,10 +2,10 @@ package relaxngcc.builder;
 
 import java.text.MessageFormat;
 
-import relaxngcc.codedom.Op;
-import relaxngcc.codedom.ConstantExpression;
-import relaxngcc.codedom.Expression;
-import relaxngcc.codedom.Variable;
+import relaxngcc.codedom.CDOp;
+import relaxngcc.codedom.CDConstant;
+import relaxngcc.codedom.CDExpression;
+import relaxngcc.codedom.CDVariable;
 import relaxngcc.grammar.NameClass;
 import relaxngcc.grammar.NameClassFunction;
 
@@ -19,41 +19,41 @@ import relaxngcc.grammar.NameClassFunction;
  */
 public class NameTestBuilder implements NameClassFunction {
     
-    public NameTestBuilder( Variable _uriVar, Variable _localNameVar ) {
+    public NameTestBuilder( CDVariable _uriVar, CDVariable _localNameVar ) {
         this.$uriVar = _uriVar;
         this.$localNameVar = _localNameVar;
     }
     
-    private final Variable $uriVar;
-    private final Variable $localNameVar;
+    private final CDVariable $uriVar;
+    private final CDVariable $localNameVar;
     
 	public Object choice(NameClass nc1, NameClass nc2) {
-        return Op.OR(
-            (Expression)nc1.apply(this),
-            (Expression)nc2.apply(this));
+        return CDOp.OR(
+            (CDExpression)nc1.apply(this),
+            (CDExpression)nc2.apply(this));
 	}
 
 	public Object nsName(String ns, NameClass except) {
-        Expression exp = $uriVar.invoke("equals").arg(new ConstantExpression(ns));
+        CDExpression exp = $uriVar.invoke("equals").arg(new CDConstant(ns));
         
         if(except!=null)
-            exp = Op.AND( exp,
-                ((Expression)except.apply(this)).not() );
+            exp = CDOp.AND( exp,
+                ((CDExpression)except.apply(this)).not() );
         
         return exp;
 	}
 
 	public Object anyName(NameClass except) {
         if(except==null)
-            return new ConstantExpression(true);
+            return new CDConstant(true);
         else
-            return ((Expression)except.apply(this)).not();
+            return ((CDExpression)except.apply(this)).not();
 	}
 
 	public Object name(String ns, String local) {
-        return Op.AND(
-            Op.STREQ( $uriVar, new ConstantExpression(ns) ),
-            Op.STREQ( $localNameVar, new ConstantExpression(local)) );
+        return CDOp.AND(
+            CDOp.STREQ( $uriVar, new CDConstant(ns) ),
+            CDOp.STREQ( $localNameVar, new CDConstant(local)) );
 	}
 
 }

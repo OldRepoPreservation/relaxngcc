@@ -5,7 +5,7 @@ import java.io.Writer;
 
 /**
  */
-public class TypeDescriptor {
+public class CDType {
 	
 	public static final int TYPE_VOID    = 0;
 	public static final int TYPE_OBJECT  = 1;
@@ -13,19 +13,19 @@ public class TypeDescriptor {
 	public static final int TYPE_BOOLEAN = 3;
 	public static final int TYPE_STRING  = 4;
 
-	public static TypeDescriptor VOID;
-	public static TypeDescriptor INTEGER;
-	public static TypeDescriptor BOOLEAN;
-	public static TypeDescriptor STRING;
+	public static CDType VOID;
+	public static CDType INTEGER;
+	public static CDType BOOLEAN;
+	public static CDType STRING;
 	
 	static {
-		VOID    = new TypeDescriptor(TYPE_VOID);
-		INTEGER = new TypeDescriptor(TYPE_INTEGER);
-		BOOLEAN = new TypeDescriptor(TYPE_BOOLEAN);
-		STRING  = new TypeDescriptor(TYPE_STRING);
+		VOID    = new CDType(TYPE_VOID);
+		INTEGER = new CDType(TYPE_INTEGER);
+		BOOLEAN = new CDType(TYPE_BOOLEAN);
+		STRING  = new CDType(TYPE_STRING);
 	}		
 
-	private TypeDescriptor(int type) {
+	private CDType(int type) {
 		_Type = type;
         name = null;
 	}
@@ -35,17 +35,17 @@ public class TypeDescriptor {
 	public final String name;
     
 	
-	public TypeDescriptor(String classname) {
+	public CDType(String classname) {
 		_Type = TYPE_OBJECT;
 		name = classname;
 	}
     
     /** Creates a new instance of this type. */
-    public ObjectCreateExpression _new() {
-        return new ObjectCreateExpression(this);
+    public CDObjectCreateExpression _new() {
+        return new CDObjectCreateExpression(this);
     }
 
-	public void writeTo( Formatter f ) throws IOException {
+	public void writeTo( CDFormatter f ) throws IOException {
 		switch(_Type) {
 			case TYPE_OBJECT:
 				f.p(name);

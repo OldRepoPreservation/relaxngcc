@@ -11,17 +11,17 @@ import java.io.Writer;
  * To enable and disable the creation of type comments go to
  * Window>Preferences>Java>Code Generation.
  */
-public class CastExpression extends Expression {
+public class CDCastExpression extends CDExpression {
 
-	private TypeDescriptor _Type;
-	private Expression _Expression;
+	private CDType _Type;
+	private CDExpression _Expression;
 
-	public CastExpression(TypeDescriptor type, Expression expr) {
+	public CDCastExpression(CDType type, CDExpression expr) {
 		_Type = type;
 		_Expression = expr;
 	}
 
-    public void express( Formatter f ) throws IOException {
+    public void express( CDFormatter f ) throws IOException {
         f.p("((").type(_Type).p(")").express(_Expression).p(")");
     }
 

@@ -18,7 +18,7 @@ import org.xml.sax.Locator;
 import relaxngcc.builder.ScopeInfo;
 import relaxngcc.grammar.Pattern;
 import relaxngcc.util.SelectiveIterator;
-import relaxngcc.codedom.StatementVector;
+import relaxngcc.codedom.CDBlock;
 
 /**
  * A State object has zero or more Transition objects
@@ -39,8 +39,8 @@ public final class State implements Comparable
         return (ScopeInfo.Action[])actionsOnExit.toArray(new ScopeInfo.Action[0]);
     }
     /** Gets the code to invoke exit-actions. */
-	public StatementVector invokeActionsOnExit() {
-        StatementVector sv = new StatementVector();
+	public CDBlock invokeActionsOnExit() {
+        CDBlock sv = new CDBlock();
         for( int i=0; i<actionsOnExit.size(); i++ )
             sv.add(((ScopeInfo.Action)actionsOnExit.get(i)).invoke());
         return sv;

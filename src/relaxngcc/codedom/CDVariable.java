@@ -4,20 +4,20 @@ import java.io.IOException;
 import java.io.Writer;
 
 /**
- * Variable. Can be used as an Expression to refer to this variable.
+ * CDVariable. Can be used as an CDExpression to refer to this variable.
  * 
  */
-public class Variable extends Expression implements Statement {
+public class CDVariable extends CDExpression implements CDStatement {
 
-    private LanguageSpecificString _Modifier;
-	private TypeDescriptor _Type;
+    private CDLanguageSpecificString _Modifier;
+	private CDType _Type;
 	private String _Name;
-	private Expression _InitialValue;
+	private CDExpression _InitialValue;
 
     // not directly creatable. Use appropriate factory methods.
-	Variable(
-        LanguageSpecificString modifier,
-        TypeDescriptor type, String name, Expression initialvalue) {
+	CDVariable(
+        CDLanguageSpecificString modifier,
+        CDType type, String name, CDExpression initialvalue) {
             
         _Modifier = modifier;
 		_Type = type;
@@ -25,12 +25,12 @@ public class Variable extends Expression implements Statement {
 		_InitialValue = initialvalue;
 	}
 	
-    public void express( Formatter f ) throws IOException {
+    public void express( CDFormatter f ) throws IOException {
         // as a reference
         f.p(_Name);
     }
 
-    public void declare( Formatter f ) throws IOException {
+    public void declare( CDFormatter f ) throws IOException {
         // as mod type name [=init]
 
         if(_Modifier != null)
@@ -42,7 +42,7 @@ public class Variable extends Expression implements Statement {
             f.p('=').express(_InitialValue);
     }
 
-    public void state( Formatter f ) throws IOException {
+    public void state( CDFormatter f ) throws IOException {
         // as a statement
         declare(f);
         f.eos().nl();

@@ -11,7 +11,7 @@ import java.util.Set;
 import java.util.Vector;
 
 import relaxngcc.builder.ScopeInfo;
-import relaxngcc.codedom.StatementVector;
+import relaxngcc.codedom.CDBlock;
 
 /**
  * A Trnasition is a tuple of an Alphabet, a next state, and user-defined action.
@@ -83,15 +83,15 @@ public final class Transition
     }
     
     /** Gets the code to invoke all the prologue actions. */
-    public StatementVector invokePrologueActions() {
+    public CDBlock invokePrologueActions() {
         return invokeActions(prologueActions);
     }
     /** Gets the code to invoke all the epilogue actions. */
-    public StatementVector invokeEpilogueActions() {
+    public CDBlock invokeEpilogueActions() {
         return invokeActions(epilogueActions);
     }
-    private static StatementVector invokeActions(Vector vec) {
-        StatementVector sv = new StatementVector();
+    private static CDBlock invokeActions(Vector vec) {
+        CDBlock sv = new CDBlock();
         for( int i=0; i<vec.size(); i++ )
             sv.add(((ScopeInfo.Action)vec.get(i)).invoke());
         return sv;

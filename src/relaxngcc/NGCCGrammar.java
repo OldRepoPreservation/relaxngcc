@@ -16,7 +16,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-import relaxngcc.builder.CodeWriter;
+import relaxngcc.builder.CodeBuilder;
 import relaxngcc.builder.NullableChecker;
 import relaxngcc.builder.AutomatonBuilder;
 import relaxngcc.builder.ScopeCollector;
@@ -25,8 +25,8 @@ import relaxngcc.grammar.Grammar;
 import relaxngcc.grammar.PatternFunction;
 import relaxngcc.grammar.Scope;
 import relaxngcc.runtime.NGCCRuntime;
-import relaxngcc.codedom.JavaFormatter;
-import relaxngcc.codedom.Language;
+import relaxngcc.codedom.CDJavaFormatter;
+import relaxngcc.codedom.CDLanguage;
 
 /**
  * Keeps information about the global setting effective
@@ -170,7 +170,7 @@ public class NGCCGrammar {
             ScopeInfo si = (ScopeInfo)it.next();
             
 //            if(!si.isLambda() && !si.isInline()) {
-            CodeWriter w = new CodeWriter(this, si, opt);
+            CodeBuilder w = new CodeBuilder(this, si, opt);
             File f = new File(opt.targetdir, si.getClassName() + ".java");
             if(!f.exists() || f.lastModified()<=sourceTimestamp || !opt.smartOverwrite) {
                 generated = true;
@@ -178,7 +178,7 @@ public class NGCCGrammar {
                 
                 
                 Writer writer = new OutputStreamWriter(new FileOutputStream(f));
-                w.output().writeTo(new JavaFormatter(writer));
+                w.output().writeTo(new CDJavaFormatter(writer));
                 writer.close();
                 f.setReadOnly();
             }

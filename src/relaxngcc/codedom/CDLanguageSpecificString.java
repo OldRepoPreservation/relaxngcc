@@ -8,12 +8,12 @@ import java.io.Writer;
  * 
  * This can be used either as an expression or a statement.
  */
-public class LanguageSpecificString extends Expression implements Statement {
+public class CDLanguageSpecificString extends CDExpression implements CDStatement {
 	
-	private final String[] _Data = new String[Language.LANGUAGE_COUNT];
+	private final String[] _Data = new String[CDLanguage.LANGUAGE_COUNT];
 	
-	public LanguageSpecificString() {}
-	public LanguageSpecificString(String data) {
+	public CDLanguageSpecificString() {}
+	public CDLanguageSpecificString(String data) {
 		setString(data);
 	}
 	
@@ -31,11 +31,11 @@ public class LanguageSpecificString extends Expression implements Statement {
         return _Data[language];
     }
     
-    public void state(Formatter f) throws IOException {
+    public void state(CDFormatter f) throws IOException {
         f.write(this);
     }
     
-    public void express(Formatter f) throws IOException {
+    public void express(CDFormatter f) throws IOException {
         f.write(this);
     }
 }

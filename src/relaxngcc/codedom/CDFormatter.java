@@ -11,8 +11,8 @@ import java.io.Writer;
  * 
  * @author Kohsuke Kawaguchi (kk@kohsuke.org)
  */
-public abstract class Formatter {
-    public Formatter( Writer _writer ) {
+public abstract class CDFormatter {
+    public CDFormatter( Writer _writer ) {
         this.writer = _writer;
     }
     
@@ -26,9 +26,9 @@ public abstract class Formatter {
     private int indent;
     
     /** Indent. */
-    public Formatter in()  { indent++; return this; }
+    public CDFormatter in()  { indent++; return this; }
     /** Unindent. */
-    public Formatter out() { indent--; return this; }
+    public CDFormatter out() { indent--; return this; }
 
 
 
@@ -37,7 +37,7 @@ public abstract class Formatter {
      * 
      * @return "this."
      */
-    public Formatter nl() throws IOException {
+    public CDFormatter nl() throws IOException {
         writer.write(System.getProperty("line.separator"));
         newLine = true;
         return this;
@@ -54,7 +54,7 @@ public abstract class Formatter {
      * 
      * @return "this"
      */
-    public Formatter p( String token ) throws IOException {
+    public CDFormatter p( String token ) throws IOException {
         if(token.length()!=0) {
             if(newLine) {
                 // print indent
@@ -109,43 +109,43 @@ public abstract class Formatter {
      * 
      * @return "this."
      */
-    public Formatter p( char ch ) throws IOException {
+    public CDFormatter p( char ch ) throws IOException {
         return p(new String(new char[]{ch}));
     }
     
     
     
     /** Prints expression. */
-    public Formatter express( Expression exp ) throws IOException {
+    public CDFormatter express( CDExpression exp ) throws IOException {
         exp.express(this);
         return this;
     }
     
     /** Prints a statement. */
-    public Formatter state( Statement s ) throws IOException {
+    public CDFormatter state( CDStatement s ) throws IOException {
         s.state(this);
         return this;
     }
     
     /** Outputs a type object. */
-    public final Formatter type( TypeDescriptor t ) throws IOException {
+    public final CDFormatter type( CDType t ) throws IOException {
         t.writeTo(this);
         return this;
     }
     
     /** Outputs VariableDeclaration as a declaration. */
-    public final Formatter declare( Variable v ) throws IOException {
+    public final CDFormatter declare( CDVariable v ) throws IOException {
         v.declare(this);
         return this;
     }
     
     /** Outputs a language specific string. */
-    public abstract Formatter write( LanguageSpecificString str ) throws IOException;
+    public abstract CDFormatter write( CDLanguageSpecificString str ) throws IOException;
     
     /**
      * Marks the end of a statement.
      */
-    public Formatter eos() throws IOException {
+    public CDFormatter eos() throws IOException {
         p(';');
         return this;
     }

@@ -12,7 +12,7 @@ import relaxngcc.NGCCGrammar;
 import relaxngcc.automaton.Alphabet;
 import relaxngcc.automaton.State;
 import relaxngcc.automaton.Transition;
-import relaxngcc.codedom.TypeDescriptor;
+import relaxngcc.codedom.CDType;
 import relaxngcc.grammar.AttributePattern;
 import relaxngcc.grammar.ChoicePattern;
 import relaxngcc.grammar.DataPattern;
@@ -191,7 +191,7 @@ public class AutomatonBuilder implements PatternFunction
     public Object data( DataPattern pattern ) {
         State result = createState(pattern);
         if(pattern.alias!=null)
-            _ScopeInfo.addAlias( TypeDescriptor.STRING, pattern.alias );
+            _ScopeInfo.addAlias( CDType.STRING, pattern.alias );
         
         Transition t = createTransition(
             new Alphabet.DataText(pattern.type,pattern.alias,pattern.locator),
@@ -211,7 +211,7 @@ public class AutomatonBuilder implements PatternFunction
 
     public Object value( ValuePattern pattern ) {
         if(pattern.alias!=null)
-            _ScopeInfo.addAlias( TypeDescriptor.STRING, pattern.alias );
+            _ScopeInfo.addAlias( CDType.STRING, pattern.alias );
         
         State result = createState(pattern);
         Transition t = createTransition(
@@ -226,7 +226,7 @@ public class AutomatonBuilder implements PatternFunction
     public Object list( ListPattern pattern ) {
         if(pattern.alias!=null) {
             // don't treat this list as a structured text.
-	        _ScopeInfo.addAlias(TypeDescriptor.STRING, pattern.alias );
+	        _ScopeInfo.addAlias(CDType.STRING, pattern.alias );
 	        
             State result = createState(pattern);
 	        Transition t = createTransition(
@@ -242,7 +242,7 @@ public class AutomatonBuilder implements PatternFunction
             State head = (State)pattern.p.apply(this);
             
             // then append the "header" transition that tokenizes the text.
-            _ScopeInfo.addAlias(TypeDescriptor.STRING, "__text" );
+            _ScopeInfo.addAlias(CDType.STRING, "__text" );
             Transition tr = new Transition(
                 new Alphabet.DataText(
                     new MetaDataType("string"), "__text", pattern.locator ),
