@@ -38,6 +38,8 @@
 			outputdirectory="src/relaxngcc/javabody"
 			javacchome="lib/JavaCC"
 			static="false"/>
+		<copy tofile="src/relaxngcc/parser/state/name.java"
+		        file="src/relaxngcc/parser/state/name.jav_" />
 		<javac
 			srcdir="src"
 			destdir="bin"
