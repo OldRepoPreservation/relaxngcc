@@ -14,10 +14,10 @@ class TextCollector extends PatternWalker {
     public static boolean collect( Pattern p ) {
         TextCollector tc = new TextCollector();
         p.apply(tc);
-        return tc.result;
+        return tc._result;
     }
     
-    private boolean result = false;
+    private boolean _result = false;
     
     public Object element(ElementPattern p) {
         return null;
@@ -27,17 +27,17 @@ class TextCollector extends PatternWalker {
     }
     
     public Object data(DataPattern p) {
-        result = true;
+        _result = true;
         return super.data(p);
     }
 
     public Object list(ListPattern p) {
-        result = true;
+        _result = true;
         return super.list(p);
     }
 
     public Object value(ValuePattern p) {
-        result = true;
+        _result = true;
         return super.value(p);
     }
 

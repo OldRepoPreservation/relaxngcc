@@ -26,7 +26,7 @@ import org.xml.sax.SAXParseException;
  * 
  *  <li>TODO: provide support for interleaving.
  * 
- * @version $Id: NGCCRuntime.java,v 1.14 2002/08/18 23:39:12 kkawa Exp $
+ * @version $Id: NGCCRuntime.java,v 1.15 2002/09/29 02:55:48 okajima Exp $
  * @author Kohsuke Kawaguchi (kk@kohsuke.org)
  */
 public class NGCCRuntime implements ContentHandler, NGCCEventSource {
@@ -122,7 +122,7 @@ public class NGCCRuntime implements ContentHandler, NGCCEventSource {
     
     public int replace( NGCCEventReceiver o, NGCCEventReceiver n ) {
         if(o!=currentHandler)
-            throw new InternalError();  // bug of RelaxNGCC
+            throw new IllegalStateException();  // bug of RelaxNGCC
         currentHandler = n;
         
         return 0;   // we only have one thread.
@@ -214,9 +214,9 @@ public class NGCCRuntime implements ContentHandler, NGCCEventSource {
             redirect.startElement(uri,localname,qname,atts);
             redirectionDepth++;
         } else {
-	        processPendingText(true);
-	//        System.out.println("startElement:"+localname+"->"+_attrStack.size());
-	        currentHandler.enterElement(uri, localname, qname, atts);
+            processPendingText(true);
+    //        System.out.println("startElement:"+localname+"->"+_attrStack.size());
+            currentHandler.enterElement(uri, localname, qname, atts);
         }
     }
     
@@ -262,9 +262,9 @@ public class NGCCRuntime implements ContentHandler, NGCCEventSource {
                 return;
                 
             // finished redirection.
-	        for( int i=0; i<namespaces.size(); i+=2 )
-	            redirect.endPrefixMapping((String)namespaces.get(i));
-	        redirect.endDocument();
+            for( int i=0; i<namespaces.size(); i+=2 )
+                redirect.endPrefixMapping((String)namespaces.get(i));
+            redirect.endDocument();
             
             redirect = null;
             // then process this element normally
@@ -309,8 +309,8 @@ public class NGCCRuntime implements ContentHandler, NGCCEventSource {
         if(redirect!=null)
             redirect.startPrefixMapping(prefix,uri);
         else {
-	        namespaces.add(prefix);
-	        namespaces.add(uri);
+            namespaces.add(prefix);
+            namespaces.add(uri);
         }
     }
     
@@ -318,8 +318,8 @@ public class NGCCRuntime implements ContentHandler, NGCCEventSource {
         if(redirect!=null)
             redirect.endPrefixMapping(prefix);
         else {
-	        namespaces.remove(namespaces.size()-1);
-	        namespaces.remove(namespaces.size()-1);
+            namespaces.remove(namespaces.size()-1);
+            namespaces.remove(namespaces.size()-1);
         }
     }
     
@@ -491,7 +491,7 @@ public class NGCCRuntime implements ContentHandler, NGCCEventSource {
 
 
 // error reporting
-    protected void unexpectedXXX(String token) throws SAXException {
+    protected void unexpectedX(String token) throws SAXException {
         throw new SAXParseException(MessageFormat.format(
             "Unexpected {0} appears at line {1} column {2}",
             new Object[]{

@@ -32,48 +32,54 @@ import relaxngcc.grammar.ValuePattern;
  */
 public class ScopeCollector implements PatternFunction {
     
-    private final Set scopes = new HashSet();
+    private final Set _scopes = new HashSet();
     
     // terminals
-	public Object empty(EmptyPattern p) { return scopes; }
-	public Object notAllowed(NotAllowedPattern p) { return scopes; }
-    public Object data(DataPattern p) { return scopes; }
-    public Object value(ValuePattern p) { return scopes; }
-    public Object javaBlock(JavaBlock p) { return scopes; }
+    public Object empty(EmptyPattern p) { return _scopes; }
+    public Object notAllowed(NotAllowedPattern p) { return _scopes; }
+    public Object data(DataPattern p) { return _scopes; }
+    public Object value(ValuePattern p) { return _scopes; }
+    public Object javaBlock(JavaBlock p) { return _scopes; }
 
     // binary ops.
-	public Object group(GroupPattern p) { return binary(p); }
+    public Object group(GroupPattern p) { return binary(p); }
     public Object interleave(InterleavePattern p) { return binary(p); }
     public Object choice(ChoicePattern p) { return binary(p); }
     
     private Object binary(BinaryPattern p) {
-        p.p1.apply(this); p.p2.apply(this);
-		return scopes;
-	}
+        p.p1.apply(this);
+        p.p2.apply(this);
+        return _scopes;
+    }
 
     // unary ops
-	public Object oneOrMore(OneOrMorePattern p) { return p.p.apply(this); }
-	public Object element(ElementPattern p) { return p.body.apply(this); }
-	public Object attribute(AttributePattern p) { return p.body.apply(this); }
+    public Object oneOrMore(OneOrMorePattern p) { return p.p.apply(this); }
+    public Object element(ElementPattern p) { return p.body.apply(this); }
+    public Object attribute(AttributePattern p) { return p.body.apply(this); }
     public Object list(ListPattern p) { return p.p.apply(this); }
-	public Object ref(RefPattern p) { return p.target.apply(this); }
+    public Object ref(RefPattern p) { return p.target.apply(this); }
     
     // this is the only place where things get a bit interesting
     public Object scope(Scope scope) {
-        if(scopes.add(scope)) {
+        if(_scopes.add(scope)) {
+            
+            if(scope.getPattern()==null) {
+                throw new IllegalArgumentException("Scope [" + scope.name + "] is not found.");
+            }
+            
             // if the content of this scope is not processed yet, then recurse.
             scope.getPattern().apply(this);
-	        
-	        if(scope instanceof Grammar) {
-	            // to generate classes for unreferenced patterns,
-	            // check all named patterns.
-	            Grammar g = (Grammar)scope;
-	            Iterator itr = g.iterateScopes();
-	            while(itr.hasNext())
-	                scope( (Scope)itr.next() );
-	        }
+            
+            if(scope instanceof Grammar) {
+                // to generate classes for unreferenced patterns,
+                // check all named patterns.
+                Grammar g = (Grammar)scope;
+                Iterator itr = g.iterateScopes();
+                while(itr.hasNext())
+                    scope( (Scope)itr.next() );
+            }
         }
-        return scopes;
-	}
+        return _scopes;
+    }
 }
 

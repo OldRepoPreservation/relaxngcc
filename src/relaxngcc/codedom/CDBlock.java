@@ -11,25 +11,25 @@ import java.util.Vector;
  */
 public class CDBlock implements CDStatement {
 
-	private final Vector _Statements = new Vector();
-	
-	public CDBlock() {}
+    private final Vector _statements = new Vector();
+    
+    public CDBlock() {}
     public CDBlock(CDStatement s) {
         this();
         add(s);
     }
-	
-	public void add(CDStatement s) {
-		if(s==null) throw new IllegalArgumentException("parameter is null");
-		_Statements.add(s);
-	}
-	public void add(CDBlock sv) {
-		_Statements.addAll(sv._Statements);
-	}
+    
+    public void add(CDStatement s) {
+        if(s==null) throw new IllegalArgumentException("parameter is null");
+        _statements.add(s);
+    }
+    public void add(CDBlock sv) {
+        _statements.addAll(sv._statements);
+    }
     
     public CDIfStatement _if( CDExpression exp ) {
         CDIfStatement s = new CDIfStatement(exp);
-        _Statements.add(s);
+        _statements.add(s);
         return s;
     }
     
@@ -67,14 +67,14 @@ public class CDBlock implements CDStatement {
     }
     
 
-	public int size() { return _Statements.size(); }
-	
-	public void state(CDFormatter f) throws IOException {
+    public int size() { return _statements.size(); }
+    
+    public void state(CDFormatter f) throws IOException {
         f.p('{').nl().in();
         
-		for(int i=0; i<_Statements.size(); i++)
-            f.state( (CDStatement)_Statements.get(i) );
+        for(int i=0; i<_statements.size(); i++)
+            f.state( (CDStatement)_statements.get(i) );
         
         f.out().p('}').nl();
-	}
+    }
 }

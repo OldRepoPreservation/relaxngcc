@@ -21,16 +21,16 @@ class ElementNameCollector extends PatternWalker {
         ElementNameCollector enc = new ElementNameCollector();
         p.apply(enc);
         // TODO: simplify this name class
-        return enc.nameClass;
+        return enc._nameClass;
     }
     
-    private NameClass nameClass = null;
+    private NameClass _nameClass = null;
     
     public Object element(ElementPattern p) {
-        if(nameClass==null)     nameClass=p.name;
-        else {
-            nameClass = new ChoiceNameClass(nameClass,p.name);
-        }
+        if(_nameClass==null)
+            _nameClass=p.name;
+        else
+            _nameClass = new ChoiceNameClass(_nameClass,p.name);
         return null;
     }
 }

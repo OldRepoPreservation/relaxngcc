@@ -9,24 +9,24 @@ import java.util.Iterator;
  */
 public class CDMethod {
 
-	private CDLanguageSpecificString _PreModifier;
-	private CDType _ReturnType;
-	private String _Name;
-	private CDLanguageSpecificString _PostModifier;
+    private CDLanguageSpecificString _preModifier;
+    private CDType _returnType;
+    private String _name;
+    private CDLanguageSpecificString _postModifier;
     /** Parameters to this method. List of VariableDeclaration. */
-    private final ArrayList _Params = new ArrayList();
-	
-	private final CDBlock _Body = new CDBlock();
-	
-	public CDMethod(CDLanguageSpecificString forwardspecifier,
+    private final ArrayList _params = new ArrayList();
+    
+    private final CDBlock _body = new CDBlock();
+    
+    public CDMethod(CDLanguageSpecificString forwardspecifier,
         CDType returntype, String name,
         CDLanguageSpecificString backwardspecifier ) {
-		
-        _PreModifier = forwardspecifier;
-		_ReturnType = returntype;
-		_Name = name;
-		_PostModifier = backwardspecifier;
-	}
+        
+        _preModifier = forwardspecifier;
+        _returnType = returntype;
+        _name = name;
+        _postModifier = backwardspecifier;
+    }
     
     /**
      * Adds a new parameter to this method and returns a reference
@@ -34,37 +34,37 @@ public class CDMethod {
      */
     public CDVariable param( CDType type, String name ) {
         CDVariable v = new CDVariable(null,type,name,null);
-        _Params.add(v);
+        _params.add(v);
         return v;
     }
     
     /** Gets a reference to the method body. */
-    public CDBlock body() { return _Body; }
+    public CDBlock body() { return _body; }
 
     public void writeTo( CDFormatter f ) throws IOException {
 
-    	if(_PreModifier!=null)
-            f.write(_PreModifier);
-    	
-    	if(_ReturnType!=null)
-            f.type(_ReturnType);
+        if(_preModifier!=null)
+            f.write(_preModifier);
         
-        f.p(_Name).p('(');
+        if(_returnType!=null)
+            f.type(_returnType);
+        
+        f.p(_name).p('(');
         
         boolean first=true;
-        for (Iterator itr = _Params.iterator(); itr.hasNext();) {
+        for (Iterator itr = _params.iterator(); itr.hasNext();) {
             if(!first)  f.p(',');
             first = false;
             
             f.declare((CDVariable) itr.next());
         }
         f.p(')');
-		
-    	if(_PostModifier!=null)
-            f.write(_PostModifier);
-    	
-        f.state(_Body).nl();
-    	
+        
+        if(_postModifier!=null)
+            f.write(_postModifier);
+        
+        f.state(_body).nl();
+        
     }
 
 }

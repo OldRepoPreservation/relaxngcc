@@ -14,31 +14,31 @@ public class IncludeParserRuntime extends ParserRuntime {
      *      The parent runtime object that created this runtime.
      */
     public IncludeParserRuntime( ParserRuntime parent ) {
-        start=new IncludedGrammarState(this);
-        setRootHandler(start);
+        _start = new IncludedGrammarState(this);
+        setRootHandler(_start);
         
         // inherit context from the parent
-        this.grammar = parent.grammar;
-        this.parent = parent;
-        this.nsStack.add(parent.getCurrentAttributes()); // inherit the ns attribute
+        grammar = parent.grammar;
+        _parent = parent;
+        _nsStack.add(parent.getCurrentAttributes()); // inherit the ns attribute
     }
     
     /** The root state object that we use to parse the RELAX NG grammar. */
-    private final IncludedGrammarState start;
+    private final IncludedGrammarState _start;
     
     /** Parent runtime object. */
-    private final ParserRuntime parent;
+    private final ParserRuntime _parent;
     
     public void appendGlobalImport( String code ) {
-        parent.appendGlobalImport(code);
+        _parent.appendGlobalImport(code);
     }
     
     public void appendGlobalBody( String code ) {
-        parent.appendGlobalBody(code);
+        _parent.appendGlobalBody(code);
     }
 
     protected void checkLastModifiedTime( long time ) {
-        parent.checkLastModifiedTime(time);
+        _parent.checkLastModifiedTime(time);
     }
 }
 

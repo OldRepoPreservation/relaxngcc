@@ -14,19 +14,11 @@ import java.text.ParseException;
  */
 public class Options
 {
-/*
-	public static final int STYLE_MSV = 0;
-	public static final int STYLE_TYPED_SAX = 1;
-	public static final int STYLE_PLAIN_SAX = 2;
-    public int style;
-*/	
-
-	public File sourcefile;
-	public File targetdir;
-//	public boolean msv_available;
-	public boolean debug       = false;
-	public String newline      = System.getProperty("line.separator");
-	
+    public File sourcefile;
+    public File targetdir;
+    public boolean debug       = false;
+    public String newline      = System.getProperty("line.separator");
+    
     /**
      * Directory to write automata gif files. A debug option.
      * If null, we won't generate automata dumps.
@@ -40,10 +32,10 @@ public class Options
     public boolean noCodeGeneration;
     
     /** Uses a private copy of runtime code. */
-    public boolean usePrivateRuntime=true;
+    public boolean usePrivateRuntime = true;
     
     /** Don't overwrite files when the Java files are up-to-date. */
-    public boolean smartOverwrite=false;
+    public boolean smartOverwrite = false;
     
     /** If not null, outputs a "purified" schema file into this file. */
     public File _purifiedSchema = null;
@@ -53,28 +45,21 @@ public class Options
     public Options() {}
     
     /** Parses option list. */
-	public Options(String[] args) throws CommandLineException {
+    public Options(String[] args) throws CommandLineException {
         
-//		input = NORMAL;
-//		style = STYLE_PLAIN_SAX;
-		
-		for(int i=0; i<args.length; i++)
-		{
+        for(int i=0; i<args.length; i++) {
             if(args[i].charAt(0)=='-') {
-    			if(args[i].equals("--target"))
-    				targetdir = new File(args[++i]);
-//    			else if(args[i].equals("--msv"))
-//    				style = STYLE_MSV;
-//    			else if(args[i].equals("--typedsax"))
-//    				style = STYLE_TYPED_SAX;
-//    			else if(args[i].equals("--plainsax"))
-//    				style = STYLE_PLAIN_SAX;
-    			else if(args[i].equals("-d"))
-    				debug = true;
+                if(args[i].equals("--target"))
+                    targetdir = new File(args[++i]);
+                else if(args[i].equals("-d"))
+                    debug = true;
                 else if(args[i].equals("--debug"))
                     debug = true;
-                else if(args[i].equals("--print-automata"))
+                else if(args[i].equals("--print-automata")) {
                     printAutomata = new File(args[++i]);
+                    if(!printAutomata.isDirectory() && !printAutomata.mkdir())
+                        throw new CommandLineException("creating the directory ["+printAutomata.getAbsolutePath()+"] is failed.");
+                }
                 else if(args[i].equals("--print-first-follow"))
                     printFirstFollow = true;
                 else if(args[i].equals("--no-code"))
@@ -83,7 +68,7 @@ public class Options
                     smartOverwrite = true;
                 else if(args[i].equals("--purify"))
                     _purifiedSchema = new File(args[++i]);
-    			else
+                else
                     throw new CommandLineException(
                         "[Warning] Unknown option "+args[i]);
             } else {
@@ -92,7 +77,7 @@ public class Options
                         "[Warning] Two source files are specified "+args[i]);
                 sourcefile = new File(args[i]);
             }
-		}
+        }
         
         if(sourcefile==null)
             throw new CommandLineException("grammar file is missing");
@@ -101,5 +86,5 @@ public class Options
             // compute the default target directory
             targetdir = sourcefile.getParentFile();
         }
-	}
+    }
 }

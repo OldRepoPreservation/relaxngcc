@@ -7,15 +7,15 @@ import java.util.Vector;
 /**
  */
 public class CDIfStatement implements CDStatement {
-	
+    
     private CDBlock _thenBlock;
-	private CDBlock _elseBlock;
+    private CDBlock _elseBlock;
     private CDExpression _testExp;
-	
-	public CDIfStatement(CDExpression expr) {
-		if(expr==null) throw new IllegalArgumentException("expr is null");
+    
+    public CDIfStatement(CDExpression expr) {
+        if(expr==null) throw new IllegalArgumentException("expr is null");
         _testExp=expr;
-	}
+    }
     
     public void setThenBlock(CDBlock b) { _thenBlock=b; }
     public CDBlock _then() {
@@ -28,7 +28,7 @@ public class CDIfStatement implements CDStatement {
         if(_elseBlock==null)    _elseBlock = new CDBlock();
         return _elseBlock;
     }
-	
+    
     public void state( CDFormatter f ) throws IOException {
 
         f.p("if").p('(').express(_testExp).p(')');

@@ -12,10 +12,9 @@ import com.sun.msv.driver.textui.DebugController;
 
 public class GrammarChecker
 {
-	//check grammar with MSV
-	public static Grammar check(String location, SAXParserFactory f) throws Exception
-	{
-		return GrammarLoader.loadSchema(location, new DebugController(false,false), f);
-	}
-	
+    //check grammar with MSV
+    public static Grammar check(String location, SAXParserFactory f) throws Exception {
+        return GrammarLoader.loadSchema(location, new DebugController(false,false), f);
+    }
+    
 }

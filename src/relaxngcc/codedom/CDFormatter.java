@@ -12,23 +12,21 @@ import java.io.Writer;
  * @author Kohsuke Kawaguchi (kk@kohsuke.org)
  */
 public abstract class CDFormatter {
-    public CDFormatter( Writer _writer ) {
-        this.writer = _writer;
+    public CDFormatter( Writer writer ) {
+        _writer = writer;
     }
     
     /** Output will be sent to this object. */
-    private final Writer writer;
-    
-    
+    private final Writer _writer;
     
     
     /** current indent. */
-    private int indent;
+    private int _indent;
     
     /** Indent. */
-    public CDFormatter in()  { indent++; return this; }
+    public CDFormatter in()  { _indent++; return this; }
     /** Unindent. */
-    public CDFormatter out() { indent--; return this; }
+    public CDFormatter out() { _indent--; return this; }
 
 
 
@@ -38,13 +36,13 @@ public abstract class CDFormatter {
      * @return "this."
      */
     public CDFormatter nl() throws IOException {
-        writer.write(System.getProperty("line.separator"));
-        newLine = true;
+        _writer.write(System.getProperty("line.separator"));
+        _newLine = true;
         return this;
     }
     
     /** This flag is set to true after a line is cleared. */
-    private boolean newLine = false;
+    private boolean _newLine = false;
     
     /**
      * Outputs a new token.
@@ -56,17 +54,17 @@ public abstract class CDFormatter {
      */
     public CDFormatter p( String token ) throws IOException {
         if(token.length()!=0) {
-            if(newLine) {
+            if(_newLine) {
                 // print indent
-                for(int i=0; i<indent; i++)
-                    writer.write("    ");
-                newLine = false;
+                for(int i=0; i<_indent; i++)
+                    _writer.write("    ");
+                _newLine = false;
             } else {
                 if(spaceNeeded(token.charAt(0)))
-                    writer.write(' ');
+                    _writer.write(' ');
             }
-            writer.write(token);
-            lastChar = token.charAt(token.length()-1);
+            _writer.write(token);
+            _lastChar = token.charAt(token.length()-1);
         }
         return this;
     }
@@ -75,7 +73,7 @@ public abstract class CDFormatter {
      * Last character of the last token.
      * Used by the spaceIfNeeded method.
      */
-    private char lastChar;
+    private char _lastChar;
     
     /**
      * Outputs a whitespace if it is necessary to
@@ -87,13 +85,13 @@ public abstract class CDFormatter {
     private boolean spaceNeeded( char ch ) throws IOException {
         if(ch==';')                     return false;
         // keep space on both sides of the assignment.
-        if(ch=='=' || lastChar=='=')    return true;
+        if(ch=='=' || _lastChar=='=')    return true;
         
         // [OUTPUT] abc, def, ghi
-        if(lastChar==',')   return true;
+        if(_lastChar==',')   return true;
         
         if(Character.isJavaIdentifierPart(ch)
-        && Character.isJavaIdentifierPart(lastChar))
+        && Character.isJavaIdentifierPart(_lastChar))
             return true;
         
         if(ch=='{') return true;

@@ -35,11 +35,11 @@ public abstract class ParserRuntime extends NGCCRuntime {
         
         // parse
         try {
-	        XMLReader reader = _SAXFactory.newSAXParser().getXMLReader();
+            XMLReader reader = _SAXFactory.newSAXParser().getXMLReader();
             reader = new ForeignElementFilter(reader);
-            reader = new TextSytanxInternalizer(reader);
-	        reader.setContentHandler(this);
-	        reader.parse(source);
+            reader = new TextSyntaxInternalizer(reader);
+            reader.setContentHandler(this);
+            reader.parse(source);
         } catch( ParserConfigurationException e ) {
             throw new SAXException(e);
         } catch( IOException e ) {
@@ -65,7 +65,7 @@ public abstract class ParserRuntime extends NGCCRuntime {
         int idx = qname.indexOf(':');
         
         if(idx<0) {
-            if(attributeMode && !nsPresent) {
+            if(attributeMode && !_nsPresent) {
                 uri="";
                 local=qname;
             } else {
@@ -114,18 +114,18 @@ public abstract class ParserRuntime extends NGCCRuntime {
     
     
     /** Keeps track of values of the ns attribute. */
-    protected final Stack nsStack = new Stack();
+    protected final Stack _nsStack = new Stack();
     {// register the default binding
-        nsStack.push("");
+        _nsStack.push("");
     }
     
     /** Gets the value of the current "ns". */
     public String getTargetNamespace() {
-        return (String)nsStack.peek();
+        return (String)_nsStack.peek();
     }
     
     /** set to true if the ns attribute is present. */
-    private boolean nsPresent;
+    private boolean _nsPresent;
     
     public Locator createLocator() {
         return new LocatorImpl(super.getLocator());
@@ -137,9 +137,9 @@ public abstract class ParserRuntime extends NGCCRuntime {
         throws SAXException {
             
         String ns = atts.getValue("ns");
-        nsPresent = (ns!=null);
+        _nsPresent = (ns!=null);
         if(ns==null)    ns = getTargetNamespace();
-        nsStack.push(ns);
+        _nsStack.push(ns);
         
         super.startElement(uri,local,qname,atts);
     }
@@ -148,7 +148,7 @@ public abstract class ParserRuntime extends NGCCRuntime {
         throws SAXException {
             
         super.endElement(uri,local,qname);
-        nsStack.pop();
+        _nsStack.pop();
     }
 }
 

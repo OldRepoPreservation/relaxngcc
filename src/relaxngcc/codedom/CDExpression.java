@@ -36,7 +36,7 @@ public abstract class CDExpression {
     
     /** Creates !x */
     public CDExpression not() {
-        return CDOp.not(this);
+        return CDOp.NOT(this);
     }
     
     /** Casts to another type. */

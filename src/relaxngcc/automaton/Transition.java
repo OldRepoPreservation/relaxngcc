@@ -16,17 +16,28 @@ import relaxngcc.codedom.CDBlock;
 /**
  * A Trnasition is a tuple of an Alphabet, a next state, and user-defined action.
  */
-public final class Transition
+public final class Transition implements WithOrder
 {
-	private Alphabet _Alphabet;
-	private State _NextState;
+    private Alphabet _alphabet;
+    private State _nextState;
+    private final int _order;
+    
+    public int getOrder() {
+        return _order;
+    }
     
     /** value that uniquely identifies a transition. */
-    private final int uniqueId;
+    private final int _uniqueId;
     
-	/** Creates Transition with no action. */
-    public Transition(Alphabet a, State n) {
-        this(a,n,new Vector(),new Vector());
+    /** Creates Transition with no action. */
+    public Transition(Alphabet a, State n, int o) {
+        this(a, n, new Vector(), new Vector(), o);
+    }
+    
+    public static Transition createActionOnlyTransition(State next, ScopeInfo.Action act) {
+        Transition t = new Transition(new Alphabet.ForAction(), next, Integer.MAX_VALUE); //_order of ActionOnlyTransition must be biggest
+        t.insertEpilogueAction(act);
+        return t;
     }
 
     private static Vector createVector( ScopeInfo.Action a ) {
@@ -35,19 +46,20 @@ public final class Transition
         return vec;
     }
     
-    private Transition(Alphabet a, State n, Vector _pro, Vector _epi) {
-        _Alphabet=a;
-        _NextState=n;
-        prologueActions=_pro;
-        epilogueActions=_epi;
-        uniqueId=iotaGen++;
+    private Transition(Alphabet a, State n, Vector pro, Vector epi, int o) {
+        _alphabet = a;
+        _nextState = n;
+        _prologueActions = pro;
+        _epilogueActions = epi;
+        _uniqueId = iotaGen++;
+        _order = o;
     }
 
     /**
      * Actions to be executed immediately
      * before this transition is performed.
      */
-    private final Vector prologueActions;
+    private final Vector _prologueActions;
     
     /**
      * Actions to be executed immediately
@@ -56,15 +68,15 @@ public final class Transition
      * Note that the difference between prologue
      * and epilogue is significant only for REF-type alphabets.
      */
-    private final Vector epilogueActions;
+    private final Vector _epilogueActions;
     
-	/** Adds a new action at head of the prologue actions. */
-	public void insertPrologueAction(ScopeInfo.Action newAction) {
-        prologueActions.add(0,newAction);
-	}
+    /** Adds a new action at head of the prologue actions. */
+    public void insertPrologueAction(ScopeInfo.Action newAction) {
+        _prologueActions.add(0,newAction);
+    }
     /** Adds a new action at head of the epilogue actions. */
     public void insertEpilogueAction(ScopeInfo.Action newAction) {
-        epilogueActions.add(0,newAction);
+        _epilogueActions.add(0,newAction);
     }
     public void insertEpilogueActions(ScopeInfo.Action[] newActions) {
         for( int i=newActions.length-1; i>=0; i-- )
@@ -73,11 +85,11 @@ public final class Transition
     
     /** Gets all prologue actions. */
     public ScopeInfo.Action[] getPrologueActions() {
-        return toActionArray(prologueActions);
+        return toActionArray(_prologueActions);
     }
     /** Gets all epilogue actions. */
     public ScopeInfo.Action[] getEpilogueActions() {
-        return toActionArray(epilogueActions);
+        return toActionArray(_epilogueActions);
     }
     private static ScopeInfo.Action[] toActionArray(Vector vec) {
         return (ScopeInfo.Action[])vec.toArray(new ScopeInfo.Action[vec.size()]);
@@ -85,11 +97,11 @@ public final class Transition
     
     /** Gets the code to invoke all the prologue actions. */
     public CDBlock invokePrologueActions() {
-        return invokeActions(prologueActions);
+        return invokeActions(_prologueActions);
     }
     /** Gets the code to invoke all the epilogue actions. */
     public CDBlock invokeEpilogueActions() {
-        return invokeActions(epilogueActions);
+        return invokeActions(_epilogueActions);
     }
     private static CDBlock invokeActions(Vector vec) {
         CDBlock sv = new CDBlock();
@@ -99,29 +111,25 @@ public final class Transition
     }
     /** Returns true if this transition has any associated action. */
     public boolean hasAction() {
-        return !prologueActions.isEmpty() || !epilogueActions.isEmpty();
+        return !_prologueActions.isEmpty() || !_epilogueActions.isEmpty();
     }
     
-    
-	
-	public Object clone() {
-        return clone(_NextState);
-	}
+    public Object clone() {
+        return clone(_nextState);
+    }
     
     public Transition clone( State next ) {
-        return new Transition(_Alphabet, next,
-            (Vector)prologueActions.clone(), (Vector)epilogueActions.clone());
+        return new Transition(_alphabet, next,
+            (Vector)_prologueActions.clone(), (Vector)_epilogueActions.clone(), _order);
     }
 
-	public Alphabet getAlphabet() { return _Alphabet; }
-	public State nextState() { return _NextState; }
+    public Alphabet getAlphabet() { return _alphabet; }
+    public State nextState() { return _nextState; }
     
+    public int getUniqueId() { return _uniqueId; }
+
+    public void changeDestination(State s) { _nextState=s; }
     
-    public int getUniqueId() { return uniqueId; }
-
-    public void changeDestination(State s) { _NextState=s; }
-	
-
 
     /**
      * Computes HEAD set of this transition.
@@ -149,18 +157,16 @@ public final class Transition
                 fork._subAutomata[i].head( result, false );
             if(fork.isNullable())
                 nextState().head( result, includeEE );
-        } else
-        if(!a.isRef()) {
-            result.add(a);
-        } else {
+        } else if(a.isRef()) {
             ScopeInfo target = a.asRef().getTargetScope();
             target.head( result );
             
             if( target.isNullable() )
                 nextState().head( result, includeEE );
+        } else {
+            result.add(a);
         }
-    }
-
+    }        
     
     
     /** used to produce unique IDs. */

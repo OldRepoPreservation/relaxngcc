@@ -7,8 +7,8 @@ import java.io.IOException;
  * 
  * @author Kohsuke Kawaguchi (kk@kohsuke.org)
  */
-class CDExpressionStatement implements CDStatement {
-    CDExpressionStatement( CDExpression exp ) {
+public class CDExpressionStatement implements CDStatement {
+    public CDExpressionStatement( CDExpression exp ) {
         this._exp = exp;
     }
     

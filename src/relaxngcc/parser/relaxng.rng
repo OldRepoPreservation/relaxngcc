@@ -40,7 +40,7 @@
     <choice>
       <attribute name="name" cc:workaround-significant="true">
         <data type="QName" cc:alias="name" />
-        <cc:java>nc = runtime.parseSimpleName(name,attributeMode);
+        <cc:java>nc = $runtime.parseSimpleName(name,attributeMode);
         </cc:java>
       </attribute>
       <ref name="name-class" cc:alias="nc" />
@@ -58,14 +58,14 @@
     </cc:java-body>
     
     <cc:java>
-      loc = runtime.createLocator();
+      loc = $runtime.createLocator();
     </cc:java>
     <choice>
       
       <element name="element">
         <ref name="name" cc:alias="name" cc:with-params="false" />
         <ref name="patterns" cc:alias="p" />
-        p = new ElementPattern(loc,runtime.createLocator(),name,p);
+        p = new ElementPattern(loc,$runtime.createLocator(),name,p);
         <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
       </element>
       
@@ -85,7 +85,7 @@
           if(p==null)
             p = new DataPattern(loc,new MetaDataType("string"),alias);
           p = new AttributePattern(
-            loc,runtime.createLocator(),
+            loc,$runtime.createLocator(),
             name,p,workaroundSignificant);
         </cc:java>
         <ref name="NGCC-local-class" cc:alias="p" cc:with-params="p,loc" />
@@ -166,7 +166,7 @@
           <attribute name="name" cc:alias="target" />
           <cc:java>
             p = new RefPattern( loc,
-                runtime.grammar.getOrCreate(target),params);
+                $runtime.grammar.getOrCreate(target),params);
           </cc:java>
         </element>
         <ref name="NGCC-withParams" cc:with-params="params"/>
@@ -179,7 +179,7 @@
           // refers to the parent grammar,
           // instead of the current grammar
           p = new RefPattern( loc,
-              runtime.grammar.parent.getOrCreate(target),params);
+              $runtime.grammar.parent.getOrCreate(target),params);
         </cc:java>
       </element>
       
@@ -250,15 +250,15 @@
       
       <element name="grammar">
         <cc:java>
-          runtime.grammar = new Grammar( runtime.grammar );
+          $runtime.grammar = new Grammar( $runtime.grammar );
         </cc:java>
         <ref name="grammar-content" />
         <cc:java>
           // behave as if there is an implicit ref
           // between &lt;grammar> and its  parent.
-          p = new RefPattern( loc, runtime.grammar, null );
+          p = new RefPattern( loc, $runtime.grammar, null );
           // get back to the parent context
-          runtime.grammar = runtime.grammar.parent;
+          $runtime.grammar = $runtime.grammar.parent;
         </cc:java>
       </element>
       
@@ -280,19 +280,19 @@
         <element name="cc:java-import">
           <text cc:alias="value"/>
           <cc:java>
-            runtime.appendGlobalImport(value);
+            $runtime.appendGlobalImport(value);
           </cc:java>
         </element>
         <element name="cc:java-body">
           <text cc:alias="value"/>
           <cc:java>
-            runtime.appendGlobalBody(value);
+            $runtime.appendGlobalBody(value);
           </cc:java>
         </element>
         <element name="include">
           <attribute name="href" cc:alias="href" />
           <cc:java>
-            runtime.processInclude(href);
+            $runtime.processInclude(href);
           </cc:java>
           <!-- TODO: support redefinition -->
           <!--ref name="include-content"/-->
@@ -316,7 +316,7 @@
   <define name="start-element" cc:class="StartElement">
     <element name="start">
       <ref name="pattern-definition"
-        cc:with-params="runtime.grammar"/>
+        cc:with-params="$runtime.grammar"/>
     </element>
   </define>
   
@@ -324,7 +324,7 @@
     <element name="define">
       <attribute name="name" cc:alias="name" />
       <ref name="pattern-definition"
-        cc:with-params="runtime.grammar.getOrCreate(name)"/>
+        cc:with-params="$runtime.grammar.getOrCreate(name)"/>
     </element>
   </define>
   
@@ -397,7 +397,7 @@
       <element name="name">
         <text cc:alias="name"/>
         <cc:java>
-          nc = runtime.parseSimpleName(name,false);
+          nc = $runtime.parseSimpleName(name,false);
         </cc:java>
       </element>
       <element name="anyName">
@@ -409,7 +409,7 @@
       <element name="nsName">
         <ref name="except-name-class" cc:alias="child"/>
         <cc:java>
-          nc = new NsNameClass(runtime.getTargetNamespace(),child);
+          nc = new NsNameClass($runtime.getTargetNamespace(),child);
         </cc:java>
       </element>
       <element name="choice">

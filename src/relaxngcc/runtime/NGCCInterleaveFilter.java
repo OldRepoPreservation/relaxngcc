@@ -192,7 +192,7 @@ public abstract class NGCCInterleaveFilter implements NGCCEventSource, NGCCEvent
                 _receivers[i].enterElement(uri,local,qname,atts);
         
         // revert to the parent
-        _parent.source.replace(this,_parent);
+        _parent._source.replace(this,_parent);
         _parent.onChildCompleted(null,_cookie,true);
         // send this event to the parent
         _parent.enterElement(uri,local,qname,atts);
@@ -214,7 +214,7 @@ public abstract class NGCCInterleaveFilter implements NGCCEventSource, NGCCEvent
                 _receivers[i].leaveElement(uri,local,qname);
         
         // revert to the parent
-        _parent.source.replace(this,_parent);
+        _parent._source.replace(this,_parent);
         _parent.onChildCompleted(null,_cookie,true);
         // send this event to the parent
         _parent.leaveElement(uri,local,qname);
@@ -236,7 +236,7 @@ public abstract class NGCCInterleaveFilter implements NGCCEventSource, NGCCEvent
                 _receivers[i].enterAttribute(uri,local,qname);
         
         // revert to the parent
-        _parent.source.replace(this,_parent);
+        _parent._source.replace(this,_parent);
         _parent.onChildCompleted(null,_cookie,true);
         // send this event to the parent
         _parent.enterAttribute(uri,local,qname);
@@ -258,7 +258,7 @@ public abstract class NGCCInterleaveFilter implements NGCCEventSource, NGCCEvent
                 _receivers[i].leaveAttribute(uri,local,qname);
         
         // revert to the parent
-        _parent.source.replace(this,_parent);
+        _parent._source.replace(this,_parent);
         _parent.onChildCompleted(null,_cookie,true);
         // send this event to the parent
         _parent.leaveAttribute(uri,local,qname);
@@ -280,7 +280,7 @@ public abstract class NGCCInterleaveFilter implements NGCCEventSource, NGCCEvent
                 _receivers[i].text(value);
 
         // revert to the parent
-        _parent.source.replace(this,_parent);
+        _parent._source.replace(this,_parent);
         _parent.onChildCompleted(null,_cookie,true);
         // send this event to the parent
         _parent.text(value);

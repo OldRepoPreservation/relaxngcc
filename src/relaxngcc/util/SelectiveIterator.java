@@ -10,38 +10,38 @@ import java.util.NoSuchElementException;
  * @author Kohsuke Kawaguchi (kk@kohsuke.org)
  */
 public abstract class SelectiveIterator implements Iterator {
-    public SelectiveIterator( Iterator _base ) {
-        this.base=_base;
+    public SelectiveIterator( Iterator base ) {
+        _base = base;
     }
     /** base iterator to filter. */
-    private final Iterator base;
+    private final Iterator _base;
 
     /** return false to skip this object. */
     protected abstract boolean filter( Object o );
             
-    private Object next;
+    private Object _next;
     /** Finds the next object to return, if any. */
     private void findNext() {
-        if(next!=null)  return;
+        if(_next != null)  return;
         
-        while(base.hasNext()) {
-            next = base.next();
-            if(filter(next))
+        while(_base.hasNext()) {
+            _next = _base.next();
+            if(filter(_next))
                 return;  // this is fine.
         }
-        next=null;  // not found
+        _next = null;  // not found
     }
     
     public boolean hasNext() {
         findNext();
-        return next!=null;
+        return _next!=null;
     }
     public Object next() {
         findNext();
-        if(next==null)  throw new NoSuchElementException();
+        if(_next==null)  throw new NoSuchElementException();
         
-        Object r = next;
-        next=null;
+        Object r = _next;
+        _next=null;
         return r;
     }
     public void remove() { throw new UnsupportedOperationException(); }

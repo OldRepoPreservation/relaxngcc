@@ -19,46 +19,46 @@ import relaxngcc.grammar.NameClassFunction;
  */
 public class NameTestBuilder implements NameClassFunction {
     
-    public NameTestBuilder( CDVariable _uriVar, CDVariable _localNameVar ) {
-        this.$uriVar = _uriVar;
-        this.$localNameVar = _localNameVar;
+    public NameTestBuilder( CDExpression uriVar, CDExpression localNameVar ) {
+        _$uriVar = uriVar;
+        _$localNameVar = localNameVar;
     }
     
-    public static CDExpression build( NameClass nc, CDVariable uri, CDVariable local ) {
+    public static CDExpression build( NameClass nc, CDExpression uri, CDExpression local ) {
         return (CDExpression)nc.apply(new NameTestBuilder(uri,local));
     }
     
-    private final CDVariable $uriVar;
-    private final CDVariable $localNameVar;
+    private final CDExpression _$uriVar;
+    private final CDExpression _$localNameVar;
     
-	public Object choice(NameClass nc1, NameClass nc2) {
+    public Object choice(NameClass nc1, NameClass nc2) {
         return CDOp.OR(
             (CDExpression)nc1.apply(this),
             (CDExpression)nc2.apply(this));
-	}
+    }
 
-	public Object nsName(String ns, NameClass except) {
-        CDExpression exp = $uriVar.invoke("equals").arg(new CDConstant(ns));
+    public Object nsName(String ns, NameClass except) {
+        CDExpression exp = _$uriVar.invoke("equals").arg(new CDConstant(ns));
         
         if(except!=null)
             exp = CDOp.AND( exp,
                 ((CDExpression)except.apply(this)).not() );
         
         return exp;
-	}
+    }
 
-	public Object anyName(NameClass except) {
+    public Object anyName(NameClass except) {
         if(except==null)
             return new CDConstant(true);
         else
             return ((CDExpression)except.apply(this)).not();
-	}
+    }
 
-	public Object name(String ns, String local) {
+    public Object name(String ns, String local) {
         return CDOp.AND(
-            CDOp.STREQ( $uriVar, new CDConstant(ns) ),
-            CDOp.STREQ( $localNameVar, new CDConstant(local)) );
-	}
+            CDOp.STREQ( _$uriVar, new CDConstant(ns) ),
+            CDOp.STREQ( _$localNameVar, new CDConstant(local)) );
+    }
 
 }
 

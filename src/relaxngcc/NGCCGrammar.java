@@ -122,16 +122,24 @@ public class NGCCGrammar {
         }
             
         NullableChecker.computeNullability(this);
+
+        // build ScopeInfos
+        it = scopes.iterator();
+        while(it.hasNext()) {
+            ScopeInfo s = getScopeInfo((Scope)it.next());
+            s.calcAFOLLOW();
+            s.simplifyAutomaton();
+        }
     }
     
     //for debug
-	public void dump(PrintStream strm) {
-		Iterator it = scopeInfos.values().iterator();
-		while (it.hasNext()) {
-			ScopeInfo sci = (ScopeInfo) it.next();
-			sci.dump(strm);
-		}
-	}
+    public void dump(PrintStream strm) {
+        Iterator it = scopeInfos.values().iterator();
+        while (it.hasNext()) {
+            ScopeInfo sci = (ScopeInfo) it.next();
+            sci.dump(strm);
+        }
+    }
     
     /** generates automaton gif files. */
     public void dumpAutomata(File outDir) {
@@ -153,23 +161,14 @@ public class NGCCGrammar {
      * @return
      *      true if files are in fact generated.
      */
-    public boolean output( Options opt, long sourceTimestamp ) throws IOException
-    {
+    public boolean output( Options opt, long sourceTimestamp ) throws IOException {
         boolean generated = false;
         
-/*        //step1 datatypes
-        if(_Options.style==Options.STYLE_TYPED_SAX && _DataTypes.size() > 0)
-        {
-            PrintStream s = new PrintStream(new FileOutputStream(
-                new File(_Options.targetdir, "DataTypes.java")));
-            printDataTypes(s);
-        }*/
         //step2 scopes
         Iterator it = scopeInfos.values().iterator();
         while(it.hasNext()) {
             ScopeInfo si = (ScopeInfo)it.next();
             
-//            if(!si.isLambda() && !si.isInline()) {
             CodeBuilder w = new CodeBuilder(this, si, opt);
             File f = new File(opt.targetdir, si.getClassName() + ".java");
             if(!f.exists() || f.lastModified()<=sourceTimestamp || !opt.smartOverwrite) {
@@ -180,9 +179,8 @@ public class NGCCGrammar {
                 Writer writer = new OutputStreamWriter(new FileOutputStream(f));
                 w.output().writeTo(new CDJavaFormatter(writer));
                 writer.close();
-                f.setReadOnly();
+                //f.setReadOnly(); disabled temporary
             }
-//            }
         }
         
         // copy runtime code if necessary
@@ -204,8 +202,7 @@ public class NGCCGrammar {
     private void copyResourceAsFile( String file, Options opt ) throws IOException {
         File out = new File(opt.targetdir,file);
         
-        BufferedReader in = new BufferedReader(
-            new InputStreamReader(NGCCRuntime.class.getResourceAsStream(file)));
+        BufferedReader in = new BufferedReader(new InputStreamReader(NGCCRuntime.class.getResourceAsStream(file)));
             
         PrintWriter os = new PrintWriter(new FileWriter(out));
         byte[] buf = new byte[256];

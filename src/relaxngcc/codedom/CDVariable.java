@@ -9,37 +9,39 @@ import java.io.Writer;
  */
 public class CDVariable extends CDExpression implements CDStatement {
 
-    private CDLanguageSpecificString _Modifier;
-	private CDType _Type;
-	private String _Name;
-	private CDExpression _InitialValue;
+    private CDLanguageSpecificString _modifier;
+    private CDType _type;
+    private String _name;
+    private CDExpression _initialValue;
 
     // not directly creatable. Use appropriate factory methods.
-	CDVariable(
+    CDVariable(
         CDLanguageSpecificString modifier,
         CDType type, String name, CDExpression initialvalue) {
             
-        _Modifier = modifier;
-		_Type = type;
-		_Name = name;
-		_InitialValue = initialvalue;
-	}
-	
+        _modifier = modifier;
+        _type = type;
+        _name = name;
+        _initialValue = initialvalue;
+    }
+    
+    public String getName() { return _name; }
+    
     public void express( CDFormatter f ) throws IOException {
         // as a reference
-        f.p(_Name);
+        f.p(_name);
     }
 
     public void declare( CDFormatter f ) throws IOException {
         // as mod type name [=init]
 
-        if(_Modifier != null)
-            f.write(_Modifier);
+        if(_modifier != null)
+            f.write(_modifier);
         
-        f.type(_Type).p(_Name);
+        f.type(_type).p(_name);
         
-        if(_InitialValue != null)
-            f.p('=').express(_InitialValue);
+        if(_initialValue != null)
+            f.p('=').express(_initialValue);
     }
 
     public void state( CDFormatter f ) throws IOException {

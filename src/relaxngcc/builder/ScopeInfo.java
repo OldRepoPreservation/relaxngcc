@@ -41,21 +41,20 @@ import relaxngcc.codedom.*;
  */
 public final class ScopeInfo
 {
-	public final NGCCGrammar grammar;
-	
+    public final NGCCGrammar _grammar;
+    
     /** Scope object to which this object is attached. */
-    public final Scope scope;
+    public final Scope _scope;
     
-	private Set _allStates;
-//    private Set _ChildScopes; //child lambda scopes
+    private Set _allStates;
     
-	private Map _NSURItoStringConstant;
+    private Map _NSURItoStringConstant;
     public Iterator iterateNSURIConstants() {
         return _NSURItoStringConstant.entrySet().iterator();
     }
-	
-    /** Automaton that represents this scope. */
-	private State _initialState;
+    
+    /** Automaton that represents this _scope. */
+    private State _initialState;
     public State getInitialState() { return _initialState; }
     public void setInitialState(State s) {
         _initialState = s;
@@ -64,14 +63,14 @@ public final class ScopeInfo
     /**
      * See {@link NullableChecker} for the definition of nullability.
      */
-    private boolean _Nullable;
-	public boolean isNullable() { return _Nullable; }	
-    public void setNullable(boolean v) { _Nullable = v; }
-	
-	public int getStateCount() { return _allStates.size(); }
-	
+    private boolean _nullable;
+    public boolean isNullable() { return _nullable; }    
+    public void setNullable(boolean v) { _nullable = v; }
+    
+    public int getStateCount() { return _allStates.size(); }
+    
     public String getClassName() {
-        return scope.getParam().className;
+        return _scope.getParam().className;
     }
     
     /**
@@ -83,21 +82,16 @@ public final class ScopeInfo
     
     
     private class AlphabetIterator extends SelectiveIterator {
-        AlphabetIterator( Iterator base, int _typeMask ) {
+        AlphabetIterator( Iterator base, int typeMask ) {
             super(base);
-            this.typeMask=_typeMask;
+            _typeMask = typeMask;
         }
-        private final int typeMask;
+        private final int _typeMask;
         protected boolean filter( Object o ) {
-            return (((Alphabet)o).getType()&typeMask)!=0;
+            return (((Alphabet)o).getType() & _typeMask)!=0;
         }
     }
     
-    
-//    public Iterator iterateChildScopes() { return _ChildScopes.iterator(); }
-    
-
-
 
     /**
      * Fixes the attribute handlers so that a transition by
@@ -133,15 +127,14 @@ public final class ScopeInfo
      * event would be re-written to the 'dest' state.
      */
     private Transition cloneAttributeTransition( Transition t, State dest ) {
-        return cloneAttributeTransition(t,dest,new Hashtable());
+        return cloneAttributeTransition(t, dest, new Hashtable());
     }
     
     /**
      * @param m
      *      map from the original state to the cloned state.
      */
-    private Transition cloneAttributeTransition( Transition t, State dest,
-        Map m ) {
+    private Transition cloneAttributeTransition( Transition t, State dest, Map m ) {
             
         if(t.getAlphabet().isLeaveAttribute())
             // this is the leave attribute transition. So go back to
@@ -156,7 +149,7 @@ public final class ScopeInfo
             st = new State(
                 this,
                 getStateCount(),
-                orig.locationHint);
+                orig._locationHint);
             addState(st);
             m.put(orig,st);
             
@@ -205,9 +198,9 @@ public final class ScopeInfo
         _allStates.retainAll(reachable);
     }
     
-	//about header and body
-	private String _headerSection = "";
-	public void appendHeaderSection(String c) { _headerSection += c; }
+    //about header and body
+    private String _headerSection = "";
+    public void appendHeaderSection(String c) { _headerSection += c; }
     public String getHeaderSection() { return _headerSection; }
     
     /** Name of fields defined in &lt;cc:java-body>. */
@@ -220,12 +213,12 @@ public final class ScopeInfo
     private boolean _usingBigInteger;
     private boolean _usingCalendar;
     
-	
-    /** All _actions in this scope. */
+    
+    /** All _actions in this _scope. */
     private final Vector _actions = new Vector();
     public Iterator iterateActions() { return _actions.iterator(); }
     
-    /** Creates a new Action object inside this scope. */
+    /** Creates a new Action object inside this _scope. */
     public Action createAction( String code ) {
         Action a = new Action(code);
         _actions.add(a);
@@ -239,57 +232,57 @@ public final class ScopeInfo
      * User-defined code fragment.
      */
     public final class Action {
-        private Action( String _codeFragment ) {
-            this.codeFragment = _codeFragment;
-            this.uniqueId = _actionIdGen++;
+        private Action( String codeFragment ) {
+            _codeFragment = codeFragment;
+            _uniqueId = _actionIdGen++;
         }
         
         /** A code fragment that the user wrote. */
-        private final String codeFragment;
-        public String getCodeFragment() { return codeFragment; }
+        private final String _codeFragment;
+        public String getCodeFragment() { return _codeFragment; }
         
         /** Gets the code to invoke this action. */
         public CDStatement invoke() {
-        	return new CDMethodInvokeExpression("action"+uniqueId).asStatement();
+            return new CDMethodInvokeExpression("action"+_uniqueId).asStatement();
         }
         
         /** ID number that uniquely identifies this fragment. */
-        private final int uniqueId;
-        public int getUniqueId() { return uniqueId; }
+        private final int _uniqueId;
+        public int getUniqueId() { return _uniqueId; }
         
         /** Generates the action function. */
         void generate( CDClass classdef ) {
             CDMethod method = new CDMethod(
                 new CDLanguageSpecificString("private"),
                 CDType.VOID,
-                "action"+uniqueId,
+                "action"+_uniqueId,
                 new CDLanguageSpecificString("throws SAXException") );
             
-            method.body().add(new CDLanguageSpecificString(codeFragment+'\n'));
+            method.body().add(new CDLanguageSpecificString(_codeFragment));
             
-        	classdef.addMethod(method);
+            classdef.addMethod(method);
         }
     }
     
     /** used to generate unique IDs for Actions. */
     private int _actionIdGen = 0;
-	
+    
     
     /** All the aliases indexed by their names. */
-	private final Map _aliases = new Hashtable();
+    private final Map _aliases = new Hashtable();
     /** Iterate all the aliases. */
     public final Iterator iterateAliases() { return _aliases.entrySet().iterator(); }
-	
-	public ScopeInfo(NGCCGrammar g,Scope scope) {
-		grammar = g;
-        this.scope = scope;
-		_allStates = new HashSet();
-		_NSURItoStringConstant = new HashMap();
+    
+    public ScopeInfo(NGCCGrammar g, Scope scope) {
+        _grammar = g;
+        _scope = scope;
+        _allStates = new HashSet();
+        _NSURItoStringConstant = new HashMap();
 
         Vector vec = new Vector();
         // parse constructor parameters
-        if(scope.getParam().params!=null) {
-            StringTokenizer tokens = new StringTokenizer(scope.getParam().params,",");
+        if(_scope.getParam().params!=null) {
+            StringTokenizer tokens = new StringTokenizer(_scope.getParam().params,",");
             while(tokens.hasMoreTokens()) {
                 // (type,name) pair.
                 String pair = tokens.nextToken().trim();
@@ -304,55 +297,54 @@ public final class ScopeInfo
         _constructorParams = (Alias[])vec.toArray(new Alias[vec.size()]);
         
         
-        if(scope.getBody()!=null) {
-	        JavaBodyParser p = new JavaBodyParser(new StringReader(scope.getBody()));
-	        
-	        try {
-	            p.JavaBody();       // parse the text
-	        } catch( relaxngcc.javabody.ParseException e ) {
-	            // TODO: report error location and such.
-	            System.err.println("[Warning] unable to parse <java-body>");
-	        }
-	        
-	        _userDefinedFields.addAll(p.fields);
+        if(_scope.getBody()!=null) {
+            JavaBodyParser p = new JavaBodyParser(new StringReader(_scope.getBody()));
+            
+            try {
+                p.JavaBody();       // parse the text
+            } catch( relaxngcc.javabody.ParseException e ) {
+                // TODO: report error location and such.
+                System.err.println("[Warning] unable to parse <java-body>");
+            }
+            
+            _userDefinedFields.addAll(p.fields);
         }
-	}
+    }
     
-	
-	public void addNSURI(String nsuri)
-	{
-		if(_NSURItoStringConstant.containsKey(nsuri)) return;
-		
-		String result = "";
-		if(nsuri.length()==0)
-			result = "DEFAULT_NSURI";
-		else
-		{
-			StringTokenizer tok = new StringTokenizer(nsuri, ":./%-~"); //loose check
-			while(tok.hasMoreTokens())
-			{
-				String part = tok.nextToken();
-				if(result.length()>0) result+="_"; //delimiter
-				result += part.toUpperCase();
-			}
-		}
-		_NSURItoStringConstant.put(nsuri, result);
-	}
-	
-	public String getNSStringConstant(String uri)
-	{
-		Object o = _NSURItoStringConstant.get(uri);
-		return (String)o;
-	}
-	
-//    public void addChildScope(ScopeInfo info) { _ChildScopes.add(info); }
+    public void simplifyAutomaton() {
+        //copyAttributeHandlers();
+        minimizeStates();
+        
+    }
     
+    public void addNSURI(String nsuri)
+    {
+        if(_NSURItoStringConstant.containsKey(nsuri)) return;
+        
+        String result = "";
+        if(nsuri.length()==0)
+            result = "DEFAULT_NSURI";
+        else {
+            StringTokenizer tok = new StringTokenizer(nsuri, ":./%-~"); //loose check
+            while(tok.hasMoreTokens()) {
+                String part = tok.nextToken();
+                if(result.length()>0) result+="_"; //delimiter
+                result += part.toUpperCase();
+            }
+        }
+        _NSURItoStringConstant.put(nsuri, result);
+    }
+    
+    public String getNSStringConstant(String uri) {
+        Object o = _NSURItoStringConstant.get(uri);
+        return (String)o;
+    }
     
     /**
      * Iterates states that have transitions with one of specified
      * alphabets.
      */
-	public Iterator iterateStatesHaving( final int alphabetTypes ) {
+    public Iterator iterateStatesHaving( final int alphabetTypes ) {
         return new SelectiveIterator(iterateAllStates()) {
             protected boolean filter( Object o ) {
                 return ((State)o).hasTransition(alphabetTypes);
@@ -360,7 +352,7 @@ public final class ScopeInfo
         };
     }
     
-	public Iterator iterateAcceptableStates() {
+    public Iterator iterateAcceptableStates() {
         return new SelectiveIterator(_allStates.iterator()) {
             protected boolean filter( Object o ) {
                 return ((State)o).isAcceptable();
@@ -372,35 +364,35 @@ public final class ScopeInfo
     }
     
     
-	
-	public void addState(State state) {
-		_allStates.add(state);
-	}
-	
-	public Alias addAlias(CDType type, String name) {
+    
+    public void addState(State state) {
+        _allStates.add(state);
+    }
+    
+    public Alias addAlias(CDType type, String name) {
         Alias a = new Alias(type, name);
-		_aliases.put(name,a);
+        _aliases.put(name,a);
         return a;
-	}
-	
+    }
+    
     /** Returns true if this is the start pattern. */
-    public boolean isRoot() { return scope.name==null; }
-
-	
+    public boolean isRoot() { return _scope.name==null; }
 
     
 
-	public void dump(PrintStream strm)
-	{
-		strm.println("Scope " + scope.name);
+    
+
+    public void dump(PrintStream strm)
+    {
+        strm.println("Scope " + _scope.name);
         strm.print("HEAD: ");
         for (Iterator itr = head().iterator(); itr.hasNext();) {
-			Alphabet a = (Alphabet) itr.next();
-			strm.print(a);
+            Alphabet a = (Alphabet) itr.next();
+            strm.print(a);
             strm.print(", ");
-		}
-		strm.println();
-	}
+        }
+        strm.println();
+    }
     
     
     
@@ -436,8 +428,9 @@ public final class ScopeInfo
         case Alphabet.DATA_TEXT:
         case Alphabet.VALUE_TEXT:        return "0.625";
         case Alphabet.FORK:              return "0.75";
+        case Alphabet.FOR_ACTION:        return "0.875";
         default:
-            throw new Error(); // assertion failed
+            throw new IllegalArgumentException("unexpected alphabet type "+a.getType()); // assertion failed
         }
     }
     
@@ -449,7 +442,6 @@ public final class ScopeInfo
         
         System.err.println("generating a graph to "+target.getPath());
         
-//        Process proc = Runtime.getRuntime().exec("dot");
         Process proc = Runtime.getRuntime().exec(
             new String[]{"dot","-Tgif","-o",target.getPath()});
         PrintWriter out = new PrintWriter(
@@ -514,7 +506,7 @@ public final class ScopeInfo
     private Set _cachedHEAD = null;
     
     /**
-     * Computes the HEAD set of this scope (that doesn't include
+     * Computes the HEAD set of this _scope (that doesn't include
      * EVERYTHING_ELSE token.)
      * 
      * See {@link Head} for the definition.
@@ -527,7 +519,7 @@ public final class ScopeInfo
     }
     
     /**
-     * Computes the HEAD set of this scope (that doesn't include
+     * Computes the HEAD set of this _scope (that doesn't include
      * EVERYTHING_ELSE token) and returns them in a new set.
      */
     public Set head() {
@@ -536,5 +528,15 @@ public final class ScopeInfo
         return s;
     }
     
-    
+    /**
+     * Computes the AFOLLOW set of this _scope
+     */
+    public void calcAFOLLOW() {
+        Iterator it = iterateAllStates();
+        while(it.hasNext()) {
+            State s = (State)it.next();
+            s.calcAFOLLOW();
+        }
+    }
+        
 }

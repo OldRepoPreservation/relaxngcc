@@ -12,6 +12,8 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.Vector;
+import java.util.Map;
+import java.util.HashMap;
 
 import org.xml.sax.Locator;
 
@@ -25,13 +27,13 @@ import relaxngcc.codedom.CDBlock;
  */
 public final class State implements Comparable
 {
-	private Set _AllTransitions;
+    private Set _allTransitions;
     
-	//acceptable or not
-	private boolean _Acceptable;
-	public void setAcceptable(boolean newvalue) { _Acceptable=newvalue; }
-	public boolean isAcceptable() { return _Acceptable; }
-	
+    //acceptable or not
+    private boolean _acceptable;
+    public void setAcceptable(boolean newvalue) { _acceptable=newvalue; }
+    public boolean isAcceptable() { return _acceptable; }
+    
 //    // joinable or not.
 //    // TODO: probably we don't need to distinguish final states and join states.
 //    private boolean _join=false;
@@ -39,37 +41,35 @@ public final class State implements Comparable
 //    public boolean isJoinState() { return _join; }
     
     /** Actions that get executed when the execution leaves this state. */
-	private final Vector actionsOnExit = new Vector();
+    private final Vector _actionsOnExit = new Vector();
     
     public ScopeInfo.Action[] getActionsOnExit() {
-        return (ScopeInfo.Action[])actionsOnExit.toArray(new ScopeInfo.Action[0]);
+        return (ScopeInfo.Action[])_actionsOnExit.toArray(new ScopeInfo.Action[_actionsOnExit.size()]);
     }
     /** Gets the code to invoke exit-actions. */
-	public CDBlock invokeActionsOnExit() {
-        CDBlock sv = new CDBlock();
-        for( int i=0; i<actionsOnExit.size(); i++ )
-            sv.add(((ScopeInfo.Action)actionsOnExit.get(i)).invoke());
-        return sv;
+    public void outputActionsOnExit(CDBlock sv) {
+        for( int i=0; i<_actionsOnExit.size(); i++ )
+            sv.add(((ScopeInfo.Action)_actionsOnExit.get(i)).invoke());
     }
     
-	public void addActionOnExit(ScopeInfo.Action act) {
-       actionsOnExit.add(0,act);
+    public void addActionOnExit(ScopeInfo.Action act) {
+        _actionsOnExit.add(0,act);
     }
     public void addActionsOnExit(ScopeInfo.Action[] act) {
         for( int i=act.length-1; i>=0; i-- )
             addActionOnExit(act[i]);
     }
-	 
+    
     /** ScopeInfo that owns this state. */
-	private final ScopeInfo _Container;
-    public ScopeInfo getContainer() { return _Container; }
-	
-	//index identifies this state in a scope as an integer
-	public int getIndex() { return _Index; }
-	private int _Index;
-	
+    private final ScopeInfo _container;
+    public ScopeInfo getContainer() { return _container; }
+    
+    //index identifies this state in a scope as an integer
+    public int getIndex() { return _index; }
+    private int _index;
+    
     /** Pattern from which this state was created. */
-    public final Pattern locationHint;
+    public final Pattern _locationHint;
     
     /**
      * 
@@ -77,35 +77,35 @@ public final class State implements Comparable
      *      Indicates the pattern object from which this state is created.
      */
     public State(ScopeInfo container, int index, Pattern location )
-	{
-		_Container = container;
-		_AllTransitions = new HashSet();
+    {
+        _container = container;
+        _allTransitions = new TreeSet(WithOrder.orderComparator);
         
-		_Acceptable = false;
-		_Index = index;
-        this.locationHint = location;
+        _acceptable = false;
+        _index = index;
+        _locationHint = location;
     }
 
-	public void addTransition(Transition t) {
-		_AllTransitions.add(t);
-	}
+    public void addTransition(Transition t) {
+        _allTransitions.add(t);
+    }
 
     public void removeTransition( Transition t) {
-        _AllTransitions.remove(t);
+        _allTransitions.remove(t);
     }
-	
+    
     private class TypeIterator extends SelectiveIterator {
-        TypeIterator( int _typeMask ) {
-            super(_AllTransitions.iterator());
-            this.typeMask=_typeMask;
+        TypeIterator( int typeMask ) {
+            super(_allTransitions.iterator());
+            _typeMask = typeMask;
         }
-        private final int typeMask;
+        private final int _typeMask;
         protected boolean filter( Object o ) {
-            return (((Transition)o).getAlphabet().getType()&typeMask)!=0;
+            return (((Transition)o).getAlphabet().getType()&_typeMask)!=0;
         }
     }
 
-    public Iterator iterateTransitions() { return _AllTransitions.iterator(); }
+    public Iterator iterateTransitions() { return _allTransitions.iterator(); }
 
     /**
      * Checks if this state has transitions with
@@ -131,7 +131,7 @@ public final class State implements Comparable
     public int compareTo(Object obj) {
         if(!(obj instanceof State)) throw new ClassCastException("not State object");
         
-        return _Index-((State)obj)._Index;
+        return _index-((State)obj)._index;
     }
     
     public void mergeTransitions(State s) {
@@ -150,33 +150,40 @@ public final class State implements Comparable
      * add it to this state by appending the specified action
      * (possibly null) at the head of its prologue actions.
      */
-	public void mergeTransitions(State s, ScopeInfo.Action action) {
+    public void mergeTransitions(State s, ScopeInfo.Action action) {
         Iterator itr = s.iterateTransitions();
         while(itr.hasNext())
             // TODO: why there needs to be two methods "addTransitionWithCheck" and "addTransition"?
             addTransitionWithCheck( (Transition)itr.next(), action );
-	}
-	
-	//reports if this state has ambiguous transitions. [target] is a set of Transitions.
+    }
+    
+    /**
+     * finds a transition invoked by the passed alphabet
+     */
+    public Transition findTransition(Alphabet a) {
+        Iterator it = iterateTransitions();
+        while(it.hasNext()) {
+            Transition t = (Transition)it.next();
+            if(a.equals(t.getAlphabet())) return t;
+        }
+        return null;
+    }
+    
+    //reports if this state has ambiguous transitions. [target] is a set of Transitions.
     /**
      * Adds the specified transition to this state,
      * and reports any ambiguity error if detected.
      */
-	private void addTransitionWithCheck(
+    private void addTransitionWithCheck(
         Transition newtransition, ScopeInfo.Action action)
-	{
-		Alphabet a = newtransition.getAlphabet();
+    {
+        Alphabet a = newtransition.getAlphabet();
         
-		Iterator it = iterateTransitions();
-		while(it.hasNext()) {
-			Transition tr = (Transition)it.next();
-			Alphabet existing_alphabet = tr.getAlphabet();
+        Iterator it = iterateTransitions();
+        while(it.hasNext()) {
+            Transition tr = (Transition)it.next();
+            Alphabet existing_alphabet = tr.getAlphabet();
             
-            // I don't see why this constitutes ambiguity -kk
-//            if(a.isText())
-//            	printAmbiguousTransitionsWarning(tr, newtransition);
-//			else
-
             if(existing_alphabet.equals(a)) {
                 if(tr.nextState()==newtransition.nextState()) {
                     if(action==null)
@@ -186,53 +193,52 @@ public final class State implements Comparable
                         // I guess this is ambiguous, but not sure. - Kohsuke
                         printAmbiguousTransitionsWarning(tr, newtransition);
                 } else {
-	                if(!newtransition.hasAction() && !tr.hasAction()) {
-	                    // only if both of them have no action, we can merge them.
-	                    tr.nextState().mergeTransitions(newtransition.nextState());
-						return; //ignores newtransition
-	                } else
-	            		printAmbiguousTransitionsWarning(tr, newtransition);
+                    if(!newtransition.hasAction() && !tr.hasAction()) {
+                        // only if both of them have no action, we can merge them.
+                        tr.nextState().mergeTransitions(newtransition.nextState());
+                        return; //ignores newtransition
+                    } else
+                        printAmbiguousTransitionsWarning(tr, newtransition);
                 }
             }
-		}
-		
+        }
+        
         // always make a copy, because we might modify actions later.
         // in general, it is dangerous to share transitions.
         newtransition = (Transition)newtransition.clone();
         
-		if(action!=null)
-			newtransition.insertPrologueAction(action);
-		
-        _AllTransitions.add(newtransition);
-	}
+        if(action!=null)
+            newtransition.insertPrologueAction(action);
+        
+        _allTransitions.add(newtransition);
+    }
 
-	private void printAmbiguousTransitionsWarning(Transition a, Transition b)
-	{
-		PrintStream s = System.err;
-		printStateWarningHeader(s);
-		s.print(" has ambiguous transitions: ");
-		s.print(a.getAlphabet().toString());
-		s.print("(to #");
-		s.print(a.nextState().getIndex());
-		s.print(") and ");
-		s.print(b.getAlphabet().toString());
-		s.print("(to #");
-		s.print(b.nextState().getIndex());
-		s.println(".)");
+    private void printAmbiguousTransitionsWarning(Transition a, Transition b) {
+        PrintStream s = System.err;
+        printStateWarningHeader(s);
+        s.print(" has ambiguous transitions: ");
+        s.print(a.getAlphabet().toString());
+        s.print("(to #");
+        s.print(a.nextState().getIndex());
+        s.print(") and ");
+        s.print(b.getAlphabet().toString());
+        s.print("(to #");
+        s.print(b.nextState().getIndex());
+        s.println(".)");
         a.getAlphabet().printLocator(s);
         b.getAlphabet().printLocator(s);
-	}
+    }
     
-	private void printStateWarningHeader(PrintStream s) {
-		s.print("[Warning] ");
+    private void printStateWarningHeader(PrintStream s) {
+        s.print("[Warning] ");
 
-		s.print("State #");
-		s.print(_Index);
-		s.print(" of ");
-        s.print(_Container.scope.name);
+        s.print("State #");
+        s.print(_index);
+        s.print(" of ");
+        s.print(_container._scope.name);
         // TODO: location
-//		s.print(_Container.getLocation());
-	}
+//        s.print(_Container.getLocation());
+    }
 
     /**
      * Gets all the states reachable from this state.
@@ -286,7 +292,7 @@ public final class State implements Comparable
      * See {@link HEAD} for the definition.
      */
     public Set attHead() {
-        Set r = new TreeSet(Alphabet.orderComparator);
+        Set r = new HashSet();
         attHead(r);
         return r;
     }
@@ -300,19 +306,105 @@ public final class State implements Comparable
             
             if(a.isEnterAttribute())
                 result.add(a);
-            else
-            if(a.isRef()) {
+            else if(a.isRef()) {
                 // ref[X] itself will be included in ATTHEAD
                 result.add(a);
                 if(a.asRef().getTargetScope().isNullable())
                     t.nextState().attHead(result);
             }
-            else
-            if(a.isFork()) {
+            else if(a.isFork()) {
                 result.add(a);
                 if(a.asFork().isNullable())
                     t.nextState().attHead(result);
             }
         }
     }
+
+    /**
+     * Computes AFOLLOW
+     */
+    private Set _cachedAFollow;
+    
+    public Set AFollow() {
+        return _cachedAFollow;
+    }
+    public void calcAFOLLOW() {
+        HashSet t = new HashSet();
+        AFollow(t);
+        _cachedAFollow = t;
+    }
+    private void AFollow(Set result) {
+        Iterator itr = iterateTransitions();
+        while(itr.hasNext()) {
+            Transition t = (Transition)itr.next();
+            Alphabet a = t.getAlphabet();
+            
+            if(a.isEnterElement() || a.isLeaveElement() || a.isText())
+                result.add(a);
+            else if(a.isEnterAttribute())
+                collectAFOLLOWAfterLeaveAttribute(result);
+            else if(a.isRef()) {
+                ScopeInfo si = a.asRef().getTargetScope();
+                si.getInitialState().AFollow(result);
+                if(si.isNullable())
+                    t.nextState().AFollow(result);
+            }
+            else if(a.isFork()) {
+                Alphabet.Fork fork = a.asFork();
+                for( int i=0; i<fork._subAutomata.length; i++ )
+                    fork._subAutomata[i].AFollow(result);
+                if(a.asFork().isNullable())
+                    t.nextState().AFollow(result);
+            }
+        }
+        
+        if(isAcceptable()) result.add(Head.EVERYTHING_ELSE);
+    }
+    private void collectAFOLLOWAfterLeaveAttribute(Set result) {
+        HashSet states = new HashSet();
+        Iterator itr = iterateTransitions();
+        while(itr.hasNext()) {
+            Transition t = (Transition)itr.next();
+            Alphabet a = t.getAlphabet();
+            
+            if(a.isEnterAttribute() || a.isDataText()) {
+                addStateAfterLeaveAttribute(t.nextState(), states);
+            }
+            else if(a.isLeaveAttribute()) {
+                states.add(t.nextState());
+            }
+            else if(a.isRef()) {
+                ScopeInfo si = a.asRef().getTargetScope();
+                addStateAfterLeaveAttribute(si.getInitialState(), result);
+                if(si.isNullable())
+                    addStateAfterLeaveAttribute(t.nextState(), result);
+            }
+            else if(a.isFork()) {
+                Alphabet.Fork fork = a.asFork();
+                for( int i=0; i<fork._subAutomata.length; i++ )
+                    addStateAfterLeaveAttribute(fork._subAutomata[i], result);
+                if(a.asFork().isNullable())
+                    addStateAfterLeaveAttribute(t.nextState(), result);
+            }
+        }
+        
+        itr = states.iterator();
+        while(itr.hasNext()) {
+            ((State)itr.next()).AFollow(result);
+        }
+    }
+    private static void addStateAfterLeaveAttribute(State s, Set result) {
+        Iterator it = s.iterateTransitions();
+        while(it.hasNext()) {
+            Transition t = (Transition)it.next();
+            Alphabet a = t.getAlphabet();
+            if(a.isLeaveAttribute()) {
+                State next = t.nextState();
+                result.add(next);
+            }
+            else if(a.isDataText() || a.isRef())
+                addStateAfterLeaveAttribute(t.nextState(), result);
+        }
+    }
+
 }

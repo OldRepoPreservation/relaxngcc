@@ -19,7 +19,7 @@ public class CDObjectCreateExpression extends CDExpression implements CDStatemen
     }
     
     CDObjectCreateExpression(CDExpression left,CDType type) {
-    	_left = left;
+        _left = left;
         _type = type;
     }
     
@@ -37,7 +37,7 @@ public class CDObjectCreateExpression extends CDExpression implements CDStatemen
         } else {
             f.p("new").type(_type).p('(');
         }
-        	
+            
         boolean first = true;
         for (Iterator itr = _args.iterator(); itr.hasNext();) {
             if(!first)  f.p(',');
@@ -50,7 +50,7 @@ public class CDObjectCreateExpression extends CDExpression implements CDStatemen
         if(_type.isArray())
             f.p('}');
         else
-        	f.p(')');
+            f.p(')');
     }
 
     public void state(CDFormatter f) throws IOException {

@@ -15,63 +15,9 @@ import java.util.Map;
  * MetaDataType has the ability to generate a code that verifies data types described in original grammar.
  * At the present, only XML Schema Part2 is supported as the data type library for RelaxNGCC.
  */
-public class MetaDataType
-{
-    public MetaDataType( String _name ) { this.name = _name; }
+public class MetaDataType {
+    public MetaDataType( String name ) { _name = name; }
     
     /** Type name. */
-    public final String name;
-    
-    
-/*	private String _BaseName;
-	private Map _Facets;
-	private int _Index;
-	
-    public MetaDataType(NGCCElement e, int index)
-	{
-		_Index = index;
-		_BaseName = e.getAttribute("type");
-		_Facets = new Hashtable();
-		NGCCNodeList nl = e.getChildNodes(); //e.getElementsByTagName("param");
-		for(int i=0; i<nl.getLength(); i++)
-		{
-			NGCCElement facet = nl.item(i);
-			if(facet==null) continue;
-			_Facets.put(facet.getAttribute("name"), facet.getFullText());
-		}
-	}
-	//for special type
-	private MetaDataType(String typename) { _BaseName=typename; }
-	
-	public static MetaDataType STRING = new MetaDataType("string");
-	
-	public int getIndex() { return _Index; }
-	
-	public void printDataTypeConstructionCode(String instance_name, PrintStream out)
-	{
-		if(_Facets.size() > 0)
-		{
-			out.println("\tti=new TypeIncubator(" + typeClassName(_BaseName) + ");");
-			Iterator i = _Facets.entrySet().iterator();
-			while(i.hasNext())
-			{
-				Map.Entry e = (Map.Entry)i.next();
-				out.println("\tti.addFacet(\"" + (String)e.getKey() + "\",\"" + (String)e.getValue() + "\",false,null);");
-			}
-			out.println("\t" + instance_name + "=ti.derive(null);");
-		}
-		else //easy case
-			out.println("\t" + instance_name + "=" + typeClassName(_BaseName) + ";");
-	}
-	
-	public String getXSTypeName() { return _BaseName; }
-	public String getJavaTypeName() { return NGCCUtil.XSDTypeToJavaType(_BaseName); }
-	
-	public boolean hasFacets() { return !_Facets.isEmpty(); }
-	
-	private static String typeClassName(String base)
-	{
-		return "DatatypeFactory.getTypeByName(\"" + base + "\")";
-	}
-*/
+    public final String _name;
 }

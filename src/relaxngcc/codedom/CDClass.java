@@ -8,15 +8,15 @@ import java.util.ArrayList;
  */
 public class CDClass extends CDType {
 
-	private CDLanguageSpecificString[] _PrecedingDeclarations;
-	private CDLanguageSpecificString _PreModifier;
-    private CDLanguageSpecificString _PostModifier;
-	private String _ClassName;
+    private CDLanguageSpecificString[] _precedingDeclarations;
+    private CDLanguageSpecificString _preModifier;
+    private CDLanguageSpecificString _postModifier;
+    private String _className;
     
-	private final ArrayList _Members = new ArrayList();
-	private final ArrayList _Methods = new ArrayList();
-	
-    private final ArrayList _AdditionalBody = new ArrayList();
+    private final ArrayList _members = new ArrayList();
+    private final ArrayList _methods = new ArrayList();
+    
+    private final ArrayList _additionalBody = new ArrayList();
     
     private final ArrayList _innerClasses = new ArrayList();
 
@@ -24,27 +24,27 @@ public class CDClass extends CDType {
         this(null,null,className,null);
     }
 
-	public CDClass(
+    public CDClass(
         CDLanguageSpecificString[] declarations, CDLanguageSpecificString fs,
         String name, CDLanguageSpecificString bs) {
-		
+        
         super(name);
-        _PrecedingDeclarations = declarations;
-		_PreModifier = fs;
-		_ClassName = name;
-		_PostModifier = bs;
-	}
+        _precedingDeclarations = declarations;
+        _preModifier = fs;
+        _className = name;
+        _postModifier = bs;
+    }
     
 
     /** Adds a new member declaration. */
-	public CDVariable addMember(
+    public CDVariable addMember(
         CDLanguageSpecificString modifier,
         CDType type, String name, CDExpression initialValue) {
             
         CDVariable var = new CDVariable(modifier,type,name,initialValue);
-		_Members.add(var);
+        _members.add(var);
         return var;
-	}
+    }
 
     public CDVariable addMember(
         CDLanguageSpecificString modifier, CDType type, String name) {
@@ -52,12 +52,12 @@ public class CDClass extends CDType {
         return addMember(modifier,type,name,null);
     }
     
-	public void addMethod(CDMethod methoddef) {
-		_Methods.add(methoddef);
-	}
-	public void addLanguageSpecificString(CDLanguageSpecificString content) {
-		_AdditionalBody.add(content);
-	}
+    public void addMethod(CDMethod methoddef) {
+        _methods.add(methoddef);
+    }
+    public void addLanguageSpecificString(CDLanguageSpecificString content) {
+        _additionalBody.add(content);
+    }
     
     /**
      * Adds a new inner class.
@@ -67,45 +67,45 @@ public class CDClass extends CDType {
     }
 
     public void writeType( CDFormatter f ) throws IOException {
-        f.p(_ClassName);
+        f.p(_className);
     }
 
     public void writeTo( CDFormatter f ) throws IOException {
 
-    	if(_PrecedingDeclarations!=null) {
-	    	for(int i=0; i<_PrecedingDeclarations.length; i++)
-	    		f.write(_PrecedingDeclarations[i]).nl();
-    	}
-    	if(_PreModifier!=null)
-            f.write(_PreModifier);
-    	
-        f.p("class").p(_ClassName);
+        if(_precedingDeclarations!=null) {
+            for(int i=0; i<_precedingDeclarations.length; i++)
+                f.write(_precedingDeclarations[i]).nl();
+        }
+        if(_preModifier!=null)
+            f.write(_preModifier);
+        
+        f.p("class").p(_className);
 
-    	if(_PostModifier!=null)
-            f.write(_PostModifier);
-    	
+        if(_postModifier!=null)
+            f.write(_postModifier);
+        
         f.p('{');
         f.in();
         f.nl();
-    	
-		for(int i=0; i<_Members.size(); i++)
-			((CDVariable)_Members.get(i)).state(f);
-            
-    	f.nl();
         
-		for(int i=0; i<_Methods.size(); i++)
-			((CDMethod)_Methods.get(i)).writeTo(f);
-    	
-		for(int i=0; i<_AdditionalBody.size(); i++)
-			f.write((CDLanguageSpecificString)_AdditionalBody.get(i));
-    	
+        for(int i=0; i<_members.size(); i++)
+            ((CDVariable)_members.get(i)).state(f);
+            
+        f.nl();
+        
+        for(int i=0; i<_methods.size(); i++)
+            ((CDMethod)_methods.get(i)).writeTo(f);
+        
+        for(int i=0; i<_additionalBody.size(); i++)
+            f.write((CDLanguageSpecificString)_additionalBody.get(i));
+        
         for(int i=0; i<_innerClasses.size(); i++) {
             f.nl();
             ((CDClass)_innerClasses.get(i)).writeTo(f);
             f.nl();
         }
         
-    	f.out();
+        f.out();
         f.nl().p('}').nl().nl();
     }
 

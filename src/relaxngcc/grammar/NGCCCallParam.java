@@ -15,16 +15,16 @@ public class NGCCCallParam {
     
     private String withParams;
     
-	public String getAlias() {
-		return alias;
-	}
+    public String getAlias() {
+        return alias;
+    }
 
-	public String getWithParams() {
-		return withParams;
-	}
+    public String getWithParams() {
+        return withParams;
+    }
 
-	public void setWithParams(String withParams) {
-		this.withParams = withParams;
-	}
+    public void setWithParams(String withParams) {
+        this.withParams = withParams;
+    }
 }
 

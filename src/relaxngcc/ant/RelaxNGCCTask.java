@@ -24,9 +24,9 @@ import relaxngcc.RelaxNGCC;
 public class RelaxNGCCTask extends Task {
 
     /** Source RELAX NG grammar. */
-	private File source;
+    private File source;
     /** Target directory. */
-	private File target;
+    private File target;
     /** Directory to output automata gif files. */
     private File automataDir;
 
@@ -41,10 +41,10 @@ public class RelaxNGCCTask extends Task {
     private final ArrayList producesSet = new ArrayList();
 
 
-	public void execute() throws BuildException {
-		if( source==null )
-			throw new BuildException("The source attribute is required",location);
-		if( target==null )
+    public void execute() throws BuildException {
+        if( source==null )
+            throw new BuildException("The source attribute is required",location);
+        if( target==null )
             throw new BuildException("The targetdir attribute is required",location);
 
         long srcTime = findTimestamp(dependsSet,true);
@@ -57,11 +57,11 @@ public class RelaxNGCCTask extends Task {
             return;
         }
 
-//		ErrorHandlerImpl eh =
-//			new ErrorHandlerImpl(
-				new PrintStream(new LogOutputStream(this, Project.MSG_WARN)); // );
+//        ErrorHandlerImpl eh =
+//            new ErrorHandlerImpl(
+                new PrintStream(new LogOutputStream(this, Project.MSG_WARN)); // );
 
-		boolean hadError = false;
+        boolean hadError = false;
         
         Options opt = new Options();
         opt.sourcefile = source;
@@ -77,19 +77,19 @@ public class RelaxNGCCTask extends Task {
                 "Validation failed, messages should have been provided.",
                 e, location);
         }
-	}
+    }
 
 
 
 
 
-	public void setSource(String rngFile) {
-		source = project.resolveFile(rngFile);
-	}
+    public void setSource(String rngFile) {
+        source = project.resolveFile(rngFile);
+    }
 
-	public void setTargetdir(File file) {
-		this.target = file;
-	}
+    public void setTargetdir(File file) {
+        this.target = file;
+    }
 
     public void setAutomata( String dir ) {
         automataDir = project.resolveFile(dir);

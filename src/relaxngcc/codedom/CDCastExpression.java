@@ -13,16 +13,16 @@ import java.io.Writer;
  */
 public class CDCastExpression extends CDExpression {
 
-	private CDType _Type;
-	private CDExpression _Expression;
+    private CDType _type;
+    private CDExpression _expression;
 
-	public CDCastExpression(CDType type, CDExpression expr) {
-		_Type = type;
-		_Expression = expr;
-	}
+    public CDCastExpression(CDType type, CDExpression expr) {
+        _type = type;
+        _expression = expr;
+    }
 
     public void express( CDFormatter f ) throws IOException {
-        f.p("((").type(_Type).p(")").express(_Expression).p(")");
+        f.p("((").type(_type).p(")").express(_expression).p(")");
     }
 
 }

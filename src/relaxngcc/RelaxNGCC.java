@@ -23,10 +23,9 @@ import relaxngcc.parser.RootParserRuntime;
 /**
  * main class
  */
-public class RelaxNGCC
-{
-	private static final DocumentBuilderFactory _domFactory;
-	private static final SAXParserFactory _saxFactory;
+public class RelaxNGCC {
+    private static final DocumentBuilderFactory _domFactory;
+    private static final SAXParserFactory _saxFactory;
     
     static {
         _domFactory = DocumentBuilderFactory.newInstance();
@@ -36,9 +35,9 @@ public class RelaxNGCC
         _saxFactory = SAXParserFactory.newInstance();
         _saxFactory.setNamespaceAware(true);
         _saxFactory.setValidating(false);
-    }	
+    }    
     
-	public static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws Exception {
         Options o;
         try {
             o = new Options(args);
@@ -46,9 +45,9 @@ public class RelaxNGCC
             printUsage(e.getMessage(),System.err);
             return;
         }
-		
+        
         if(!checkDependencies(o)) return;
-		
+        
         run(o);
     }
     
@@ -63,7 +62,7 @@ public class RelaxNGCC
         }
         
         // TODO: this code should be moved to somewhere else.
-        try {// debug
+        try {
             RootParserRuntime parser = new RootParserRuntime();
             parser.parse(o.sourcefile.toURL().toExternalForm());
             NGCCGrammar grammar = parser.getResult();
@@ -77,7 +76,7 @@ public class RelaxNGCC
             if(!o.noCodeGeneration) {
                 uptodate = !grammar.output(o,parser.getGrammarTimestamp());
                 if(uptodate)
-                    System.out.println("files are up-to-date.");
+                    System.err.println("files are up-to-date.");
             }
             
             // process debug options
@@ -92,7 +91,7 @@ public class RelaxNGCC
                 throw e.getException();
             throw e;
         }
-	}
+    }
 
     /**
      * Removes RelaxNGCC annotations from the source schema
@@ -111,31 +110,30 @@ public class RelaxNGCC
     /**
      * Checks the existance of libraries that are necessary to run RelaxNGCC.
      */
-	private static boolean checkDependencies(Options o) {
-		try {
-			Class.forName("javax.xml.parsers.DocumentBuilderFactory");
-		} catch (ClassNotFoundException e) {
-			System.err.println("[Error] JAXP is not in your classpath.");
-			return false;
-		}
+    private static boolean checkDependencies(Options o) {
+        try {
+            Class.forName("javax.xml.parsers.DocumentBuilderFactory");
+        } catch (ClassNotFoundException e) {
+            System.err.println("[Error] JAXP is not in your classpath.");
+            return false;
+        }
 
-		try {
-			Class.forName("com.sun.msv.grammar.Grammar");
-//			o.msv_available = true;
-		} catch (ClassNotFoundException e) {
-			System.err.println(
-				"[Warning] MSV(Multi Schema Validator) is not found. If the input RELAX NG grammar is wrong syntactically and MSV is not available, RelaxNGCC terminates with Exception. ");
-		}
+        try {
+            Class.forName("com.sun.msv.grammar.Grammar");
+        } catch (ClassNotFoundException e) {
+            System.err.println(
+                "[Warning] MSV(Multi Schema Validator) is not found. If the input RELAX NG grammar is wrong syntactically and MSV is not available, RelaxNGCC terminates with Exception. ");
+        }
 
-		return true;
-	}
+        return true;
+    }
 
     /**
      * Prints the usage screen.
      */
     private static void printUsage( String msg, PrintStream s ) {
         
-        if(msg==null)       s.println(msg);
+        if(msg!=null)       s.println(msg);
         
         s.println("RELAX NG Compiler Compiler 1.0");
         s.println("   Copyright(c) Daisuke Okajima and Kohsuke Kawaguchi 2001-2002");
@@ -144,15 +142,6 @@ public class RelaxNGCC
         s.println("relaxngcc.jar [options] <grammarfile>");
         s.println();
         s.println("[Options]");
-// --plainsax mode is the only mode that works right now.
-//        s.println(" --msv");
-//        s.println("   generates code based on TypedContentHandler interface of MSV.");
-//        s.println(" --typedsax");
-//        s.println("   generates code that depends on only XML Schema Datatype Library, not MSV.");
-//        s.println(" --nonxml");
-//        s.println("   declares that the input grammar is written in the non-XML syntax.");
-//        s.println(" --plainsax(default)");
-//        s.println("   generates code that depends on only SAX2 parser. This is the most simple case but no datatypes are supported.");
         s.println(" --target <dir>");
         s.println("   specifies the source code output location.");
         s.println(" --purify <outFileName>");

@@ -17,20 +17,20 @@ class AttributeNameCollector extends PatternWalker {
         AttributeNameCollector anc = new AttributeNameCollector();
         p.apply(anc);
         // TODO: simplify this name class
-        return anc.nameClass;
+        return anc._nameClass;
     }
     
-    private NameClass nameClass = null;
+    private NameClass _nameClass = null;
     
     public Object element(ElementPattern p) {
         return null;    // don't go inside elements.
     }
     
     public Object attribute(AttributePattern p) {
-        if(nameClass==null)     nameClass=p.name;
-        else {
-            nameClass = new ChoiceNameClass(nameClass,p.name);
-        }
+        if(_nameClass==null)
+            _nameClass = p.name;
+        else
+            _nameClass = new ChoiceNameClass(_nameClass, p.name);
         return null;
     }
 }

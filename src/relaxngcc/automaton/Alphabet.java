@@ -26,39 +26,41 @@ import relaxngcc.grammar.NameClass;
  * 6. fixed value (&lt;value>)
  *
  */
-public abstract class Alphabet
-{
+public abstract class Alphabet {
     // type of alphabets
-	public static final int ENTER_ELEMENT      = 1;
-	public static final int LEAVE_ELEMENT      = 2;
-	public static final int ENTER_ATTRIBUTE    = 4;
+    public static final int ENTER_ELEMENT      = 1;
+    public static final int LEAVE_ELEMENT      = 2;
+    public static final int ENTER_ATTRIBUTE    = 4;
     public static final int LEAVE_ATTRIBUTE    = 8;
-	public static final int DATA_TEXT          = 16;
-	public static final int VALUE_TEXT         = 32;
+    public static final int DATA_TEXT          = 16;
+    public static final int VALUE_TEXT         = 32;
     public static final int REF_BLOCK          = 64;
     public static final int FORK               = 128;
+    public static final int FOR_ACTION         = 256;
     
     /** Type of this alphabet. One of the above constants. */
-	private final int _Type;
-    public final int getType() { return _Type; }
+    private final int _type;
+    public final int getType() { return _type; }
     
     /** Source location where this alphabet came from. */
-    public final Locator locator;
+    public final Locator _locator;
     
     protected Alphabet( int type, Locator loc ) {
-        this._Type = type;
-        this.locator = loc;
+        _type = type;
+        _locator = loc;
     }
 
 
     /** Prints the locator associated with this. */    
     public void printLocator( PrintStream out ) {
-        if(locator!=null) {
+        if(_locator!=null) {
             out.print("  line ");
-            out.print(locator.getLineNumber());
+            out.print(_locator.getLineNumber());
             out.print(" of ");
-            out.println(locator.getSystemId());
+            out.println(_locator.getSystemId());
         }
+        else
+            out.print("  line unknown");
     }
 
 
@@ -76,6 +78,7 @@ public abstract class Alphabet
         public ValueText        asValueText() { return null; }
         public DataText         asDataText() { return null; }
     public Fork             asFork() { return null; }
+    public ForAction        asForAction() { return null; }
     
     //
     // type check functions
@@ -90,14 +93,15 @@ public abstract class Alphabet
     public final boolean isValueText() { return asValueText()!=null; }
     public final boolean isDataText() { return asDataText()!=null; }
     public final boolean isFork() { return asFork()!=null; }
+    public final boolean isForAction() { return asForAction()!=null; }
     
     /**
      * Base class for (enter|leave)(Attribute|Element).
      */
     public static abstract class Markup extends Alphabet {
-        protected Markup( int type, NameClass _key, Locator loc ) {
+        protected Markup( int type, NameClass nc, Locator loc ) {
             super(type,loc);
-            this.key = _key;
+            _nameClass = nc;
         }
         
         /**
@@ -105,18 +109,18 @@ public abstract class Alphabet
          * A transition is valid if the element/attribute name
          * is accepted by this name class.
          */
-        private final NameClass key;
-        // TODO: the variable name "key" seems to be wrong.
-        public NameClass getKey() { return key; }
+        private final NameClass _nameClass;
+        
+        public NameClass getNameClass() { return _nameClass; }
         
         public Markup asMarkup() { return this; }
         
         public int hashCode() {
-            return key.hashCode() ^ getType();
+            return _nameClass.hashCode() ^ getType();
         }
         public boolean equals( Object o ) {
             if(!super.equals(o))    return false;
-            return equals(key,((Markup)o).key);
+            return equals(_nameClass, ((Markup)o)._nameClass);
         }
     }
     
@@ -126,7 +130,7 @@ public abstract class Alphabet
             super( ENTER_ELEMENT, key, loc );
         }
         public EnterElement asEnterElement() { return this; }
-        public String toString() { return "<"+getKey()+">"; }
+        public String toString() { return "<"+getNameClass()+">"; }
     }
     
     /** Alphabet of the type "leave element." */
@@ -135,17 +139,16 @@ public abstract class Alphabet
             super( LEAVE_ELEMENT, key, loc );
         }
         public LeaveElement asLeaveElement() { return this; }
-        public String toString() { return "</"+getKey()+">"; }
+        public String toString() { return "</"+getNameClass()+">"; }
     }
     
     /** Alphabet of the type "enter attribute." */
-    public static class EnterAttribute extends Markup implements WithOrder {
-        public EnterAttribute( NameClass key, int order, Locator loc ) {
+    public static class EnterAttribute extends Markup {
+        public EnterAttribute( NameClass key, Locator loc ) {
             super( ENTER_ATTRIBUTE, key, loc );
-            _Order = order;
         }
         public EnterAttribute asEnterAttribute() { return this; }
-        public String toString() { return "@"+getKey(); }
+        public String toString() { return "@"+getNameClass(); }
         
         /**
          * See AttributePattern for detail.
@@ -154,14 +157,6 @@ public abstract class Alphabet
          */
         public boolean workaroundSignificant;
         
-        private final int _Order;
-        /**
-         * Gets the number that introduces order
-         * relationship between attribute declarations.
-         * Attributes that appear later in the schema gets
-         * yonger number.
-         */
-        public final int getOrder() { return _Order; }
     }
     
     /** Alphabet of the type "leave attribute." */
@@ -170,37 +165,32 @@ public abstract class Alphabet
             super( LEAVE_ATTRIBUTE, key, loc );
         }
         public LeaveAttribute asLeaveAttribute() { return this; }
-        public String toString() { return "/@"+getKey(); }
+        public String toString() { return "/@"+getNameClass(); }
     }
     
     /** Alphabet that "forks" a state into a set of sub-automata. */
-    public static final class Fork extends Alphabet implements WithOrder {
+    public static final class Fork extends Alphabet {
         public Fork( State[] subAutomata,
             NameClass[] elementNC, NameClass[] attNC, boolean[] text,
-            Locator loc, int order ) {
+            Locator loc ) {
             
             super( FORK, loc );
-            this._subAutomata = subAutomata;
-            this.elementNameClasses = elementNC;
-            this.attributeNameClasses = attNC;
-            this.canConsumeText = text;
-            this._order = order;
+            _subAutomata = subAutomata;
+            _elementNameClasses = elementNC;
+            _attributeNameClasses = attNC;
+            _canConsumeText = text;
         }
         
         /** Initial states of sub-automata. */
         public final State[] _subAutomata;
         
-        /** NameClass that represents elements that can be consumed by each bracnh.*/
-        public final NameClass[] elementNameClasses;
+        /** NameClass that represents elements that can be consumed by each branch.*/
+        public final NameClass[] _elementNameClasses;
         /** for attributes. */
-        public final NameClass[] attributeNameClasses;
+        public final NameClass[] _attributeNameClasses;
         /** for texts. */
-        public final boolean[] canConsumeText;
+        public final boolean[] _canConsumeText;
         
-        /** order relationship between attributes and refs. */
-        private final int _order;
-        public final int getOrder() { return _order; }
-
         public String toString() {
             StringBuffer buf = new StringBuffer("fork&join ");
             for( int i=0; i<_subAutomata.length; i++ ) {
@@ -253,30 +243,25 @@ public abstract class Alphabet
     }
     
     /** Alphabet of the type "ref." */
-    public static final class Ref extends Alphabet implements WithOrder {
-        public Ref( ScopeInfo target, String alias, String params, int order, Locator loc ) {
+    public static final class Ref extends Alphabet {
+        public Ref( ScopeInfo target, String alias, String params, Locator loc ) {
             super( REF_BLOCK, loc );
-            this._Target = target;
-            this._Alias  = alias;
-            this._Params = params;
-            this._Order = order;
+            _target = target;
+            _alias  = alias;
+            _params = params;
         }
-        public Ref( ScopeInfo _target, int order, Locator loc ) {
-            this(_target,null,null,order,loc);
+        public Ref( ScopeInfo _target, Locator loc ) {
+            this(_target,null,null,loc);
         }
         public Ref asRef() { return this; }
         
         /** Name of the scope object to be spawned. */
-        private final ScopeInfo _Target;
+        private final ScopeInfo _target;
 
         /** Gets the child scope to be spawned. */
         public ScopeInfo getTargetScope() {
-            return _Target;
+            return _target;
         }
-        
-        /** order relationship between attributes and refs. */
-        private final int _Order;
-        public final int getOrder() { return _Order; }
         
         /**
          * Additional parameters passed to
@@ -284,12 +269,12 @@ public abstract class Alphabet
          * 
          * Used only with Alphabets of the REF_BLOCK type.
          */
-        private final String _Params;
+        private final String _params;
         public String getParams() {
             // TODO: this might be an excessively work.
             // maybe I should just return the value as is
-            if(_Params==null)  return "";
-            return ','+_Params;
+            if(_params==null)  return "";
+            return ','+_params;
         }
         
         /**
@@ -297,29 +282,29 @@ public abstract class Alphabet
          * User program can access this child object through this
          * variable.
          */
-        private final String _Alias;
-        public String getAlias() { return _Alias; }
+        private final String _alias;
+        public String getAlias() { return _alias; }
 
-        public String toString() { return "ref '"+_Target.getClassName()+"'"; }
+        public String toString() { return "ref '"+_target.getClassName()+"'"; }
         
         public int hashCode() {
-            return h(_Target)^h(_Alias)^h(_Params);
+            return h(_target)^h(_alias)^h(_params);
         }
         public boolean equals( Object o ) {
             if(!super.equals(o)) return false;
             
             Ref rhs = (Ref)o;
-            if(!equals(_Target,rhs._Target))    return false;
-            if(!equals(_Alias, rhs._Alias ))    return false;
-            return equals(_Params,rhs._Params);
+            if(!equals(_target,rhs._target))    return false;
+            if(!equals(_alias, rhs._alias ))    return false;
+            return equals(_params,rhs._params);
         }
     }
     
     
     public static abstract class Text extends Alphabet {
-        protected Text( int _type, String _alias, Locator loc ) {
-            super(_type,loc);
-            this.alias = _alias;
+        protected Text( int type, String alias, Locator loc ) {
+            super(type,loc);
+            _alias = alias;
         }
         public Text asText() { return this; }
         
@@ -328,59 +313,67 @@ public abstract class Alphabet
          * User program can access this child object through this
          * variable.
          */
-        private final String alias;
-        public String getAlias() { return alias; }   
+        private final String _alias;
+        public String getAlias() { return _alias; }   
         
         public boolean equals( Object o ) {
             if(!super.equals(o)) return false;
-            return equals(alias,((Text)o).alias);
+            return equals(_alias,((Text)o)._alias);
         }
     }
     
     public static class ValueText extends Text {
-        public ValueText( String _value, String _alias, Locator loc ) {
-            super(VALUE_TEXT,_alias,loc);
-            this.value = _value;
+        public ValueText( String value, String alias, Locator loc ) {
+            super(VALUE_TEXT,alias,loc);
+            _value = value;
         }
         public ValueText asValueText() { return this; }
         
         /**
          * Value of the &lt;value> element.
          */
-        private final String value;
-        public String getValue() { return value; }
+        private final String _value;
+        public String getValue() { return _value; }
         
-        public String toString() { return "value '"+value+"'"; }
-        public int hashCode() { return value.hashCode(); }
+        public String toString() { return "value '"+_value+"'"; }
+        public int hashCode() { return _value.hashCode(); }
         public boolean equals( Object o ) {
             if(!super.equals(o)) return false;
-            return value.equals( ((ValueText)o).value );
+            return _value.equals( ((ValueText)o)._value );
         }
     }
     
     public static class DataText extends Text {
-        public DataText( MetaDataType dt, String _alias, Locator loc ) {
-            super(DATA_TEXT,_alias,loc);
-            this._DataType = dt;
+        public DataText( MetaDataType dt, String alias, Locator loc ) {
+            super(DATA_TEXT, alias, loc);
+            _dataType = dt;
         }
         public DataText asDataText() { return this; }
 
         /** Datatype of this &lt;data> element. */
-        private final MetaDataType _DataType;
-        public MetaDataType getMetaDataType() { return _DataType; }
+        private final MetaDataType _dataType;
+        public MetaDataType getMetaDataType() { return _dataType; }
         
-        public String toString() { return "data '"+_DataType.name+"'"; }
-        public int hashCode() { return _DataType.hashCode(); }
+        public String toString() { return "data '"+_dataType._name+"'"; }
+        public int hashCode() { return _dataType.hashCode(); }
         public boolean equals( Object o ) {
             if(!super.equals(o)) return false;
-            return _DataType.equals( ((DataText)o)._DataType );
+            return _dataType.equals( ((DataText)o)._dataType );
         }
     }
 
+    public static class ForAction extends Alphabet {
+        public ForAction() {
+            super( FOR_ACTION, null);
+        }
+        public ForAction asWildCard() { return this; }
+        public int hashCode() { return FOR_ACTION; }
+        public String toString() { return "[ACT]"; }
+    }
 
     public  boolean equals( Object o ) {
         if(!this.getClass().isInstance(o))    return false;
-        return _Type==((Alphabet)o)._Type;
+        return _type==((Alphabet)o)._type;
     }
     
     // the hashCode method needs to be implemented properly
@@ -398,21 +391,4 @@ public abstract class Alphabet
         return o1.equals(o2);
     }
     
-    /**
-     * Implemented by those alphabets that have orders.
-     * Currently, just EnterAttribute and Ref.
-     */
-    public static interface WithOrder {
-        public int getOrder();
-    }
-    
-    /**
-     * Comparator that can be used to sort ordered alphabets into
-     * descending orders (larger numbers first.)
-     */
-    public static Comparator orderComparator = new Comparator() {
-        public int compare( Object o1, Object o2 ) {
-            return ((WithOrder)o2).getOrder()-((WithOrder)o1).getOrder();
-        }
-    };
 }

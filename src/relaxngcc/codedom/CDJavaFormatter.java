@@ -10,8 +10,8 @@ import java.io.Writer;
  */
 public class CDJavaFormatter extends CDFormatter {
 
-    public CDJavaFormatter(Writer _writer) {
-        super(_writer);
+    public CDJavaFormatter(Writer writer) {
+        super(writer);
     }
 
     public CDFormatter write( CDLanguageSpecificString str ) throws IOException {

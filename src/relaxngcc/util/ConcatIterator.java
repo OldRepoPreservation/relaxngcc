@@ -8,17 +8,17 @@ import java.util.Iterator;
  * @author Kohsuke Kawaguchi (kk@kohsuke.org)
  */
 public class ConcatIterator implements Iterator {
-    public ConcatIterator( Iterator _first, Iterator _second ) {
-        this.first = _first;
-        this.second = _second;
+    public ConcatIterator( Iterator first, Iterator second ) {
+        _first = first;
+        _second = second;
     }
     
-    private Iterator first,second;
+    private Iterator _first, _second;
     
-    public boolean hasNext() { return first.hasNext()||second.hasNext(); }
+    public boolean hasNext() { return _first.hasNext() || _second.hasNext(); }
     public Object next() {
-        if(first.hasNext()) return first.next();
-        else                return second.next();
+        if(_first.hasNext()) return _first.next();
+        else                return _second.next();
     }
     public void remove() { throw new UnsupportedOperationException(); }
 }

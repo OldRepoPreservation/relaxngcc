@@ -32,249 +32,44 @@ import relaxngcc.codedom.*;
  */
 public class CodeBuilder
 {
-	//utility classes: for switch-case-if structure of each handler
-	private class CodeAboutState
-	{
-		public CDBlock prologue;
-        public CDBlock epilogue;
-		public CDIfStatement conditionalCodes,top;
-		public CDBlock elsecode;
-		
-		public void addConditionalCode(CDExpression cond, CDBlock code) {
-			if(conditionalCodes==null)
-                conditionalCodes = top = new CDIfStatement(cond);
-			else
-                // add another "if" statement.
-                top = top._else()._if(cond);
-            
-            top.setThenBlock(code);
-		}
-        
-        public CDBlock output(CDStatement errorHandleMethod) {
-        	CDBlock sv = new CDBlock();
-        	
-            if(prologue!=null) sv.add(prologue);
-            
-            //elsecode, null‚È‚çerrorHandleMethod‚Å•Â‚¶‚é
-            
-            CDBlock terminal = elsecode;
-            if(terminal==null && errorHandleMethod!=null)
-                terminal = new CDBlock(errorHandleMethod);
-
-            if(conditionalCodes!=null) {
-                if(terminal!=null)
-                        top.setElseBlock(terminal);
-                sv.add(conditionalCodes);
-            } else {
-                if(terminal!=null)
-	            	sv.add(terminal);
-            }
-            
-            if(epilogue!=null)
-                sv.add(epilogue);
-                
-            return sv;
-        }
-	}
+    //variables in generated code have this prefix
+    private static final String GENERATED_VARIABLE_PREFIX = "$";
     
-    /**
-     * Generates code in the following format:
-     * 
-     * <pre>
-     * switch(state) {
-     * case state #1:
-     *     === prologue code ===
-     *     
-     *     if( conditional #1 ) {
-     *         statement #1;
-     *     } else
-     *     if( conditional #2 ) {
-     *         statement #2;
-     *     } else {
-     *     if ...
-     *  
-     *     } else {
-     *         === else code ===
-     *     }
-     *     
-     *     === epilogue code ===
-     *     break;
-     * case state #n:
-     *     ...
-     *     break;
-     * }
-     * </pre>
-     */
-	private class SwitchBlockInfo
-	{
-		public Map state2CodeFragment = new HashMap();
-		
-		private int _Type; //one of the constants in Alphabet class
-		public int getType() { return _Type; }
-		public SwitchBlockInfo(int type) {
-			_Type=type;
-		}
-        
-        private CodeAboutState getCAS( State state ) {
-            CodeAboutState cas = (CodeAboutState)state2CodeFragment.get(state);
-            if(cas==null) {
-                cas = new CodeAboutState();
-                state2CodeFragment.put(state, cas);
-            }
-            return cas;
-        }
-        
-		//if "cond" is "", "code" is put with no if-else clause. this behavior is not smart...
-		public void addConditionalCode(State state, CDExpression cond, CDBlock code) {
-			getCAS(state).addConditionalCode(cond,code);
-		}
-        
-		public void addElseCode(State state, CDBlock code) {
-			CodeAboutState cas = getCAS(state);
-            
-			if(cas.elsecode==null)
-				cas.elsecode = code;
-			else
-				cas.elsecode.add(code);
-		}
-        
-		public void addPrologue(State state, CDStatement code) {
-			CodeAboutState cas = getCAS(state);
-			if(cas.prologue==null)
-				cas.prologue = new CDBlock(code);
-			else
-				cas.prologue.add(code);
-		}
-        
-        public void addEpilogue(State state, CDStatement code) {
-            CodeAboutState cas = getCAS(state);
-            if(cas.epilogue==null)
-                cas.epilogue = new CDBlock(code);
-            else
-                cas.epilogue.add(code);
-        }
-
-        private CDBlock output(CDStatement errorHandleMethod) {
-        	CDBlock sv = new CDBlock();
-            CDSwitchStatement switchBlock = null;
-            Iterator i = state2CodeFragment.entrySet().iterator();
-            while(i.hasNext())
-            {
-                Map.Entry e = (Map.Entry)i.next();
-                State st = (State)e.getKey();
-                
-                CDExpression condition = CDOp.EQ($state,
-                     new CDConstant(st.getIndex()));
-                    
-                CDBlock whentrue = ((CodeAboutState)e.getValue()).output(errorHandleMethod);
-                
-                if(switchBlock==null)
-                	switchBlock = new CDSwitchStatement($state);
-                
-                switchBlock.addCase(new CDConstant(st.getIndex()), whentrue );
-            }
-            
-            if(switchBlock!=null) {
-                if(errorHandleMethod!=null)
-                    switchBlock.defaultCase().add(errorHandleMethod);
-                sv.add(switchBlock);
-            }
-            return sv;
-        }
-	}
-	
-	private ScopeInfo _info;
-	private NGCCGrammar _grammar;
-	private Options _options;
-	
+    
+    private ScopeInfo _info;
+    private NGCCGrammar _grammar;
+    private Options _options;
+    
     public CodeBuilder(NGCCGrammar grm, ScopeInfo sci, Options o) {
-		_info = sci;
-		_grammar = grm;
-		_options = o;
+        _info = sci;
+        _grammar = grm;
+        _options = o;
     }
     
     
     /** Special transition that means "revert to the parent." */
-    private static final Transition REVERT_TO_PARENT = new Transition(null,null);
+    private static final Transition REVERT_TO_PARENT = new Transition(null,null,0);
     /** Special transition that means "join with other branches. */
-    private static final Transition JOIN = new Transition(null,null);
-    
-    
-    private class TransitionTable {
-        private final Map table = new HashMap();
-        
-        public void add( State s, Alphabet alphabet, Transition action ) {
-            Map m = (Map)table.get(s);
-            if(m==null)
-                table.put(s,m=new HashMap());
-            
-            if(m.containsKey(alphabet)) {
-                // TODO: proper error report
-                System.out.println(MessageFormat.format(
-                    "State #{0}  of \"{1}\" has a conflict by {2}",
-                    new Object[]{
-                        Integer.toString(s.getIndex()),
-                        s.getContainer().scope.name,
-                        alphabet } ));
-                alphabet.printLocator(System.out);
-            }
-            m.put(alphabet,action);
-        }
-        
-        /**
-         * If EVERYTHING_ELSE is added to a transition table,
-         * we will store that information here.
-         */
-        private final Map eeAction = new HashMap();
-        
-        public void addEverythingElse( State s, Transition action ) {
-            eeAction.put(s,action);
-        }
-        
-        /**
-         * Gets the transition associated to EVERYTHING_ELSE alphabet
-         * in the given state if any. Or null.
-         */
-        public Transition getEverythingElse( State s ) {
-            return (Transition)eeAction.get(s);
-        }
-        
-        /**
-         * Lists all entries of the transition table with
-         * the specified state in terms of  {@link Map.Entry}.
-         */
-        public Iterator list( State s ) {
-            Map m = (Map)table.get(s);
-            if(m==null)
-                return new Iterator() {
-                    public boolean hasNext() { return false; }
-                    public Object next() { return null; }
-                    public void remove() { throw new UnsupportedOperationException(); }
-                };
-            else
-                return m.entrySet().iterator();
-        }
-    }
+    private static final Transition JOIN = new Transition(null,null,0);
     
 
-
-
-    private CDClass classdef;
+    private CDClass _classdef;
     /** Reference to _ngcc_current_state. */
-    private CDExpression $state;
+    private CDVariable _$state;
     /** Reference to runtime. */
-    private CDVariable $runtime;
+    private CDVariable _$runtime;
     /** Reference to super.source */
-    private final CDExpression $source = CDConstant.SUPER.prop("source");
+    private final CDExpression _$source = CDConstant.SUPER.prop("_source");
+    /** Reference to super.cookie */
+    private final CDExpression _$cookie = CDConstant.SUPER.prop("_cookie");
     
     /** Reference to "super". */
-    private static final CDExpression $super = CDConstant.SUPER;
+    private static final CDExpression _$super = CDConstant.SUPER;
     
     /** Reference to "this". */
-    private static final CDExpression $this = CDConstant.THIS;
+    private static final CDExpression _$this = CDConstant.THIS;
     
     private static final CDType interleaveFilterType = new CDType("NGCCInterleaveFilter");
-    
     
 
     /**
@@ -313,13 +108,13 @@ public class CodeBuilder
 
         println(buf, globalimport);
         
-        if(_info.scope.getImport()!=null)
-            println(buf, _info.scope.getImport());
+        if(_info._scope.getImport()!=null)
+            println(buf, _info._scope.getImport());
 
         println(buf, _info.getHeaderSection());
         
         //class name
-        NGCCDefineParam param = _info.scope.getParam();
+        NGCCDefineParam param = _info._scope.getParam();
         
         CDClass classdef = new CDClass(
             new CDLanguageSpecificString[]{ new CDLanguageSpecificString(buf.toString()) },
@@ -355,10 +150,9 @@ public class CodeBuilder
             String runtimeBaseName = "relaxngcc.runtime.NGCCRuntime";
             if(_options.usePrivateRuntime) runtimeBaseName = "NGCCRuntime";
     
-            
-            $runtime = classdef.addMember(
+            _$runtime = classdef.addMember(
                 new CDLanguageSpecificString("protected final"),
-                new CDType(_grammar.getRuntimeTypeShortName()), "runtime" );
+                new CDType(_grammar.getRuntimeTypeShortName()), GENERATED_VARIABLE_PREFIX+"runtime" );
             
             CDMethod getRuntime = new CDMethod(
                 new CDLanguageSpecificString("public final"),
@@ -366,15 +160,15 @@ public class CodeBuilder
                 "getRuntime", null );
             classdef.addMethod(getRuntime);
             
-            getRuntime.body()._return($runtime);
+            getRuntime.body()._return(_$runtime);
         }
 
 
         // create references to variables
-        $state = classdef.addMember(
+        _$state = classdef.addMember(
             new CDLanguageSpecificString("private"),
             CDType.INTEGER,
-            "_ngcc_current_state");
+            GENERATED_VARIABLE_PREFIX+"_ngcc_current_state");
         
         
         
@@ -387,24 +181,24 @@ public class CodeBuilder
             classdef.addMethod(cotr1);
             
             // add parameters (parent,source,runtime,cookie) and call the super class initializer.
-            CDVariable $parent = cotr1.param( new CDType("NGCCHandler"), "_parent" );
-            CDVariable $source = cotr1.param( new CDType("NGCCEventSource"), "_source" );
-            CDVariable $_runtime = cotr1.param( new CDType(_grammar.getRuntimeTypeShortName()), "_runtime" );
-            CDVariable $cookie = cotr1.param( CDType.INTEGER, "_cookie" );
+            CDVariable $parent = cotr1.param( new CDType("NGCCHandler"), "parent" );
+            CDVariable $source = cotr1.param( new CDType("NGCCEventSource"), "source" );
+            CDVariable $runtime = cotr1.param( new CDType(_grammar.getRuntimeTypeShortName()), "runtime" );
+            CDVariable $cookie = cotr1.param( CDType.INTEGER, "cookie" );
             cotr1.body().invoke("super").arg($source).arg($parent).arg($cookie);
-            cotr1.body().assign($runtime,$_runtime);
+            cotr1.body().assign(_$runtime, $runtime);
             
             // append additional constructor arguments
             for( int i=0; i<constructorParams.length; i++ ) {
                 CDVariable v = cotr1.param(
                     constructorParams[i].type,
                     '_'+constructorParams[i].name);
-                cotr1.body().assign( $this.prop(constructorParams[i].name),
+                cotr1.body().assign( _$this.prop(constructorParams[i].name),
                     v );
             }
             
             // move to the initial state
-            cotr1.body().assign( $state,
+            cotr1.body().assign( _$state,
                 new CDConstant(_info.getInitialState().getIndex()) );
         }        
         
@@ -414,13 +208,13 @@ public class CodeBuilder
                     null, param.className, null );
             classdef.addMethod(cotr2);
 
-            CDVariable $_runtime = cotr2.param( new CDType(_grammar.getRuntimeTypeShortName()), "_runtime" );
+            CDVariable $runtime = cotr2.param( new CDType(_grammar.getRuntimeTypeShortName()), "runtime" );
             
             // call the primary constructor
             CDMethodInvokeExpression callThis = cotr2.body().invoke("this")
                 .arg( CDConstant.NULL )
-                .arg( $_runtime )
-                .arg( $_runtime )
+                .arg( $runtime )
+                .arg( $runtime )
                 .arg( new CDConstant(-1) );
             
             // append additional constructor arguments
@@ -441,25 +235,26 @@ public class CodeBuilder
         }
         
         //simple entry point.
-        if(_info.isRoot() && _info.scope.getParam().params==null) {
+        if(_info.isRoot() && _info._scope.getParam().params==null) {
             String rt = _grammar.packageName;
             if(rt.length()!=0)  rt+='.';
             rt+="NGCCRuntime";
             
             if(_grammar.getRuntimeTypeFullName().equals(rt)) {
-                classdef.addLanguageSpecificString(new CDLanguageSpecificString(
-                    "    public static void main( String[] args ) throws Exception {\n"+
-                    "        SAXParserFactory factory = SAXParserFactory.newInstance();\n"+
-                    "        factory.setNamespaceAware(true);\n"+
-                    "        XMLReader reader = factory.newSAXParser().getXMLReader();\n"+
-                    "        NGCCRuntime runtime = new NGCCRuntime();\n"+
-                    "        reader.setContentHandler(runtime);\n"+
-                    "        for( int i=0; i<args.length; i++ ) {\n"+
-                    "            runtime.setRootHandler(new "+_info.getClassName()+"(runtime));\n"+
-                    "            reader.parse(new org.xml.sax.InputSource(new java.io.FileInputStream(args[i])));\n"+
-                    "            runtime.reset();\n"+
-                    "        }\n"+
-                    "    }"));
+                StringBuffer main = new StringBuffer();
+                main.append("    public static void main( String[] args ) throws Exception {");                              main.append(_options.newline);
+                main.append("        SAXParserFactory factory = SAXParserFactory.newInstance();");                           main.append(_options.newline);
+                main.append("        factory.setNamespaceAware(true);");                                                     main.append(_options.newline);
+                main.append("        XMLReader reader = factory.newSAXParser().getXMLReader();");                            main.append(_options.newline);
+                main.append("        NGCCRuntime runtime = new NGCCRuntime();");                                             main.append(_options.newline);
+                main.append("        reader.setContentHandler(runtime);");                                                   main.append(_options.newline);
+                main.append("        for( int i=0; i<args.length; i++ ) {");                                                 main.append(_options.newline);
+                main.append("            runtime.setRootHandler(new "+_info.getClassName()+"(runtime));");                   main.append(_options.newline);
+                main.append("            reader.parse(new org.xml.sax.InputSource(new java.io.FileInputStream(args[i])));"); main.append(_options.newline);
+                main.append("            runtime.reset();");
+                main.append("        }");
+                main.append("    }");
+                classdef.addLanguageSpecificString(new CDLanguageSpecificString(main.toString()));
             }
         }
         
@@ -489,27 +284,27 @@ public class CodeBuilder
                 "getRuntime", null );
             classdef.addMethod(getRuntime);
             
-            getRuntime.body()._return($runtime);
+            getRuntime.body()._return(_$runtime);
         }
 
 
         // create references to variables
-        $state = classdef.addMember(
+        _$state = classdef.addMember(
             new CDLanguageSpecificString("private"),
             CDType.INTEGER,
-            "_ngcc_current_state");
+            GENERATED_VARIABLE_PREFIX+"_ngcc_current_state");
 
         {// internal constructor
             CDMethod cotr1 = new CDMethod( null, null, className, null );
             classdef.addMethod(cotr1);
             
-            CDVariable $source = cotr1.param(new CDType("NGCCInterleaveFilter"),"_source");
+            CDVariable $source = cotr1.param(new CDType("NGCCInterleaveFilter"),"source");
             
             // add three parameters (parent,runtime,cookie) and call the super class initializer.
             cotr1.body().invoke("super").arg($source).arg(CDConstant.NULL).arg(new CDConstant(-1));
             
             // move to the initial state
-            cotr1.body().assign( $state,
+            cotr1.body().assign( _$state,
                 new CDConstant(initial.getIndex()) );
         }        
         
@@ -517,7 +312,7 @@ public class CodeBuilder
     }
     
     
-	public CDClass output() throws IOException {
+    public CDClass output() throws IOException {
         // set of Fork attributes that have already been processed.
         Set processedForks = new HashSet();
         // map from initial state to CDClass that needs to be processed
@@ -531,7 +326,7 @@ public class CodeBuilder
             Map.Entry job = (Map.Entry)jobQueue.entrySet().iterator().next();
             
             State initial = (State)job.getKey();
-    		classdef = (CDClass)job.getValue();
+            _classdef = (CDClass)job.getValue();
             
             jobQueue.remove(initial);
             
@@ -545,7 +340,7 @@ public class CodeBuilder
                 State s = states[i];
                 
                 if(s.isAcceptable()) {
-                    if( outerClass==classdef )
+                    if( outerClass==_classdef )
                         table.addEverythingElse( s, REVERT_TO_PARENT );
                     else
                         table.addEverythingElse( s, JOIN );
@@ -555,55 +350,57 @@ public class CodeBuilder
                 while(jtr.hasNext()) {
                     Transition t = (Transition)jtr.next();
                     
-                    Set head = t.head(true);
-                    if(head.contains(Head.EVERYTHING_ELSE)) {
-                        // TODO: check ambiguity
-                        table.addEverythingElse( s, t );
-                        head.remove(Head.EVERYTHING_ELSE);
-                    }
-                    for (Iterator ktr = head.iterator(); ktr.hasNext();)
-                        table.add(s,(Alphabet)ktr.next(),t);
+                    if(t.getAlphabet().isForAction())
+                        table.addEverythingElse(s, t);
+                    else {
+                        Set head = t.head(true);
+                        if(head.contains(Head.EVERYTHING_ELSE)) {
+                            // TODO: check ambiguity
+                            table.addEverythingElse( s, t );
+                            head.remove(Head.EVERYTHING_ELSE);
+                        }
+                        for (Iterator ktr = head.iterator(); ktr.hasNext();)
+                            table.add(s,(Alphabet)ktr.next(),t);
                     
                     
-                    if(t.getAlphabet().isFork()) {
-                        // if a fork is found, put it into the queue
-                        Alphabet.Fork fork = t.getAlphabet().asFork();
-                        if( processedForks.add(fork) ) {
-                            // generate InterleaveFilter impl.
-                            outerClass.addInnerClass(createInterleaveFilterImpl(fork));
-                            
-                            for( int j=0; j<fork._subAutomata.length; j++ ) {
-                                State subInit = fork._subAutomata[j];
+                        if(t.getAlphabet().isFork()) {
+                            // if a fork is found, put it into the queue
+                            Alphabet.Fork fork = t.getAlphabet().asFork();
+                            if( processedForks.add(fork) ) {
+                                // generate InterleaveFilter impl.
+                                outerClass.addInnerClass(createInterleaveFilterImpl(fork));
                                 
-                                // we found a new sub-automaton that needs to be processed.
-                                CDClass childClass = createInterleaveBranchClassCode(subInit);
-                                outerClass.addInnerClass(childClass);
-                                jobQueue.put(subInit,childClass);
+                                for( int j=0; j<fork._subAutomata.length; j++ ) {
+                                    State subInit = fork._subAutomata[j];
+                                    
+                                    // we found a new sub-automaton that needs to be processed.
+                                    CDClass childClass = createInterleaveBranchClassCode(subInit);
+                                    outerClass.addInnerClass(childClass);
+                                    jobQueue.put(subInit,childClass);
+                                }
                             }
                         }
                     }
                 }
             }
             
-            classdef.addMethod(writeEventHandler(table,Alphabet.ENTER_ELEMENT,   "enterElement",
-                new CDType[] { new CDType("Attributes") }, new String[] { "attrs" }));
-            classdef.addMethod(writeEventHandler(table,Alphabet.LEAVE_ELEMENT,   "leaveElement"));
-            classdef.addMethod(writeEventHandler(table,Alphabet.ENTER_ATTRIBUTE, "enterAttribute"));
-            classdef.addMethod(writeEventHandler(table,Alphabet.LEAVE_ATTRIBUTE, "leaveAttribute"));
+            _classdef.addMethod(writeEventHandler(table,Alphabet.ENTER_ELEMENT));
+            _classdef.addMethod(writeEventHandler(table,Alphabet.LEAVE_ELEMENT));
+            _classdef.addMethod(writeEventHandler(table,Alphabet.ENTER_ATTRIBUTE));
+            _classdef.addMethod(writeEventHandler(table,Alphabet.LEAVE_ATTRIBUTE));
         
-    		classdef.addMethod(writeTextHandler(table));
-    		classdef.addMethod(writeAttributeHandler());
-            classdef.addMethod(writeChildCompletedHandler());
-            classdef.addMethod(createAcceptedMethod());
+            _classdef.addMethod(writeTextHandler(table));
+            _classdef.addMethod(writeChildCompletedHandler());
+            _classdef.addMethod(createAcceptedMethod());
         }
 
 
-        if(_info.scope.getBody()!=null)
-            outerClass.addLanguageSpecificString(new CDLanguageSpecificString(_info.scope.getBody()));
+        if(_info._scope.getBody()!=null)
+            outerClass.addLanguageSpecificString(new CDLanguageSpecificString(_info._scope.getBody()));
         outerClass.addLanguageSpecificString(new CDLanguageSpecificString(_grammar.globalBody));
         
-		return outerClass;
-	}
+        return outerClass;
+    }
     
     
     /**
@@ -616,18 +413,18 @@ public class CodeBuilder
     private CDClass createInterleaveFilterImpl( Alphabet.Fork fork ) {
         String className = fork.getClassName();
         
-        CDClass classDef = new CDClass(null,null,className,
-                            new CDLanguageSpecificString(" extends NGCCInterleaveFilter"));
+        CDClass classdef = new CDClass(null,null,className,
+                           new CDLanguageSpecificString(" extends NGCCInterleaveFilter"));
         
         {// constructor
             // [RESULT]
             // InterleaveFilterImpl( source, parent, cookie )
             CDMethod ctr = new CDMethod(null,null,className,null);
-            classDef.addMethod(ctr);
+            classdef.addMethod(ctr);
             
             // add parameters (source,parent,cookie) and call the super class initializer.
-            CDVariable $parent = ctr.param( new CDType(_info.getClassName()), "_parent" );
-            CDVariable $cookie = ctr.param( CDType.INTEGER, "_cookie" );
+            CDVariable $parent = ctr.param( new CDType(_info.getClassName()), "parent" );
+            CDVariable $cookie = ctr.param( CDType.INTEGER, "cookie" );
             
             // [RESULT]
             //  super(parent,cookie);
@@ -641,7 +438,7 @@ public class CodeBuilder
                 // and references shall be used
                 $handlers.arg(
                     new CDType("Branch"+fork._subAutomata[i].getIndex())._new()
-                        .arg($this) );
+                        .arg(_$this) );
             }
 
             // [RESULT]
@@ -649,36 +446,36 @@ public class CodeBuilder
             ctr.body().invoke("setHandlers").arg($handlers);
         }        
         
-        classDef.addMethod(createFindReceiverMethod(
-            "findReceiverOfElement", fork.elementNameClasses ));
-        classDef.addMethod(createFindReceiverMethod(
-            "findReceiverOfAttribute", fork.attributeNameClasses ));
+        classdef.addMethod(createFindReceiverMethod(
+            "findReceiverOfElement", fork._elementNameClasses ));
+        classdef.addMethod(createFindReceiverMethod(
+            "findReceiverOfAttribute", fork._attributeNameClasses ));
         
         {// [RESULT] protected NGCCEventReceiver findReceiverOfText();
             CDMethod method = new CDMethod(
                 new CDLanguageSpecificString("protected "),
                 CDType.INTEGER, "findReceiverOfText", null );
-            classDef.addMethod(method);
+            classdef.addMethod(method);
             
             int i;
-            for( i=0; i<fork.canConsumeText.length; i++ )
-                if( fork.canConsumeText[i] ) {
+            for( i=0; i<fork._canConsumeText.length; i++ )
+                if( fork._canConsumeText[i] ) {
                     method.body()._return(new CDConstant(i));
                     break;
                 }
-            if(i==fork.canConsumeText.length)
+            if(i==fork._canConsumeText.length)
                 method.body()._return(new CDConstant(-1));
         }
         
-        return classDef;
+        return classdef;
     }
     
     private CDMethod createFindReceiverMethod( String name, NameClass[] nameClasses ) {
         CDMethod method = new CDMethod(
             new CDLanguageSpecificString("protected "),
             CDType.INTEGER, name, null );
-        CDVariable $uri = method.param(CDType.STRING,"uri");
-        CDVariable $local = method.param(CDType.STRING,"local");
+        CDVariable $uri = method.param(CDType.STRING,GENERATED_VARIABLE_PREFIX+"uri");
+        CDVariable $local = method.param(CDType.STRING,GENERATED_VARIABLE_PREFIX+"local");
         
         CDBlock body = method.body();
         
@@ -692,17 +489,17 @@ public class CodeBuilder
         return method;
     }
 
-	
+    
     private CDMethod createAcceptedMethod()
     {
         Iterator states = _info.iterateAcceptableStates();
         CDExpression statecheckexpression = null;
-		while(states.hasNext())
-		{
-			State s = (State)states.next();
-            CDExpression temp = CDOp.EQ( $state, new CDConstant(s.getIndex()) );
+        while(states.hasNext())
+        {
+            State s = (State)states.next();
+            CDExpression temp = CDOp.EQ( _$state, new CDConstant(s.getIndex()) );
             
-			statecheckexpression = (statecheckexpression==null)? temp : CDOp.OR(temp, statecheckexpression);
+            statecheckexpression = (statecheckexpression==null)? temp : CDOp.OR(temp, statecheckexpression);
         }
         
         if(statecheckexpression==null) statecheckexpression = new CDConstant(false);
@@ -712,94 +509,227 @@ public class CodeBuilder
         return m;
     }
 
-    private CDMethod writeEventHandler( TransitionTable table, int type, String eventName ) {
-        return writeEventHandler(table,type,eventName,new CDType[0],new String[0]);
+    
+    //variable holder
+    private class EventHandlerParameters {
+        public CDVariable $uri;
+        public CDVariable $localName;
+        public CDVariable $qname;
+        public CDVariable $attrs;
+        public CDVariable $value;
+        public CDVariable $ai;
+        
+        public CDVariable[] toVariableArray(int type) {
+            CDVariable[] arr = new CDVariable[type==Alphabet.VALUE_TEXT? 1 : type==Alphabet.ENTER_ELEMENT? 4 : 3];
+            if(type==Alphabet.VALUE_TEXT)
+                arr[0] = $value;
+            else {
+                arr[0] = $uri;
+                arr[1] = $localName;
+                arr[2] = $qname;
+                if(type==Alphabet.ENTER_ELEMENT) arr[3] = $attrs;
+            }
+            
+            //debug
+            for(int i=0; i<arr.length; i++)
+                if(arr[i]==null) throw new NullPointerException("#"+i+" is null!");
+            
+            return arr;
+        }
     }
-	
+    
+    
     /**
      * Writes event handlers for (enter|leave)(Attribute|Element) methods.
      */
-    private CDMethod writeEventHandler( TransitionTable table, int type, String eventName,
-        CDType[] additionalTypes, String[] additionalArgs ) {
+    private CDMethod writeEventHandler( TransitionTable table, int type ) {
 
+        String eventName = eventName(type);
         CDMethod method = new CDMethod(
             new CDLanguageSpecificString("public"),
             CDType.VOID, eventName,
-            new CDLanguageSpecificString("throws SAXException") );
+            new CDLanguageSpecificString(" throws SAXException") );
         
-        CDVariable $uri = method.param( CDType.STRING, "uri" );
-        CDVariable $localName = method.param( CDType.STRING, "local" );
-        CDVariable $qname = method.param( CDType.STRING, "qname" );
-        
-        CDVariable[] additionalVars = new CDVariable[additionalTypes.length];
-        for( int i=0; i<additionalTypes.length; i++ )
-            additionalVars[i] = method.param( additionalTypes[i], additionalArgs[i] );
+        EventHandlerParameters $params = new EventHandlerParameters();
+        $params.$uri = method.param( CDType.STRING, GENERATED_VARIABLE_PREFIX+"uri" );
+        $params.$localName = method.param( CDType.STRING, GENERATED_VARIABLE_PREFIX+"local" );
+        $params.$qname = method.param( CDType.STRING, GENERATED_VARIABLE_PREFIX+"qname" );
+        if(type==Alphabet.ENTER_ELEMENT)
+            $params.$attrs = method.param(new CDType("Attributes"), GENERATED_VARIABLE_PREFIX+"attrs");
         
         CDBlock sv = method.body();
-		//printSection(eventName);
+        //printSection(eventName);
             
         // QUICK HACK
         // copy them to the instance variables so that they can be 
         // accessed from action functions.
         // we should better not keep them at Runtime, because
         // this makes it impossible to emulate events.
-        sv.assign($super.prop("uri"),       $uri);
-        sv.assign($super.prop("localName"), $localName);
-        sv.assign($super.prop("qname"),     $qname);
+        $params.$ai = sv.decl(CDType.INTEGER, GENERATED_VARIABLE_PREFIX+"ai");
             
-		if(_options.debug) {
-			sv.invoke( $runtime, "traceln")
-                    .arg(new CDLanguageSpecificString("\""+eventName + " \"+qname+\" #\" + _ngcc_current_state"));
+        if(_options.debug) {
+            sv.invoke( _$runtime, "traceln")
+                    .arg(new CDLanguageSpecificString("\""+_info.getClassName()+" : "+eventName + " \"+"+$params.$qname.getName()+"+\" #\" + "+_$state.getName()));
         }
         
-		SwitchBlockInfo bi = new SwitchBlockInfo(type);
-		CDExpression[] arguments = new CDExpression[3 + additionalArgs.length];
-		arguments[0] = $uri;
-		arguments[1] = $localName;
-		arguments[2] = $qname;
-		for(int i=0; i<additionalArgs.length; i++)
-			arguments[3+i] = additionalVars[i];
-		
+        SwitchBlockInfo bi = new SwitchBlockInfo(type);
+        
         Iterator states = _info.iterateAllStates();
-		while(states.hasNext()) {
-			State st = (State)states.next();
+        while(states.hasNext()) {
+            State st = (State)states.next();
             
             // list all the transition table entry
-            Iterator itr = table.list(st);
-            while(itr.hasNext()) {
-                Map.Entry e = (Map.Entry)itr.next();
+            Map.Entry[] entries = table.list(st);
+            for(int i=0; i<entries.length; i++) {
+                Map.Entry e = entries[i];
                 
                 Alphabet a = (Alphabet)e.getKey();      // alphabet
                 Transition tr = (Transition)e.getValue();// action to perform
                 
-                if(a.getType()!=type)
+                CDExpression condition = null;
+                if(a.getType()==Alphabet.ENTER_ATTRIBUTE && (type==Alphabet.ENTER_ELEMENT || type==Alphabet.LEAVE_ELEMENT)) {
+                    Set t = tr.nextState().AFollow();
+                    Iterator it = t.iterator();
+                    boolean consume_attr = false;
+                    while(it.hasNext()) {
+                        Object o = it.next();
+                        if(o==Head.EVERYTHING_ELSE)
+                            consume_attr = true;
+                        else {
+                            Alphabet af = (Alphabet)o;
+                             if(af.getType()==type) {
+                                CDExpression expr = NameTestBuilder.build(af.asMarkup().getNameClass() , $params.$uri, $params.$localName);
+                                condition = condition==null? expr : CDOp.OR(condition, expr);
+                            }
+                            consume_attr = true;
+                        }
+                    }
+                    
+                    if(consume_attr) {
+                        NameClass nc = a.asMarkup().getNameClass();
+                        if(!(nc instanceof SimpleNameClass))
+                            throw new UnsupportedOperationException("attribute with a complex name class is not supported yet  name class:"+nc.toString());
+                        SimpleNameClass snc = (SimpleNameClass)nc;
+
+                        CDExpression expr = new CDLanguageSpecificString(MessageFormat.format(
+                            "("+$params.$ai.getName()+" = "+_$runtime.getName()+".getAttributeIndex(\"{0}\",\"{1}\"))>=0",
+                            new Object[]{snc.nsUri, snc.localName}));
+                        condition = condition==null? expr : CDOp.AND(expr, condition);
+                    }                    
+                }
+                else {
+                    if(a.getType()==type) {
+                        condition = (CDExpression)a.asMarkup().getNameClass().apply(new NameTestBuilder($params.$uri, $params.$localName));
+                    }
+                }
+
+                
+                if(condition==null)
                     continue;   // we are not interested in this attribute now.
                 
-				bi.addConditionalCode(st,
-                    (CDExpression)a.asMarkup().getKey().apply(
-                        new NameTestBuilder($uri,$localName)),
-					buildTransitionCode(st,tr,eventName,arguments));
-			}
+                bi.addConditionalCode(st,
+                    condition,
+                    buildTransitionCode(st,tr,type,$params));
+            }
 
             // if there is EVERYTHING_ELSE transition, add an else clause.
             Transition tr = table.getEverythingElse(st);
-            if(tr!=null)
-                bi.addElseCode(st,
-                    buildTransitionCode(st,tr,eventName,arguments));
-		}
+            if(tr!=null) {
+                if(tr.getAlphabet()!=null && tr.getAlphabet().isForAction()) 
+                    bi.addElseCode(st, buildRepeatAlphabetCode(tr, type, $params));
+                else
+                    bi.addElseCode(st, buildTransitionCode(st,tr,type,$params));
+            }
+        }
         
         CDStatement eh = new CDMethodInvokeExpression("unexpected"+capitalize(eventName))
-                .arg($qname).asStatement();
-		sv.add(bi.output(eh));
+                .arg($params.$qname).asStatement();
+        sv.add(bi.output(_$state, eh));
 
-		
-		return method;
-		//_output.println(MessageFormat.format(
-        //    "public void {0}(String uri,String localName,String qname{1}) throws SAXException '{'",
-        //    new Object[]{eventName,argumentsWithTypes}));
+        
+        return method;
+    }
 
-		
-	}
+    //outputs text consumption handler. this handler branches by output method
+    private CDMethod writeTextHandler(TransitionTable table) {
+
+        EventHandlerParameters $params = new EventHandlerParameters();
+        
+        CDMethod method = new CDMethod(
+            new CDLanguageSpecificString("public"),
+            CDType.VOID,
+            "text",
+            new CDLanguageSpecificString(" throws SAXException"));
+        
+        CDBlock sv = method.body();
+        $params.$value = method.param( CDType.STRING, GENERATED_VARIABLE_PREFIX+"value" );
+        $params.$ai = sv.decl(CDType.INTEGER, GENERATED_VARIABLE_PREFIX+"ai");
+        
+        if(_options.debug) {
+            sv.invoke( _$runtime, "traceln" )
+                .arg(new CDLanguageSpecificString("\"text '\"+"+$params.$value.getName()+".trim()+\"' #\" + "+_$state.getName()));
+        }
+
+        SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.VALUE_TEXT);
+        
+        Iterator states = _info.iterateAllStates();
+        while(states.hasNext()) {
+            State st = (State)states.next();
+            // if a transition by <data> is present, then
+            // we cannot execute "everything_else" action.
+            boolean dataPresent = false;
+            
+            // list all the transition table entry
+            Map.Entry[] entries = table.list(st);
+            for(int i=0; i<entries.length; i++) {
+                Map.Entry e = entries[i];
+                
+                Alphabet a = (Alphabet)e.getKey();      // alphabet
+                Transition tr = (Transition)e.getValue();// action to perform
+                
+                CDExpression condition = null;
+                if(a.getType()==Alphabet.ENTER_ATTRIBUTE) {
+                    NameClass nc = a.asMarkup().getNameClass();
+                    if(!(nc instanceof SimpleNameClass))
+                        throw new UnsupportedOperationException("attribute with a complex name class is not supported yet  name class:"+nc.toString());
+                    SimpleNameClass snc = (SimpleNameClass)nc;
+
+                    condition = new CDLanguageSpecificString(MessageFormat.format(
+                        "("+$params.$ai.getName()+" = "+_$runtime.getName()+".getAttributeIndex(\"{0}\",\"{1}\"))>=0",
+                        new Object[]{snc.nsUri, snc.localName}));
+                    CDBlock code = buildTransitionCode(st,tr,Alphabet.VALUE_TEXT,$params);
+                    bi.addConditionalCode(st, condition, code);
+                }
+                else if(a.isValueText()) {
+                    CDBlock code = buildTransitionCode(st,tr,Alphabet.VALUE_TEXT,$params);
+                       condition = CDOp.STREQ( $params.$value, new CDConstant(a.asValueText().getValue()));
+                    bi.addConditionalCode(st, condition, code);
+                }
+                   else if(a.isDataText()) {
+                    CDBlock code = buildTransitionCode(st,tr,Alphabet.VALUE_TEXT,$params);
+                    dataPresent = true;
+                    bi.addElseCode(st, code);
+                }
+            }
+
+            // if there is EVERYTHING_ELSE transition, add an else clause.
+            Transition tr = table.getEverythingElse(st);
+            if(tr!=null && !dataPresent) {
+                if(tr.getAlphabet()!=null && tr.getAlphabet().isForAction()) 
+                    bi.addElseCode(st, buildRepeatAlphabetCode(tr, Alphabet.VALUE_TEXT, $params));
+                else
+                    bi.addElseCode(st, buildTransitionCode(st,tr,Alphabet.VALUE_TEXT,$params));
+            }
+        }
+        
+        CDStatement errorHandler = null;
+        if(_options.debug)
+            errorHandler = _$runtime.invoke("traceln")
+                    .arg(new CDConstant("ignored")).asStatement();
+        sv.add(bi.output(_$state, errorHandler));
+        
+        return method;
+    }
     
     /**
      * Gets a code fragment that corresponds to a strate transition.
@@ -811,81 +741,164 @@ public class CodeBuilder
      *      the revertToParentFromXXX method or the
      *      spawnChildFromXXX method.
      */
-    private CDBlock buildTransitionCode( State current, Transition tr, String eventName, CDExpression[] additionalparams ) {
-	    
-	    if(tr==REVERT_TO_PARENT) {
+    private CDBlock buildTransitionCode( State current, Transition tr, int type, EventHandlerParameters $params) {
+        String eventName = eventName(type);
+        if(tr==REVERT_TO_PARENT) {
             
-            CDType retType  = _info.scope.getParam().returnType;
+            CDType retType  = _info._scope.getParam().returnType;
             String boxType = getJavaBoxType(retType);
             
-            CDExpression r = _info.scope.getParam().returnValue;
+            CDExpression r = _info._scope.getParam().returnValue;
             if(boxType!=null)
                 r = new CDType(boxType)._new().arg(r);
             
-	    	CDBlock sv = current.invokeActionsOnExit();
-	    	sv.invoke("revertToParentFrom"+capitalize(eventName))
-                    .arg(r)
-                    .arg($super.prop("cookie"))
-                    .args(additionalparams);
-	    	return sv;
-        }
-        if(tr==JOIN) {
-            CDBlock sv = current.invokeActionsOnExit();
-            sv.invoke( $source.castTo(interleaveFilterType), "joinBy"+capitalize(eventName))
-                    .arg(CDConstant.THIS)
-                    .args(additionalparams);
-            return sv;
-        }
-        
-        if(tr.getAlphabet().isEnterElement()) {
-        	CDBlock sv = new CDBlock();
-            sv.invoke( $runtime, "onEnterElementConsumed")
-                    // TODO: quick hack
-                    .arg(new CDLanguageSpecificString("uri"))
-                    .arg(new CDLanguageSpecificString("local"))
-                    .arg(new CDLanguageSpecificString("qname"))
-                    .arg(new CDLanguageSpecificString("attrs"));
-            sv.add(buildMoveToStateCode(tr));
-            
-            return sv;
-        }
-        
-        if(tr.getAlphabet().isLeaveElement()) {
             CDBlock sv = new CDBlock();
-            sv.invoke( $runtime, "onLeaveElementConsumed")
-                    // TODO: quick hack
-                    .arg(new CDLanguageSpecificString("uri"))
-                    .arg(new CDLanguageSpecificString("local"))
-                    .arg(new CDLanguageSpecificString("qname"));
+            current.outputActionsOnExit(sv);
+            sv.invoke("revertToParentFrom"+capitalize(eventName))
+                    .arg(r)
+                    .arg(_$cookie)
+                    .args($params.toVariableArray(type));
+            return sv;
+        }
+        else if(tr==JOIN) {
+            CDBlock sv = new CDBlock();
+            current.outputActionsOnExit(sv);
+            sv.invoke( _$source.castTo(interleaveFilterType), "joinBy"+capitalize(eventName))
+                    .arg(CDConstant.THIS)
+                    .args($params.toVariableArray(type));
+            return sv;
+        }
+        else if(tr.getAlphabet().isEnterElement()) {
+            CDBlock sv = new CDBlock();
+            sv.invoke( _$runtime, "onEnterElementConsumed")
+                    .arg($params.$uri)
+                    .arg($params.$localName)
+                    .arg($params.$qname)
+                    .arg($params.$attrs);
             sv.add(buildMoveToStateCode(tr));
             
             return sv;
         }
-        
-        if(tr.getAlphabet().isText()) {
+        else if(tr.getAlphabet().isLeaveElement()) {
+            CDBlock sv = new CDBlock();
+            sv.invoke( _$runtime, "onLeaveElementConsumed")
+                    .arg($params.$uri)
+                    .arg($params.$localName)
+                    .arg($params.$qname);
+            sv.add(buildMoveToStateCode(tr));
+            
+            return sv;
+        }
+        else if(tr.getAlphabet().isEnterAttribute()) {
+            CDBlock sv = new CDBlock();
+            if(type==Alphabet.ENTER_ELEMENT ) {
+                sv.invoke(_$runtime, "consumeAttribute").arg($params.$ai);
+                sv.invoke(_$runtime, "sendEnterElement")
+                    .arg(_$cookie)
+                    .arg($params.$uri)
+                    .arg($params.$localName)
+                    .arg($params.$qname)
+                    .arg($params.$attrs);
+            }
+            else if(type==Alphabet.LEAVE_ELEMENT) {
+                sv.invoke(_$runtime, "consumeAttribute").arg($params.$ai);
+                sv.invoke(_$runtime, "sendLeaveElement")
+                    .arg(_$cookie)
+                    .arg($params.$uri)
+                    .arg($params.$localName)
+                    .arg($params.$qname);
+            }
+            else if(type==Alphabet.DATA_TEXT || type==Alphabet.VALUE_TEXT) {
+                sv.invoke(_$runtime, "consumeAttribute").arg($params.$ai);
+                sv.invoke(_$runtime, "sendText")
+                    .arg(_$cookie)
+                    .arg($params.$value);
+            }
+            else
+                sv.add(buildMoveToStateCode(tr));
+            return sv;
+        }
+        else if(tr.getAlphabet().isText()) {
             CDBlock sv = new CDBlock();
             Alphabet.Text ta = tr.getAlphabet().asText();
             String alias = ta.getAlias();
             if(alias!=null)
-                sv.assign(new CDLanguageSpecificString(alias), new CDLanguageSpecificString("___$value"));
+                sv.assign(new CDLanguageSpecificString(alias), $params.$value);
             sv.add(buildMoveToStateCode(tr));
             
             return sv;
         }
-	    if(tr.getAlphabet().isRef())
-	        return buildCodeToSpawnChild(eventName,tr,additionalparams);
-        if(tr.getAlphabet().isFork())
-            return buildCodeToForkChildren(eventName,tr,additionalparams);
+        else if(tr.getAlphabet().isRef())
+            return buildCodeToSpawnChild(type,tr,$params);
+        else if(tr.getAlphabet().isFork())
+            return buildCodeToForkChildren(type,tr,$params);
+        else
+            return buildMoveToStateCode(tr);
+    }
+    
+    /**
+     * returns a CDStatement that performs:
+     *  1. execution of [act]
+     *  2. state transition to [st]
+     *  3. process of the same alphabet again 
+     */
+    private CDBlock buildRepeatAlphabetCode(Transition tr, int type, EventHandlerParameters $params) {
+        CDBlock sv = tr.invokeEpilogueActions();
         
-        return buildMoveToStateCode(tr);
+        appendStateTransition(sv, tr.nextState());
+        
+        if(_options.debug) {
+            sv.invoke( _$runtime, "traceln" )
+                .arg( new CDConstant("repeating alphabet.."));
+        }
+        
+        switch(type) {
+            case Alphabet.ENTER_ELEMENT:
+                sv.invoke( _$runtime, "sendEnterElement")
+                    .arg(_$cookie)
+                    .arg($params.$uri)
+                    .arg($params.$localName)
+                    .arg($params.$qname)
+                    .arg($params.$attrs);
+                break;
+            case Alphabet.LEAVE_ELEMENT:
+                sv.invoke( _$runtime, "sendLeaveElement")
+                    .arg(_$cookie)
+                    .arg($params.$uri)
+                    .arg($params.$localName)
+                    .arg($params.$qname);
+                break;
+            case Alphabet.ENTER_ATTRIBUTE:
+                sv.invoke( _$runtime, "sendEnterAttribute")
+                    .arg(_$cookie)
+                    .arg($params.$uri)
+                    .arg($params.$localName)
+                    .arg($params.$qname);
+                break;
+            case Alphabet.LEAVE_ATTRIBUTE:
+                sv.invoke( _$runtime, "sendLeaveAttribute")
+                    .arg(_$cookie)
+                    .arg($params.$uri)
+                    .arg($params.$localName)
+                    .arg($params.$qname);
+                break;
+            case Alphabet.DATA_TEXT:
+            case Alphabet.VALUE_TEXT:
+                sv.invoke(_$runtime, "sendText")
+                    .arg(_$cookie)
+                    .arg($params.$value);
+                break;
+        }
+                   
+        return sv;
     }
     
     /**
      * Generates a code fragment that creates a new child object
      * and switches to it.
      * 
-     * @param eventName
-     *      The event name for which we are writing an event handler.
+     * @param type
+     *      The alphabet type for which we are writing an event handler.
      * @param ref_tr
      *      The transition with REF_BLOCK type alphabet.
      * @param eventParams
@@ -895,8 +908,9 @@ public class CodeBuilder
      * @return
      *      code fragment.
      */
-    private CDBlock buildCodeToSpawnChild(String eventName,Transition ref_tr, CDExpression[] eventParams) {
+    private CDBlock buildCodeToSpawnChild(int type,Transition ref_tr, EventHandlerParameters $params) {
         
+        String eventName = eventName(type);
         CDBlock sv = new CDBlock();
         Alphabet.Ref alpha = ref_tr.getAlphabet().asRef();
         ScopeInfo ref_block = alpha.getTargetScope();
@@ -911,29 +925,28 @@ public class CodeBuilder
         
         CDObjectCreateExpression oe = 
             new CDType(ref_block.getClassName())._new()
-                .arg($this)
-                .arg($source)
-                .arg($runtime)
+                .arg(_$this)
+                .arg(_$source)
+                .arg(_$runtime)
                 .arg(new CDConstant(ref_tr.getUniqueId()));
         if(extraarg.length()>0)
             oe.arg(new CDLanguageSpecificString(extraarg.substring(1)));
             
         CDExpression $h = sv.decl(new CDType("NGCCHandler"), "h", oe );
         
-        
         if(_options.debug) {
-        	CDExpression msg = new CDConstant(MessageFormat.format(
+            CDExpression msg = new CDConstant(MessageFormat.format(
                 "Change Handler to {0} (will back to:#{1})",
                 new Object[]{
                     ref_block.getClassName(),
                     new Integer(ref_tr.nextState().getIndex())
                 }));
                 
-        	sv.invoke($runtime, "traceln").arg(msg);
+            sv.invoke(_$runtime, "traceln").arg(msg);
         }
         
         sv.invoke("spawnChildFrom"+capitalize(eventName))
-            .arg($h).args(eventParams);
+            .arg($h).args($params.toVariableArray(type));
                 
         return sv;
     }
@@ -942,8 +955,8 @@ public class CodeBuilder
     /**
      * Generates a code fragment that forks a new InterleaveFilter.
      * 
-     * @param eventName
-     *      The event name for which we are writing an event handler.
+     * @param type
+     *      The alphabet type for which we are writing an event handler.
      * @param forkTr
      *      The transition with FORK type alphabet.
      * @param eventParams
@@ -953,8 +966,9 @@ public class CodeBuilder
      * @return
      *      code fragment.
      */
-    private CDBlock buildCodeToForkChildren(String eventName,Transition forkTr, CDExpression[] eventParams) {
+    private CDBlock buildCodeToForkChildren(int type,Transition forkTr, EventHandlerParameters $params) {
         
+        String eventName = eventName(type);
         CDBlock sv = new CDBlock();
         Alphabet.Fork alpha = forkTr.getAlphabet().asFork();
         
@@ -962,9 +976,9 @@ public class CodeBuilder
         // spawnChildFromXXX( new InterleaveFilter<id>(cookie), ... );
         sv.invoke("spawnChildFrom"+capitalize(eventName))
             .arg( new CDType(alpha.getClassName())._new()
-                    .arg($this)
+                    .arg(_$this)
                     .arg(new CDConstant(forkTr.getUniqueId()))
-            ).args(eventParams);
+            ).args($params.toVariableArray(type));
                 
         return sv;
     }
@@ -994,73 +1008,7 @@ public class CodeBuilder
         return Character.toUpperCase(name.charAt(0))+name.substring(1);
     }
     
-	
-	//outputs text consumption handler. this handler branches by output method
-	private CDMethod writeTextHandler(TransitionTable table) {
-		//printSection("text");
-
-        CDMethod method = new CDMethod(
-            new CDLanguageSpecificString("public"),
-            CDType.VOID,
-            "text",
-            new CDLanguageSpecificString("throws SAXException"));
-		
-        CDVariable $value = method.param( CDType.STRING, "___$value" );
-        
-		CDBlock sv = method.body();
-		
-        if(_options.debug) {
-        	sv.invoke( $runtime, "trace" )
-                .arg(new CDLanguageSpecificString("\"text '\"+___$value.trim()+\"' #\" + _ngcc_current_state"));
-        }
-
-		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.VALUE_TEXT);
-        
-        Iterator states = _info.iterateAllStates();
-        while(states.hasNext()) {
-            State st = (State)states.next();
-            // if a transition by <data> is present, then
-            // we cannot execute "everything_else" action.
-            boolean dataPresent = false;
-            
-            // list all the transition table entry
-            Iterator itr = table.list(st);
-            while(itr.hasNext()) {
-                Map.Entry e = (Map.Entry)itr.next();
-                
-                Alphabet a = (Alphabet)e.getKey();      // alphabet
-                Transition tr = (Transition)e.getValue();// action to perform
-                
-                if(!a.isText())
-                    continue;   // we are not interested in this attribute now.
-                
-                CDBlock code = buildTransitionCode(st,tr,"text",new CDExpression[]{ $value });
-                if(a.isValueText())
-                    bi.addConditionalCode(st,
-                        CDOp.STREQ( $value, new CDConstant(a.asValueText().getValue())), code);
-                else {
-                    dataPresent = true;
-                    bi.addElseCode(st, code);
-                }
-            }
-
-            // if there is EVERYTHING_ELSE transition, add an else clause.
-            Transition tr = table.getEverythingElse(st);
-            if(tr!=null && !dataPresent)
-                bi.addElseCode(st, buildTransitionCode(st,tr,"text",new CDExpression[]{ $value }));
-        }
-        
-        CDStatement errorHandler = null;
-        if(_options.debug)
-            errorHandler = $runtime.invoke("traceln")
-                    .arg(new CDConstant("ignored")).asStatement();
-		sv.add(bi.output(errorHandler));
-        
-		//_output.println("public void text(String ___$value) throws SAXException");
-		//_output.println("{");
-
-        return method;
-	}
+    
     
     private static final String[] boxTypes = {
             "boolean","Boolean",
@@ -1094,7 +1042,7 @@ public class CodeBuilder
         CDBlock sv = method.body();
         
         if(_options.debug) {
-        	sv.invoke( $runtime, "traceln" )
+            sv.invoke( _$runtime, "traceln" )
                 .arg( new CDLanguageSpecificString("\"onChildCompleted(\"+cookie+\") back to "+_info.getClassName()+"\""));
         }
         
@@ -1123,7 +1071,7 @@ public class CodeBuilder
                         Alphabet.Ref a = tr.getAlphabet().asRef();
                         
                         ScopeInfo childBlock = a.getTargetScope();
-                        CDType returnType = childBlock.scope.getParam().returnType;
+                        CDType returnType = childBlock._scope.getParam().returnType;
                         
                         String boxType = getJavaBoxType(returnType);
                         CDExpression rhs;
@@ -1133,7 +1081,7 @@ public class CodeBuilder
                             rhs = new CDCastExpression( new CDType(boxType),
                                 $result).invoke(returnType.getName()+"Value");
                             
-                        block.assign( $this.prop(alias), rhs );
+                        block.assign( _$this.prop(alias), rhs );
                     }
                     
                     block.add(tr.invokeEpilogueActions());
@@ -1155,76 +1103,6 @@ public class CodeBuilder
     }
     
     
-	private CDMethod writeAttributeHandler() {
-		//printSection("attribute");
-		//_output.println("public void processAttribute() throws SAXException");
-
-        CDMethod method = new CDMethod(
-            new CDLanguageSpecificString("public"),
-            CDType.VOID,
-            "processAttribute",
-            new CDLanguageSpecificString("throws SAXException") );
-		
-		CDBlock sv = method.body();
-        
-		CDVariable $ai = sv.decl(CDType.INTEGER, "ai");
-		if(_options.debug)
-			sv.invoke( $runtime, "traceln")
-                .arg( new CDLanguageSpecificString("\"processAttribute (\" + runtime.getCurrentAttributes().getLength() + \" atts) #\" + _ngcc_current_state")); 
-		
-		SwitchBlockInfo bi = new SwitchBlockInfo(Alphabet.ENTER_ATTRIBUTE);
-        
-        Iterator states = _info.iterateAllStates();
-        while(states.hasNext()) {
-            State st = (State)states.next();
-            writeAttributeHandler(bi,st,st,$ai);
-        }
-        
-        sv.add(bi.output(null));
-        
-        return method;
-    }
-    
-    private void writeAttributeHandler( SwitchBlockInfo bi, State source, State current, CDVariable $ai ) {
-        
-        Set attHead = current.attHead();
-        for(Iterator jtr=attHead.iterator(); jtr.hasNext(); ) {
-            Alphabet a = (Alphabet)jtr.next();
-            
-            if(a.isRef()) {
-                writeAttributeHandler( bi, source, a.asRef().getTargetScope().getInitialState(), $ai );
-            } else
-            if(a.isFork()) {
-                Alphabet.Fork fork = a.asFork();
-                for( int i=0; i<fork._subAutomata.length; i++ )
-                    writeAttributeHandler( bi, source, fork._subAutomata[i], $ai );
-            } else {
-                writeAttributeHandlerBlock( bi, source, a.asEnterAttribute(), $ai );
-            }
-        }
-    }
-
-    private void writeAttributeHandlerBlock( SwitchBlockInfo bi, State st, Alphabet.EnterAttribute a, CDVariable $ai ) {
-        
-        NameClass nc = a.getKey();
-        if(nc instanceof SimpleNameClass) {
-            SimpleNameClass snc = (SimpleNameClass)nc;
-            
-            CDExpression condition = new CDLanguageSpecificString(MessageFormat.format(
-	            "(ai = runtime.getAttributeIndex(\"{0}\",\"{1}\"))>=0",
-	                new Object[]{
-	                    snc.nsUri, snc.localName})); //chotto sabori gimi
-	       
-            CDBlock sv = new CDBlock();
-            sv.invoke( $runtime, "consumeAttribute").arg($ai);
-	        	
-	        bi.addConditionalCode(st, condition, sv);
-        } else {
-            // if the name class is complex
-            throw new UnsupportedOperationException(
-                "attribute with a complex name class is not supported yet  name class:"+nc.toString());
-        }
-    }
     
     private State appendStateTransition(CDBlock sv, State deststate ) {
         return appendStateTransition(sv,deststate,null);
@@ -1235,33 +1113,42 @@ public class CodeBuilder
      *      If this parameter is non-null, the processAttribute method
      *      should be called if and only if this variable is true.
      */
-	// What's the difference of this method and "buildMoveToStateCode"? - Kohsuke
-	private State appendStateTransition(CDBlock sv, State deststate, CDVariable flagVar)
-	{
-		
-		CDExpression statevariable = $state;
-		
-		sv.assign(statevariable, new CDConstant(deststate.getIndex()));
-		
-		if(_options.debug) {
-        	sv.invoke( $runtime, "traceln" )
+    // What's the difference of this method and "buildMoveToStateCode"? - Kohsuke
+    private State appendStateTransition(CDBlock sv, State deststate, CDVariable flagVar)
+    {
+        
+        CDExpression statevariable = _$state;
+        
+        sv.assign(statevariable, new CDConstant(deststate.getIndex()));
+        
+        if(_options.debug) {
+            sv.invoke( _$runtime, "traceln" )
                 .arg( new CDConstant("-> #" + deststate.getIndex()));
         }
 
-        if(!deststate.attHead().isEmpty()) {
-            CDBlock block = sv;
-            if( flagVar!=null )
-                block = sv._if(flagVar)._then();
-            
-            block.invoke("processAttribute");
-        }
-		
-		return deststate;
-	}
+        return deststate;
+    }
 
 
     private void println(StringBuffer buf, String data) {
         buf.append(data);
         buf.append(_options.newline);
+    }
+    
+    private static String eventName(int type) {
+        switch(type) {
+            case Alphabet.VALUE_TEXT:
+                return "text";
+            case Alphabet.ENTER_ELEMENT:
+                return "enterElement";
+            case Alphabet.LEAVE_ELEMENT:
+                return "leaveElement";
+            case Alphabet.ENTER_ATTRIBUTE:
+                return "enterAttribute";
+            case Alphabet.LEAVE_ATTRIBUTE:
+                return "leaveAttribute";
+            default:
+                throw new IllegalArgumentException(Integer.toString(type));
+        }
     }
 }

@@ -26,18 +26,18 @@ public class ForeignElementFilter extends XMLFilterImpl {
     /**
      * When we are filtering a sub-tree, this value indicates the depth.
      */
-    private int depth=0;
+    private int _depth = 0;
     
     public void startElement( String uri, String localName, String qname,
         Attributes atts ) throws SAXException {
             
-        if(depth!=0) {
-            depth++;
+        if(_depth!=0) {
+            _depth++;
         } else {
             if(uri.equals(Const.NGCC_URI) || uri.equals(Const.RELAXNG_URI)) {
                 super.startElement(uri,localName,qname,atts);
             } else {
-                depth++;
+                _depth++;
             }
         }
     }
@@ -45,20 +45,20 @@ public class ForeignElementFilter extends XMLFilterImpl {
     public void endElement( String uri, String localName, String qname )
         throws SAXException {
             
-        if(depth!=0) {
-            depth--;
+        if(_depth!=0) {
+            _depth--;
         } else {
             super.endElement(uri,localName,qname);
         }
     }
     
     public void characters( char[] buf, int start, int len ) throws SAXException {
-        if(depth==0)
+        if(_depth==0)
             super.characters(buf,start,len);
     }
     
     public void ignorableWhitespace( char[] buf, int start, int len ) throws SAXException {
-        if(depth==0)
+        if(_depth==0)
             super.ignorableWhitespace(buf,start,len);
     }
 }

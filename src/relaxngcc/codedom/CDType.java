@@ -6,14 +6,14 @@ import java.io.Writer;
 /**
  */
 public class CDType {
-	
-	public static final CDType VOID    = new CDType("void");
-	public static final CDType INTEGER = new CDType("int");
-	public static final CDType BOOLEAN = new CDType("boolean");
-	public static final CDType STRING  = new CDType("String");
-	
+    
+    public static final CDType VOID    = new CDType("void");
+    public static final CDType INTEGER = new CDType("int");
+    public static final CDType BOOLEAN = new CDType("boolean");
+    public static final CDType STRING  = new CDType("String");
+    
     public CDType( String name ) {
-        this._name=name;
+        _name = name;
     }
     
     private final String _name;
@@ -36,7 +36,7 @@ public class CDType {
     }
 
     /** Prints the type name. */
-	public void writeType( CDFormatter f ) throws IOException {
+    public void writeType( CDFormatter f ) throws IOException {
         f.p(_name);
     }
     

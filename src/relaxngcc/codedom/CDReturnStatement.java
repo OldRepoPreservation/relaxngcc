@@ -5,15 +5,15 @@ import java.io.Writer;
 
 public class CDReturnStatement implements CDStatement {
 
-	private CDExpression _Expression;
-	
+    private CDExpression _expression;
+    
     /** use CDBlock to create an instance. */
-	CDReturnStatement(CDExpression expr) {
-		_Expression = expr;
-	}
+    CDReturnStatement(CDExpression expr) {
+        _expression = expr;
+    }
 
     public void state(CDFormatter f) throws IOException {
-        f.p("return").p('(').express(_Expression).p(')').eos().nl();
+        f.p("return").p('(').express(_expression).p(')').eos().nl();
     }
 
 }

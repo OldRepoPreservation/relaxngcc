@@ -42,69 +42,61 @@ import relaxngcc.grammar.ValuePattern;
  */
 public class AutomatonBuilder implements PatternFunction
 {
-
+    private static final String NEWLINE = System.getProperty("line.separator");
+    
     /**
      * Used to give order numbers to EnterAttribute alphabets.
      */
-    private int _OrderCounter;
+    private int _orderCounter;
     
     /**
      * Actions are added to this buffer until it is processed.
      * Note that we can't use StringBuffer bcause we need to
      * add *in front*, not at the end.
      */
-    private String preservedAction="";
+    private String _preservedAction="";
 
-	
-	
+    
+    
     /** Builds ScopeInfo. */
     public static void build( NGCCGrammar grammar, ScopeInfo scope ) {
         new AutomatonBuilder(grammar,scope).build();
     }
     
     private AutomatonBuilder( NGCCGrammar grammar, ScopeInfo scope ) {
-        this.grammar = grammar;
-        this._ScopeInfo = scope;
+        _grammar = grammar;
+        _scopeInfo = scope;
     }
     
-    private final NGCCGrammar grammar;
-    private final ScopeInfo _ScopeInfo;
+    private final NGCCGrammar _grammar;
+    private final ScopeInfo _scopeInfo;
+
+    private State _destination;
     
-	public void build() {
-		//starts from final state
-	    destination = createState(null);
-		destination.setAcceptable(true);
+    public void build() {
+        //starts from final state
+        _destination = createState(null);
+        _destination.setAcceptable(true);
 
-        State initial = (State)_ScopeInfo.scope.getPattern().apply(this);
+        State initial = (State)_scopeInfo._scope.getPattern().apply(this);
         initial = addAction(initial,true);
-        		
-//		State initial = null;
-//        if(_Type==TYPE_NORMAL || _Type==TYPE_ROOT)
-//    		initial = traverseNodeList(_Root.getChildNodes(), ctx, finalstate);
-//		else
-//			initial = processRelaxNGNode(_Root, ctx, finalstate);
-		
-		_ScopeInfo.setInitialState(initial);
+                
+        _scopeInfo.setInitialState(initial);
         
-        _ScopeInfo.copyAttributeHandlers();
-        
-        _ScopeInfo.minimizeStates();
-	}
-	
-
-    private State destination;
+    }
+    
     
     public Object element( ElementPattern pattern ) {
         NameClass nc = pattern.name;
         
         State tail = createState(pattern);
         Transition te = createTransition(
-            new Alphabet.LeaveElement(nc,pattern.startLocator), destination);
+            new Alphabet.LeaveElement(nc,pattern.startLocator), _destination);
         addAction(te,false);
         tail.addTransition(te);
         
         // process descendants
-        destination = tail;
+        _destination = tail;
         State middle = (State)pattern.body.apply(this);
         
         State head = createState(pattern);
@@ -119,7 +111,7 @@ public class AutomatonBuilder implements PatternFunction
 
     public Object attribute( AttributePattern pattern ) {
         NameClass nc = pattern.name;
-        State orgdest = destination;
+        State orgdest = _destination;
 
         // I think I broke the code related to interleave handling.
         // I just don't know how to fix them.  - Kohsuke
@@ -127,52 +119,52 @@ public class AutomatonBuilder implements PatternFunction
         State tail = createState(pattern);
         Transition te = createTransition(
             new Alphabet.LeaveAttribute(nc,pattern.startLocator),
-            destination /*createState(exp,ctx)*/);
+            _destination);
         addAction(te,false);
         tail.addTransition(te);
   
-        destination = tail;
+        _destination = tail;
         State middle = (State)pattern.body.apply(this);      
-//        State middle = traverseNodeList(exp.getChildNodes(), ctx/*newctx*/, tail);
         
         Alphabet.EnterAttribute ea = new Alphabet.EnterAttribute(
-            nc,_OrderCounter++,pattern.endLocator);
+            nc,pattern.endLocator);
         ea.workaroundSignificant = pattern.workaroundSignificant;
         
         Transition ts = createTransition(
             ea,
             middle);
         addAction(ts,true);
-//??        if(ctx.getInterleaveBranchRoot()!=null) ts.setDisableState(ctx.getInterleaveBranchRoot());
         
+        /*
         if(!pattern.workaroundSignificant) {
             // always treat attributes as optional,
             orgdest.addTransition(ts);
             return orgdest;
         } else {
-            // if a special flag is specified by the user,
-            // do NOT treat it as an optional attribute
-            State head = createState(pattern);
-            head.addTransition(ts);
-            return head;
-        }
+        */
+        
+        // if a special flag is specified by the user,
+        // do NOT treat it as an optional attribute
+        State head = createState(pattern);
+        head.addTransition(ts);
+        return head;
     }
 
     public Object data( DataPattern pattern ) {
         State result = createState(pattern);
         if(pattern.alias!=null)
-            _ScopeInfo.addAlias( CDType.STRING, pattern.alias );
+            _scopeInfo.addAlias( CDType.STRING, pattern.alias );
         
         Transition t = createTransition(
             new Alphabet.DataText(pattern.type,pattern.alias,pattern.locator),
-            destination);
-        addAction(t,false);
+            _destination);
+        addAction(t, false);
         result.addTransition(t);
         return result;
     }
     
     public Object empty( EmptyPattern pattern ) {
-        return destination;
+        return _destination;
     }
     public Object notAllowed( NotAllowedPattern pattern ) {
         // return a non-reachable state
@@ -181,12 +173,12 @@ public class AutomatonBuilder implements PatternFunction
 
     public Object value( ValuePattern pattern ) {
         if(pattern.alias!=null)
-            _ScopeInfo.addAlias( CDType.STRING, pattern.alias );
+            _scopeInfo.addAlias( CDType.STRING, pattern.alias );
         
         State result = createState(pattern);
         Transition t = createTransition(
             new Alphabet.ValueText(pattern.value, pattern.alias, pattern.locator),
-            destination);
+            _destination);
         addAction(t,false);
         result.addTransition(t);
         return result;
@@ -196,28 +188,29 @@ public class AutomatonBuilder implements PatternFunction
     public Object list( ListPattern pattern ) {
         if(pattern.alias!=null) {
             // don't treat this list as a structured text.
-	        _ScopeInfo.addAlias(CDType.STRING, pattern.alias );
-	        
+            _scopeInfo.addAlias(CDType.STRING, pattern.alias );
+            
             State result = createState(pattern);
-	        Transition t = createTransition(
+            Transition t = createTransition(
                 new Alphabet.DataText(
                     new MetaDataType("string"),
                     pattern.alias,pattern.locator),
-                destination);
-	        addAction(t,false);
-	        result.addTransition(t);
-	        return result;
+                _destination);
+            addAction(t,false);
+            result.addTransition(t);
+            return result;
         } else {
             // treat this list as a structured text
             State head = (State)pattern.p.apply(this);
             
             // then append the "header" transition that tokenizes the text.
-            _ScopeInfo.addAlias(CDType.STRING, "__text" );
+            _scopeInfo.addAlias(CDType.STRING, "__text" );
             Transition tr = new Transition(
                 new Alphabet.DataText(
                     new MetaDataType("string"), "__text", pattern.locator ),
-                head );
-            tr.insertEpilogueAction(_ScopeInfo.createAction(
+                head,
+                _orderCounter++ );
+            tr.insertEpilogueAction(_scopeInfo.createAction(
                 "runtime.processList(__text);"));
             addAction(tr,false);
             // add user-defined action before the processList method,
@@ -232,34 +225,40 @@ public class AutomatonBuilder implements PatternFunction
     
 
     public Object javaBlock( JavaBlock block ) {
-        // because we traverse the grammar backward, we need
+        // because we traverse the _grammar backward, we need
         // to add new code in front of the existing ones.
         // it's also safe to add NL because the new code might
         // contain a comment at its end.
-        preservedAction = block.code+"\n"+preservedAction;
-        return destination;
+        _preservedAction = block.code+NEWLINE+_preservedAction;
+        return _destination;
     }
     
     public Object group( GroupPattern pattern ) {
         // build automaton in a reverse order.
         // TODO: how about actions?
-        destination = (State)pattern.p2.apply(this);
+        _destination = (State)pattern.p2.apply(this);
         return               pattern.p1.apply(this);
     }
     
     public Object choice( ChoicePattern pattern ) {
         
-        State dest = addAction(destination,true);
-        
+        ScopeInfo.Action act = collectAction();
+
+        State tail = _destination;
+        if(act!=null) {
+            tail = createState(_destination._locationHint);
+            if(_destination.isAcceptable()) tail.setAcceptable(true);
+            tail.addTransition(Transition.createActionOnlyTransition(_destination, act));
+        }
         
         // a branch could be empty, in that case head could be returned
         // as the head of a branch. This would cause a weird effect.
         // so we should better create a new state.
         State head = createState(pattern);
         
-        destination = dest;
+        _destination = tail;
         processChoiceBranch(head,pattern.p2);
-        destination = dest;
+        _destination = tail;
         processChoiceBranch(head,pattern.p1);
         
         return head;
@@ -268,7 +267,7 @@ public class AutomatonBuilder implements PatternFunction
     private void processChoiceBranch( State head, Pattern pattern ) {
         
         State member = (State)pattern.apply(this);
-        member = addAction(member,true);
+        //member = addAction(member,true);
         
         head.mergeTransitions(member);
         
@@ -294,16 +293,16 @@ public class AutomatonBuilder implements PatternFunction
             head.addActionsOnExit(member.getActionsOnExit());
         }
     }
-	
+    
 
     public Object interleave( InterleavePattern pattern ) {
         
-        State join = destination;
+        State join = _destination;
         
         // add pending actions to a dummy transition so that
         // we can add these actions later as the epilogue action
         // of the join.
-        Transition dummy = new Transition(null,null);
+        Transition dummy = new Transition(null,null,0);
         addAction(dummy,false);
         
         Pattern[] children = pattern.getChildPatterns();
@@ -314,8 +313,8 @@ public class AutomatonBuilder implements PatternFunction
         
         for( int i=children.length-1; i>=0; i-- ) {
             // create sub-automaton for each branch
-            destination = createState(pattern); 
-            destination.setAcceptable(true); // mark as the join state
+            _destination = createState(pattern); 
+            _destination.setAcceptable(true); // mark as the join state
             State member = (State)children[i].apply(this);
             member = addAction(member,true);
             
@@ -328,8 +327,9 @@ public class AutomatonBuilder implements PatternFunction
         State head = createState(pattern);
         Transition forkTr = new Transition(
             new Alphabet.Fork(subAutomata,elemNC,attNC,text,
-                null/*TODO:locator*/,_OrderCounter++),
-            join );
+                null/*TODO:locator*/),
+            join,
+            _orderCounter++ );
         head.addTransition(forkTr);
         
         forkTr.insertEpilogueActions(dummy.getEpilogueActions());
@@ -339,10 +339,16 @@ public class AutomatonBuilder implements PatternFunction
 
 
     public Object oneOrMore(OneOrMorePattern pattern) {
-        destination = addAction(destination,true);
+        ScopeInfo.Action act = collectAction();
+
+        State tail = _destination;
+        if(act!=null) {
+            tail = createState(_destination._locationHint);
+            if(_destination.isAcceptable()) tail.setAcceptable(true);
+            tail.addTransition(Transition.createActionOnlyTransition(_destination, act));
+        }
         
-        State tail = destination;   // remember the current destination
-        
+        _destination = tail;
         State head = (State)pattern.p.apply(this);
         head = addAction(head,true); //addAction must be before mergeTransition
         
@@ -351,24 +357,21 @@ public class AutomatonBuilder implements PatternFunction
     }
 
     public Object ref( RefPattern pattern ) {
-//      ScopeInfo.Action action = null;
-//        if(preservedAction.length()!=0)
-//            action = _ScopeInfo.createAction(preservedAction);
         
         State head = createState(pattern);
         
-        ScopeInfo targetScope = grammar.getScopeInfo(pattern.target);
+        ScopeInfo targetScope = _grammar.getScopeInfo(pattern.target);
         
         String alias = pattern.param.getAlias();
         if(alias!=null)
-            _ScopeInfo.addAlias(
-                targetScope.scope.getParam().returnType, alias);
+            _scopeInfo.addAlias(
+                targetScope._scope.getParam().returnType, alias);
         
         Transition t = createTransition(new Alphabet.Ref(
             targetScope, alias,
-            pattern.param.getWithParams(), _OrderCounter++,
+            pattern.param.getWithParams(),
             pattern.locator),
-            destination);
+            _destination);
         head.addTransition(t);
 
         // add action as epilogue because code should be executed
@@ -382,28 +385,26 @@ public class AutomatonBuilder implements PatternFunction
         // we don't cross <ref> boundary, so this shouldn't be executed at all.
         throw new InternalError();
     }
-	
     
-	private State createState(Pattern source) {
-		State s = new State(_ScopeInfo, _ScopeInfo.getStateCount(), source);
-		_ScopeInfo.addState(s);
-		return s;
-	}
     
-	private Transition createTransition(Alphabet key, State destination) {
-		Transition t = new Transition(key, destination);
-		return t;
-	}
+    private State createState(Pattern source) {
+        State s = new State(_scopeInfo, _scopeInfo.getStateCount(), source);
+        _scopeInfo.addState(s);
+        return s;
+    }
     
-	private void addAction(Transition t,boolean prologue) {
-		if(preservedAction.length()==0)   return;
-        
-        ScopeInfo.Action action = _ScopeInfo.createAction(preservedAction);
-        preservedAction = "";
-        
-        if(prologue)    t.insertPrologueAction(action);
-        else            t.insertEpilogueAction(action);
-	}
+    private Transition createTransition(Alphabet key, State destination) {
+        Transition t = new Transition(key, destination, _orderCounter++);
+        return t;
+    }
+    
+    private void addAction(Transition t, boolean prologue) {
+        ScopeInfo.Action action = collectAction();
+        if(action!=null) {
+            if(prologue)    t.insertPrologueAction(action);
+            else            t.insertEpilogueAction(action);
+        }
+    }
     
     /**
      * Adds the specified action as a prologue/epilogue action
@@ -431,27 +432,33 @@ public class AutomatonBuilder implements PatternFunction
      * <p>
      * Copying a state will prevent this side-effect.
      */
-	private State addAction(State s,boolean prologue) {
-        if(preservedAction.length()==0) return s;
+    private State addAction(State s, boolean prologue) {
         
-        ScopeInfo.Action act = _ScopeInfo.createAction(preservedAction);
-        preservedAction = "";
+        ScopeInfo.Action act = collectAction();
+        if(act==null) return s;
         
-        State ss = createState(s.locationHint);
+        State ss = createState(s._locationHint);
         ss.mergeTransitions(s);
         if(s.isAcceptable()) {
             ss.setAcceptable(true);
             ss.addActionsOnExit(s.getActionsOnExit());
         }
         
-		Iterator it = ss.iterateTransitions();
-		while(it.hasNext()) {
+        Iterator it = ss.iterateTransitions();
+        while(it.hasNext()) {
             Transition t = (Transition)it.next();
             if(prologue)    t.insertPrologueAction(act);
             else            t.insertEpilogueAction(act);
         }
-        				
-		ss.addActionOnExit(act);
+
+        //probably actionOnExit is no longer necessary
+        //ss.addActionOnExit(act);
         return ss;
-	}
+    }
+    
+    private ScopeInfo.Action collectAction() {
+        ScopeInfo.Action act = (_preservedAction.length()==0)? null : _scopeInfo.createAction(_preservedAction);
+        _preservedAction = "";
+        return act;
+    }
 }
