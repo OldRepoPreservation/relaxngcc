@@ -5,7 +5,6 @@
  */
 
 package relaxngcc.builder;
-import java.io.Writer;
 import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.HashMap;
@@ -13,7 +12,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.Vector;
 
 import relaxngcc.NGCCGrammar;
 import relaxngcc.Options;
