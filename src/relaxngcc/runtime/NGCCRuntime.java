@@ -103,7 +103,6 @@ public class NGCCRuntime extends XMLFilterImpl implements ValidationContext {
         attStack.push(currentAtts=new AttributesImpl(atts));
 //        System.out.println("startElement:"+localname+"->"+_attrStack.size());
         currentHandler.enterElement(uri, localname, qname);
-        indent++;
     }
     
     public void endElement(String uri, String localname, String qname)
@@ -111,7 +110,6 @@ public class NGCCRuntime extends XMLFilterImpl implements ValidationContext {
                 
         processPendingText();
         
-        indent--;
         currentHandler.leaveElement(uri, localname, qname);
 //        System.out.println("endElement:"+localname);
         attStack.pop();
@@ -196,24 +194,28 @@ public class NGCCRuntime extends XMLFilterImpl implements ValidationContext {
         NGCCHandler h, String uri, String localname, String qname) throws SAXException {
             
         pushHandler(h);
+        indent--;
         currentHandler.enterElement(uri,localname,qname);
     }
     public void spawnChildFromEnterAttribute(
         NGCCHandler h, String uri, String localname, String qname) throws SAXException {
             
         pushHandler(h);
+        indent--;
         currentHandler.enterAttribute(uri,localname,qname);
     }
     public void spawnChildFromLeaveElement(
         NGCCHandler h, String uri, String localname, String qname) throws SAXException {
             
         pushHandler(h);
+        indent++;
         currentHandler.leaveElement(uri,localname,qname);
     }
     public void spawnChildFromLeaveAttribute(
         NGCCHandler h, String uri, String localname, String qname) throws SAXException {
             
         pushHandler(h);
+        indent++;
         currentHandler.leaveAttribute(uri,localname,qname);
     }
     public void spawnChildFromText(
@@ -233,6 +235,7 @@ public class NGCCRuntime extends XMLFilterImpl implements ValidationContext {
             
         popHandler();
         currentHandler.onChildCompleted(result,cookie);
+        indent--;
         currentHandler.enterElement(uri,local,qname);
     }
     public void revertToParentFromLeaveElement( Object result, int cookie,
@@ -240,6 +243,7 @@ public class NGCCRuntime extends XMLFilterImpl implements ValidationContext {
             
         popHandler();
         currentHandler.onChildCompleted(result,cookie);
+        indent++;
         currentHandler.leaveElement(uri,local,qname);
     }
     public void revertToParentFromEnterAttribute( Object result, int cookie,
@@ -247,6 +251,7 @@ public class NGCCRuntime extends XMLFilterImpl implements ValidationContext {
             
         popHandler();
         currentHandler.onChildCompleted(result,cookie);
+        indent--;
         currentHandler.enterAttribute(uri,local,qname);
     }
     public void revertToParentFromLeaveAttribute( Object result, int cookie,
@@ -254,6 +259,7 @@ public class NGCCRuntime extends XMLFilterImpl implements ValidationContext {
             
         popHandler();
         currentHandler.onChildCompleted(result,cookie);
+        indent++;
         currentHandler.leaveAttribute(uri,local,qname);
     }
 
@@ -263,7 +269,7 @@ public class NGCCRuntime extends XMLFilterImpl implements ValidationContext {
 // trace functions
 //
 //
-    private int indent=0;
+    public int indent=0;
     private void printIndent() {
         for( int i=0; i<indent; i++ )
             System.out.print("  ");
