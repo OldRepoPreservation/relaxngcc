@@ -13,7 +13,7 @@
 
 <h1>RelaxNGCC ( RELAX NG Compiler Compiler)</h1>
 <div align="right">
-	$Revision: 1.8 $
+	$Revision: 1.9 $
 	By RelaxNGCC SourceForge Project /
 	<a href="mailto:daisuke.okajima@nifty.ne.jp">
 		<?ja?>岡嶋 大介<?/ja?>
@@ -114,7 +114,7 @@
 		<li><?ja?><code>inline</code>アトリビュートを導入し、スコープの展開ができるようになりました。<?/ja?><?en?>Added <code>inline</code> attribute for expanding a scope into other scopes.<?/en?></li>
 		<li><?ja?>マニュアルを改訂しました。<?/ja?><?en?>Revised manuals.<?/en?></li>
 	</ul>
-<li><?ja?>2002/06<?ja?> バージョン1.0を公開しました。<?/ja?><?en?>Jun, 2002   Version 1.0 is released<?/en?>
+<li><?ja?>2002/06 バージョン1.0を公開しました。<?/ja?><?en?>Jun, 2002   Version 1.0 is released<?/en?>
 	<ul>
 	<?en?>
 		<li><a href="mailto:kk@kohsuke.org">Kohsuke Kawaguchi</a> joined the development and the project is now hosted at SourceForge.
@@ -136,6 +136,13 @@
 		<li>RELAX NG コンパクト文法サポートは取り除かれました
 		<li>コンパイラは<tt>c:java-body</tt>内のJavaコードを正しく解析するようになりました。これに伴い、宣言されたエイリアスの取り扱いがスマートになりました
 	<?/ja?>
+	</ul>
+<li>
+	<?ja?>バージョン1.1へ向けて作業中<?/ja?>
+	<?en?>Working toward version 1.1<?/en?>
+	<ul>
+		<li>Internal change: introduced CodeDOM for more stable code generation
+		<li><code>cc:class</code> attribute can be now specified for any pattern, and it will become its own class, as if it were &lt;define>d as a separate block.
 	</ul>
 </ul>
 <p><?ja?>さらに前のリリース履歴は<a href="history.htm">こちら</a>です。<?/ja?><?en?>Earlier release notes are available <a href="history.htm">here</a>.<?/en?></p>
