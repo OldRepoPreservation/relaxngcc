@@ -12,6 +12,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.Vector;
 
 import relaxngcc.automaton.Alphabet;
@@ -527,17 +528,25 @@ public class CodeWriter
 			Iterator transitions = st.iterateTransitions(
                 Alphabet.ENTER_ATTRIBUTE|Alphabet.REF_BLOCK);
                 
-			while(transitions.hasNext())
-			{
+            // sort alphabets in the order of the "order" field.
+            TreeSet alphabets = new TreeSet(Alphabet.orderComparator);
+			while(transitions.hasNext()) {
 				Transition tr = (Transition)transitions.next();
+                alphabets.add( tr.getAlphabet() );
+            
+            }
                 
-                if(tr.getAlphabet().isEnterAttribute()) {
-                    writeAttributeHandlerBlock( bi, st,
-    				    tr.getAlphabet().asEnterAttribute() );
+            // then write handlers in that order
+            Iterator itr = alphabets.iterator();
+            while(itr.hasNext()) {
+                Alphabet a = (Alphabet)itr.next();
+                
+                if(a.isEnterAttribute()) {
+                    writeAttributeHandlerBlock( bi, st, a.asEnterAttribute() );
                 } else {
-                    Alphabet.Ref a = tr.getAlphabet().asRef();
+                    Alphabet.Ref r = a.asRef();
                     
-                    Iterator jtr = a.getTargetScope().iterateFirstAlphabets(
+                    Iterator jtr = r.getTargetScope().iterateFirstAlphabets(
                         Alphabet.ENTER_ATTRIBUTE);
                     while(jtr.hasNext())
                         writeAttributeHandlerBlock( bi, st,

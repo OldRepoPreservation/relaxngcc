@@ -43,6 +43,11 @@ public class ScopeBuilder
 	private int _Nullable;
 	private int _ThreadCount;
 
+    /**
+     * Used to give order numbers to EnterAttribute alphabets.
+     */
+    private int _OrderCounter;
+    
     /** actions are added to this buffer until it is processed */
     private StringBuffer preservedAction = new StringBuffer();
 	
@@ -263,7 +268,7 @@ public class ScopeBuilder
                 _ScopeInfo.addChildScope(info);
                 State head = createState(child, ctx);
                 head.addTransition(createTransition(
-                    new Alphabet.Ref(info), destination));
+                    new Alphabet.Ref(info,_OrderCounter++), destination));
                 destination = head;
 				
 				b.buildAutomaton();
@@ -385,9 +390,15 @@ public class ScopeBuilder
         
 //??        ScopeBuildingContext newctx = new ScopeBuildingContext(ctx);
 //??        newctx.setInterleaveBranchRoot(null);
-        State middle = traverseNodeList(exp.getChildNodes(), ctx/*newctx*/, tail);
+
+//        State middle = traverseNodeList(exp.getChildNodes(), ctx/*newctx*/, tail);
+        State middle = traverseNodeList(exp.getChildNodes(), ctx/*newctx*/,
+            createState(exp,ctx));
+        
         State head = createState(exp, ctx);
-        Transition ts = createTransition(new Alphabet.EnterAttribute(nc), middle);
+        Transition ts = createTransition(
+            new Alphabet.EnterAttribute(nc,_OrderCounter++),
+            middle);
         addAction(ts,true);
 //??        if(ctx.getInterleaveBranchRoot()!=null) ts.setDisableState(ctx.getInterleaveBranchRoot());
 
@@ -594,7 +605,7 @@ public class ScopeBuilder
 			
 			Transition t = createTransition(new Alphabet.Ref(
                 target.getScopeInfo(), alias,
-                exp.attributeNGCC("with-params",null)),
+                exp.attributeNGCC("with-params",null),_OrderCounter++),
                 destination);
 			head.addTransition(t);
 

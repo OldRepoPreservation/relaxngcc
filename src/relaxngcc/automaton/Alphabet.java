@@ -5,6 +5,8 @@
  */
 
 package relaxngcc.automaton;
+import java.util.Comparator;
+
 import relaxngcc.MetaDataType;
 import relaxngcc.NGCCGrammar;
 import relaxngcc.builder.NameClass;
@@ -120,12 +122,22 @@ public abstract class Alphabet implements Comparable
     }
     
     /** Alphabet of the type "enter attribute." */
-    public static class EnterAttribute extends Markup {
-        public EnterAttribute( NameClass key ) {
+    public static class EnterAttribute extends Markup implements WithOrder {
+        public EnterAttribute( NameClass key, int order ) {
             super( ENTER_ATTRIBUTE, key );
+            _Order = order;
         }
         public EnterAttribute asEnterAttribute() { return this; }
         public String toString() { return "@"+getKey(); }
+        
+        private final int _Order;
+        /**
+         * Gets the number that introduces order
+         * relationship between attribute declarations.
+         * Attributes that appear later in the schema gets
+         * yonger number.
+         */
+        public final int getOrder() { return _Order; }
     }
     
     /** Alphabet of the type "leave attribute." */
@@ -138,25 +150,30 @@ public abstract class Alphabet implements Comparable
     }
     
     /** Alphabet of the type "ref." */
-    public static class Ref extends Alphabet {
-        public Ref( ScopeInfo _target, String _alias, String _params ) {
+    public static class Ref extends Alphabet implements WithOrder {
+        public Ref( ScopeInfo target, String alias, String params, int order ) {
             super( REF_BLOCK );
-            this.target = _target;
-            this.alias = _alias;
-            this.params = _params;
+            this._Target = target;
+            this._Alias  = alias;
+            this._Params = params;
+            this._Order = order;
         }
-        public Ref( ScopeInfo _target ) {
-            this(_target,null,null);
+        public Ref( ScopeInfo _target, int order ) {
+            this(_target,null,null,order);
         }
         public Ref asRef() { return this; }
         
         /** Name of the scope object to be spawned. */
-        private final ScopeInfo target;
+        private final ScopeInfo _Target;
 
         /** Gets the child scope to be spawned. */
         public ScopeInfo getTargetScope() {
-            return target;
+            return _Target;
         }
+        
+        /** order relationship between attributes and refs. */
+        private final int _Order;
+        public final int getOrder() { return _Order; }
         
         /**
          * Additional parameters passed to
@@ -164,12 +181,12 @@ public abstract class Alphabet implements Comparable
          * 
          * Used only with Alphabets of the REF_BLOCK type.
          */
-        private final String params;
+        private final String _Params;
         public String getParams() {
             // TODO: this might be an excessively work.
             // maybe I should just return the value as is
-            if(params==null)  return "";
-            return ','+params;
+            if(_Params==null)  return "";
+            return ','+_Params;
         }
         
         /**
@@ -177,13 +194,13 @@ public abstract class Alphabet implements Comparable
          * User program can access this child object through this
          * variable.
          */
-        private final String alias;
-        public String getAlias() { return alias; }
+        private final String _Alias;
+        public String getAlias() { return _Alias; }
 
-        public String toString() { return "ref '"+target.getNameForTargetLang()+"'"; }
+        public String toString() { return "ref '"+_Target.getNameForTargetLang()+"'"; }
         
         public int hashCode() {
-            return h(target)^h(alias)^h(params);
+            return h(_Target)^h(_Alias)^h(_Params);
         }
         public int compareTo( Object o ) {
             int r = super.compareTo(o);
@@ -191,11 +208,11 @@ public abstract class Alphabet implements Comparable
             
             Ref rhs = (Ref)o;
             // TODO: alphabets are not comparable!
-            r = target.hashCode()-rhs.target.hashCode();
+            r = _Target.hashCode()-rhs._Target.hashCode();
             if(r!=0)    return r;
-            r = compare(alias,rhs.alias);
+            r = compare(_Alias,rhs._Alias);
             if(r!=0)    return r;
-            return compare(params,rhs.params);
+            return compare(_Params,rhs._Params);
         }
     }
     
@@ -298,4 +315,22 @@ public abstract class Alphabet implements Comparable
         if(o2==null)                return +1;
         return o1.compareTo(o2);
     }
+    
+    /**
+     * Implemented by those alphabets that have orders.
+     * Currently, just EnterAttribute and Ref.
+     */
+    public static interface WithOrder {
+        public int getOrder();
+    }
+    
+    /**
+     * Comparator that can be used to sort ordered alphabets into
+     * descending orders (larger numbers first.)
+     */
+    public static Comparator orderComparator = new Comparator() {
+        public int compare( Object o1, Object o2 ) {
+            return ((WithOrder)o2).getOrder()-((WithOrder)o1).getOrder();
+        }
+    };
 }
