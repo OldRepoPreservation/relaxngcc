@@ -15,6 +15,6 @@ public class CDJavaFormatter extends CDFormatter {
     }
 
     public CDFormatter write( CDLanguageSpecificString str ) throws IOException {
-        return p(str.getString(CDLanguage.JAVA).trim());
+        return p(str.getString(CDLanguage.JAVA));
     }
 }
