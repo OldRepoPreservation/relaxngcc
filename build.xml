@@ -155,6 +155,12 @@ Class-Path: crimson.jar relaxngDatatype.jar xsdlib.jar msv.jar jaxp-api.jar
 			targetdir="src/relaxngcc/parser/state"
 			automata="src/relaxngcc/parser/automata">
 		</self-relaxngcc>
+		
+		
+		<mkdir dir="src/relaxngcc/datatype/parser" />
+		
+		<self-relaxngcc source="src/relaxngcc/datatype/datatype.rng"
+			targetdir="src/relaxngcc/datatype/parser" />
 	</target>
 	
 	
