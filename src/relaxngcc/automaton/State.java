@@ -8,6 +8,7 @@ package relaxngcc.automaton;
 import java.io.PrintStream;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.Vector;
@@ -263,12 +264,20 @@ public final class State implements Comparable
 	//for interleave support
 	public void setMeetingDestination(State s) { _MeetingDestination=s; }
 	public State getMeetingDestination() { return _MeetingDestination; }
-	public void addStateForWait(State s)
-	{
+	public void addStateForWait(State s) {
 		if(_StateForWait==null) _StateForWait = new HashSet();
 		_StateForWait.add(s);
 	}
-	public Iterator iterateStatesForWait() { return _StateForWait.iterator(); }
+	public Iterator iterateStatesForWait() {
+        if(_StateForWait==null)     return emptyIterator;
+        else                        return _StateForWait.iterator();
+    }
+    
+    private static final Iterator emptyIterator = new Iterator() {
+        public void remove() { throw new UnsupportedOperationException(); }
+        public boolean hasNext() { return false; }
+        public Object next() { throw new NoSuchElementException(); }
+    };
     
     
     /**
