@@ -71,6 +71,8 @@ public class CodeBuilder
     
     private static final CDType interleaveFilterType = new CDType("NGCCInterleaveFilter");
     
+    /** Member variables that store uri/localName/qname of the enter/leave element. */
+    private CDVariable _$uri,_$localName,_$qname;
 
     /**
      * Builds the code.
@@ -109,7 +111,7 @@ public class CodeBuilder
         println(buf, globalimport);
         
         if(_info._scope.getImport()!=null)
-            println(buf, _info._scope.getImport());
+            println(buf, _info._scope.getImport().trim());
 
         println(buf, _info.getHeaderSection());
         
@@ -170,6 +172,19 @@ public class CodeBuilder
             CDType.INTEGER,
             GENERATED_VARIABLE_PREFIX+"_ngcc_current_state");
         
+        // uri, localName, qname variables
+        _$uri = classdef.addMember(
+            new CDLanguageSpecificString("protected"),
+            CDType.STRING,
+            GENERATED_VARIABLE_PREFIX+"uri");
+        _$localName = classdef.addMember(
+            new CDLanguageSpecificString("protected"),
+            CDType.STRING,
+            GENERATED_VARIABLE_PREFIX+"localName");
+        _$qname = classdef.addMember(
+            new CDLanguageSpecificString("protected"),
+            CDType.STRING,
+            GENERATED_VARIABLE_PREFIX+"qname");
         
         
         Alias[] constructorParams = _info.getConstructorParams();
@@ -559,13 +574,16 @@ public class CodeBuilder
         
         CDBlock sv = method.body();
         //printSection(eventName);
+        $params.$ai = sv.decl(CDType.INTEGER, GENERATED_VARIABLE_PREFIX+"ai");
             
         // QUICK HACK
         // copy them to the instance variables so that they can be 
         // accessed from action functions.
         // we should better not keep them at Runtime, because
         // this makes it impossible to emulate events.
-        $params.$ai = sv.decl(CDType.INTEGER, GENERATED_VARIABLE_PREFIX+"ai");
+        sv.assign(_$uri,         $params.$uri);
+        sv.assign(_$localName,   $params.$localName);
+        sv.assign(_$qname,       $params.$qname);
             
         if(_options.debug) {
             sv.invoke( _$runtime, "traceln")
